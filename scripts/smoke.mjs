@@ -195,18 +195,19 @@ async function main() {
     await page.waitForTimeout(600);
     await page.screenshot({ path: path.join(ARTIFACTS, 'desktop-race.png'), fullPage: true });
     const gameCanvas = page.locator('.game-canvas');
-    assert((await gameCanvas.getAttribute('data-camera-mode')) === 'chase', 'Kamera awal bukan chase.');
-    await page.getByRole('button', { name: 'Ganti kamera' }).click();
-    await page.waitForTimeout(180);
-    assert((await gameCanvas.getAttribute('data-camera-mode')) === 'top', 'Tombol kamera tidak beralih ke top.');
+    assert((await gameCanvas.getAttribute('data-camera-mode')) === 'top', 'Kamera awal bukan top.');
     await page.screenshot({ path: path.join(ARTIFACTS, 'desktop-race-top.png'), fullPage: true });
-    await page.getByRole('button', { name: 'Ganti kamera' }).click();
+    await page.getByRole('button', { name: 'Ganti sudut kamera' }).click();
+    await page.waitForTimeout(180);
+    assert((await gameCanvas.getAttribute('data-camera-mode')) === 'chase', 'Tombol kamera tidak beralih ke chase.');
+    await page.screenshot({ path: path.join(ARTIFACTS, 'desktop-race.png'), fullPage: true });
+    await page.getByRole('button', { name: 'Ganti sudut kamera' }).click();
     await page.waitForTimeout(180);
     assert((await gameCanvas.getAttribute('data-camera-mode')) === 'cockpit', 'Tombol kamera tidak beralih ke cockpit.');
     await page.screenshot({ path: path.join(ARTIFACTS, 'desktop-race-cockpit.png'), fullPage: true });
-    await page.getByRole('button', { name: 'Ganti kamera' }).click();
+    await page.getByRole('button', { name: 'Ganti sudut kamera' }).click();
     await page.waitForTimeout(180);
-    assert((await gameCanvas.getAttribute('data-camera-mode')) === 'chase', 'Tombol kamera tidak kembali ke chase.');
+    assert((await gameCanvas.getAttribute('data-camera-mode')) === 'top', 'Tombol kamera tidak kembali ke top.');
 
     const nitroBefore = await page.getByRole('meter', { name: 'Meter nitro' }).getAttribute('aria-valuenow');
     await page.keyboard.down('ArrowRight');

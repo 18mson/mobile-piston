@@ -4,14 +4,17 @@ import { buildTrack } from './geometry';
 export const WORLD_WIDTH = 2400;
 export const WORLD_HEIGHT = 1600;
 
+export const TELUK_SORE_ROAD_WIDTH = 176;
+export const TELUK_SORE_SHOULDER_WIDTH = 24;
+
 export const TELUK_SORE: Track = buildTrack({
   id: 'teluk-sore',
   name: 'TELUK SORE',
   subtitle: 'Pesisir, kebun palem, dan satu tanjung mercusuar.',
   worldWidth: WORLD_WIDTH,
   worldHeight: WORLD_HEIGHT,
-  width: 96,
-  shoulder: 18,
+  width: TELUK_SORE_ROAD_WIDTH,
+  shoulder: TELUK_SORE_SHOULDER_WIDTH,
   points: [
     { x: 460, y: 1185 },
     { x: 760, y: 1210 },
@@ -37,17 +40,17 @@ export const TELUK_SORE: Track = buildTrack({
   attract: { fraction: 0.4, offsetX: 34, offsetY: -104 },
   light: null,
   gridSlots: [
-    { distance: -54, lateral: -20 },
-    { distance: -54, lateral: 20 },
-    { distance: -82, lateral: -20 },
-    { distance: -82, lateral: 20 },
-    { distance: -110, lateral: -20 },
-    { distance: -110, lateral: 20 },
+    { distance: -54, lateral: -32 },
+    { distance: -54, lateral: 32 },
+    { distance: -90, lateral: -32 },
+    { distance: -90, lateral: 32 },
+    { distance: -126, lateral: -32 },
+    { distance: -126, lateral: 32 },
   ],
   boostPadFractions: [
-    { fraction: 0.2, lateral: -6, length: 34 },
-    { fraction: 0.52, lateral: 8, length: 34 },
-    { fraction: 0.8, lateral: 0, length: 34 },
+    { fraction: 0.2, lateral: -18, length: 44 },
+    { fraction: 0.52, lateral: 20, length: 44 },
+    { fraction: 0.8, lateral: 0, length: 44 },
   ],
 });
 

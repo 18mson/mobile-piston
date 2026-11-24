@@ -86,12 +86,36 @@ let scratchTrack: Track | null = null;
 function nearestDistance(track: Track, x: number, y: number): number {
   if (scratchTrack !== track) scratchTrack = track;
   const samples = track.samples;
+  const length = samples.length;
   let best = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < samples.length; i += 1) {
+  let bestIdx = 0;
+
+  for (let i = 0; i < length; i += 1) {
     const dx = x - samples[i].x;
     const dy = y - samples[i].y;
-    const distance = dx * dx + dy * dy;
-    if (distance < best) best = distance;
+    const d = dx * dx + dy * dy;
+    if (d < best) {
+      best = d;
+      bestIdx = i;
+    }
   }
-  return Math.sqrt(best);
+
+  // Exact segment projection to prevent discretization inaccuracies across curves
+  let exactBest = Math.sqrt(best);
+  for (const startIdx of [bestIdx - 1, bestIdx]) {
+    const a = samples[(startIdx + length) % length];
+    const b = samples[(startIdx + 1) % length];
+    const segX = b.x - a.x;
+    const segY = b.y - a.y;
+    const segLenSq = segX * segX + segY * segY || 1;
+    const t = clamp(((x - a.x) * segX + (y - a.y) * segY) / segLenSq, 0, 1);
+    const px = a.x + segX * t;
+    const py = a.y + segY * t;
+    const dist = Math.hypot(x - px, y - py);
+    if (dist < exactBest) {
+      exactBest = dist;
+    }
+  }
+
+  return exactBest;
 }

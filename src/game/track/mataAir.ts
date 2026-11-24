@@ -1,14 +1,17 @@
 import type { Track } from '../types';
 import { buildTrack } from './geometry';
 
+export const MATA_AIR_ROAD_WIDTH = 160;
+export const MATA_AIR_SHOULDER_WIDTH = 22;
+
 export const MATA_AIR: Track = buildTrack({
   id: 'mata-air',
   name: 'MATA AIR',
   subtitle: 'Lingkar sempit di sekitar danau kecil, dikelilingi kebun palem.',
   worldWidth: 2400,
   worldHeight: 1600,
-  width: 88,
-  shoulder: 16,
+  width: MATA_AIR_ROAD_WIDTH,
+  shoulder: MATA_AIR_SHOULDER_WIDTH,
   points: [
     { x: 790, y: 1120 },
     { x: 810, y: 960 },
@@ -25,17 +28,17 @@ export const MATA_AIR: Track = buildTrack({
   startPoint: { x: 1140, y: 1205 },
   startHeading: Math.PI,
   gridSlots: [
-    { distance: -54, lateral: -18 },
-    { distance: -54, lateral: 18 },
-    { distance: -82, lateral: -18 },
-    { distance: -82, lateral: 18 },
-    { distance: -110, lateral: -18 },
-    { distance: -110, lateral: 18 },
+    { distance: -54, lateral: -30 },
+    { distance: -54, lateral: 30 },
+    { distance: -90, lateral: -30 },
+    { distance: -90, lateral: 30 },
+    { distance: -126, lateral: -30 },
+    { distance: -126, lateral: 30 },
   ],
   boostPadFractions: [
-    { fraction: 0.2, lateral: -6, length: 30 },
-    { fraction: 0.56, lateral: 8, length: 30 },
-    { fraction: 0.82, lateral: 0, length: 30 },
+    { fraction: 0.2, lateral: -16, length: 40 },
+    { fraction: 0.56, lateral: 18, length: 40 },
+    { fraction: 0.82, lateral: 0, length: 40 },
   ],
   attract: { fraction: 0.94, offsetX: -120, offsetY: -90 },
   light: { color: '#ff9a46', alpha: 0.055 },

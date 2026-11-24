@@ -26,7 +26,7 @@ Lingkungan verifikasi: Next.js 16.4.6, Node 20.20, Chromium headless melalui Pla
 - **R-23 PASS:** game, model mobil, dua lintasan, gantry, tekstur, dan audio dibuat orisinal. Font Silkscreen memakai lisensi OFL yang disertakan. Tidak ada aset Mini Motor Racing.
 - **R-24 PASS:** tidak ada nav dengan tujuan palsu. Halaman 404 nyata diuji dan menuju beranda.
 - **R-25 PASS:** delapan pasangan warna UI diuji minimal 4.5:1. Panel HUD opaque; brand topbar diberi plate gelap agar tetap kontras di atas dunia 3D.
-- **R-26 PASS:** setiap tombol memiliki aksi nyata. Smoke mencakup judul, garasi, pilihan lintasan, mulai balapan, tiga mode kamera, nitro, jeda, lanjut, hasil, menu utama, kontrol sentuh, gamepad virtual, 404, dan error WebGL.
+- **R-26 PASS:** setiap tombol memiliki aksi nyata. Smoke mencakup judul, garasi, pilihan lintasan, mulai balapan, tiga mode kamera (top default, chase, cockpit) dengan transisi rig halus, nitro dengan fov kick, jeda, lanjut, hasil, menu utama, kontrol sentuh, gamepad virtual, 404, dan error WebGL.
 - **R-27 PASS:** ada loading screen, state rekor kosong, dan error state. Error WebGL diuji dengan mematikan context WebGL dan menampilkan penyebab serta tombol muat ulang.
 - **R-28 PASS:** tidak ada FAQ.
 - **R-32 PASS:** keyboard dapat fokus ke tombol dengan outline 3px. Dialog memakai native `<dialog>`, Escape menutup, dan keyboard memulai balapan, mengemudi, mengganti kamera dengan V, serta pause.
@@ -34,7 +34,7 @@ Lingkungan verifikasi: Next.js 16.4.6, Node 20.20, Chromium headless melalui Pla
 - **R-34 PASS:** tidak ada theme toggle. Tema gelap adalah keputusan identitas untuk HUD di atas dunia siang, dijelaskan di DESIGN.
 - **R-35 PASS:** build dijalankan, produksi disajikan, dan alur diuji di browser. Smoke dev menguji hasil dan kedua rute dengan API debug. Smoke produksi menguji alur utama, kamera, fallback WebGL, dan 404.
 - **R-36 PASS:** tidak ada klaim keamanan, performa, atau pelanggan. Tidak ada skor Lighthouse atau Web Vitals yang dilaporkan.
-- **R-37 PASS:** arah visual punya referensi dan DESIGN menetapkan dial ENERGY 3 / RHYTHM 2 / MOTION 3. Referensi hanya dipakai untuk kadar pixel dan suasana 3D, bukan aset atau tata letak.
+- **R-37 PASS:** arah visual punya referensi dan DESIGN menetapkan dial ENERGY 3 / RHYTHM 2 / MOTION 3. Model mobil bervolume tebal (chunky mini racer bergaya Forge demo), jalan diperlebar 4-5 mobil, dan transisi kamera mulus.
 - **R-38 PASS:** tidak ada konten realistis yang difabrikasi. Nama pembalap adalah karakter game dan waktunya berasal dari simulasi.
 - **R-39 PASS:** kontrol memakai elemen native, nama aksesibel, cursor pointer, state hover/active/disabled, fokus terlihat, target minimal 44px, canvas punya label, thumbnail dekoratif memakai alt kosong, dan reduced motion membekukan demo judul, awan, air, serta getaran kamera. Balapan punya tombol jeda.
 - **R-40 PASS:** canvas punya dimensi intrinsik 960x540, thumbnail mobil punya width dan height, tidak ada gambar hero yang lazy, tidak ada script pihak ketiga, font disajikan lokal, dan tidak ada angka performa yang belum diukur.

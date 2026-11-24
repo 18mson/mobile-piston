@@ -9,18 +9,29 @@ export default function RaceHud({
   track,
   onPause,
   onCycleCamera,
+  cameraMode,
   showHint,
 }: {
   snapshot: RaceSnapshot | null;
   track: Track;
   onPause: () => void;
   onCycleCamera: () => void;
+  cameraMode?: string;
   showHint: boolean;
 }) {
   if (!snapshot) return null;
   const countdown = snapshot.countdown;
   const nitro = Math.round(snapshot.nitro);
   const speedRatio = Math.min(1, snapshot.speed / 220);
+
+  const cameraLabel =
+    cameraMode === 'top'
+      ? 'KAM: TOP'
+      : cameraMode === 'cockpit'
+        ? 'KAM: KOKPIT'
+        : cameraMode === 'chase'
+          ? 'KAM: CHASE'
+          : 'KAM';
 
   return (
     <div className="race-hud">
@@ -45,8 +56,13 @@ export default function RaceHud({
         <button className="btn btn-icon pause-button" type="button" onClick={onPause} aria-label="Jeda balapan">
           <span aria-hidden="true">II</span>
         </button>
-        <button className="btn btn-icon camera-button" type="button" onClick={onCycleCamera} aria-label="Ganti kamera">
-          <span aria-hidden="true">KAM</span>
+        <button
+          className="btn btn-icon camera-button"
+          type="button"
+          onClick={onCycleCamera}
+          aria-label={`Ganti sudut kamera. Tampilan sekarang: ${cameraLabel}`}
+        >
+          <span aria-hidden="true">{cameraLabel}</span>
         </button>
         {showHint && (
           <p className="race-hint">

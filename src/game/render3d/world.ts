@@ -296,7 +296,7 @@ function addRoad(group: THREE.Group, track: Track): void {
     );
     padGroup.rotation.y = Math.atan2(sample.tx, sample.ty);
     const decal = new THREE.Mesh(
-      new THREE.PlaneGeometry(7.2, pad.length * WORLD_SCALE),
+      new THREE.PlaneGeometry(10.5, pad.length * WORLD_SCALE),
       new THREE.MeshBasicMaterial({
         map: createBoostTexture(),
         transparent: true,
@@ -305,6 +305,7 @@ function addRoad(group: THREE.Group, track: Track): void {
       }),
     );
     decal.rotation.x = -Math.PI / 2;
+    decal.rotation.z = Math.PI / 2; // Orient forward along road direction (heading)
     padGroup.add(decal);
     group.add(padGroup);
   }
@@ -779,29 +780,30 @@ export function createWorld(track: Track): World3D {
   addCoastFoam(root);
 
   const terrainPlacements: TerrainPlacement[] = [];
+  const roadMargin = track.width / 2 + track.shoulder;
   for (let attempt = 0; attempt < 4200; attempt += 1) {
     const x = 50 + rng() * 2300;
     const y = 100 + rng() * 1400;
     const info = terrainHeightAt(track, COAST, x, y);
     if (info.kind === 'sea' || info.kind === 'pond') continue;
-    if (info.trackDistance < 68) continue;
+    if (info.trackDistance < roadMargin + 14) continue;
     terrainPlacements.push({ x, y, height: info.height, trackDistance: info.trackDistance, kind: info.kind });
     if (terrainPlacements.length > 1000) break;
   }
 
-  const canPlace = (place: TerrainPlacement, minTrack: number) =>
-    place.trackDistance >= minTrack && place.kind !== 'sea' && place.kind !== 'pond';
+  const canPlace = (place: TerrainPlacement, minExtra: number) =>
+    place.trackDistance >= roadMargin + minExtra && place.kind !== 'sea' && place.kind !== 'pond';
 
-  const palms = terrainPlacements.filter((place, index) => canPlace(place, 70) && index % 2 === 0);
-  const bushes = terrainPlacements.filter((place, index) => canPlace(place, 62) && index % 2 === 1);
-  const rocks = terrainPlacements.filter((place, index) => canPlace(place, 58) && index % 3 === 0);
-  const flowers = terrainPlacements.filter((place, index) => canPlace(place, 60) && index % 5 === 0);
+  const palms = terrainPlacements.filter((place, index) => canPlace(place, 24) && index % 2 === 0);
+  const bushes = terrainPlacements.filter((place, index) => canPlace(place, 18) && index % 2 === 1);
+  const rocks = terrainPlacements.filter((place, index) => canPlace(place, 16) && index % 3 === 0);
+  const flowers = terrainPlacements.filter((place, index) => canPlace(place, 14) && index % 5 === 0);
 
   for (let i = 0; i < track.samples.length; i += 4) {
     const sample = track.samples[i];
     for (const side of [-1, 1]) {
       if (rng() > 0.55) continue;
-      const offset = (track.width / 2 + track.shoulder + 7 + rng() * 22) * side;
+      const offset = (track.width / 2 + track.shoulder + 18 + rng() * 24) * side;
       const wx = sample.x + sample.nx * offset;
       const wy = sample.y + sample.ny * offset;
       const info = terrainHeightAt(track, COAST, wx, wy);
@@ -820,7 +822,7 @@ export function createWorld(track: Track): World3D {
     const y = 100 + broadleafRng() * 1400;
     const info = terrainHeightAt(track, COAST, x, y);
     if (info.kind === 'sea' || info.kind === 'pond') continue;
-    if (info.trackDistance < 90) continue;
+    if (info.trackDistance < roadMargin + 38) continue;
     broadleaf.push({ x, y, height: info.height, trackDistance: info.trackDistance, kind: info.kind });
     if (broadleaf.length > 260) break;
   }
@@ -832,7 +834,7 @@ export function createWorld(track: Track): World3D {
     const y = 80 + rng() * 1460;
     const info = terrainHeightAt(track, COAST, x, y);
     if (info.kind === 'sea' || info.kind === 'pond') continue;
-    if (info.trackDistance < 54) continue;
+    if (info.trackDistance < roadMargin + 6) continue;
     grassLocations.push({ x, y, height: info.height, trackDistance: info.trackDistance, kind: info.kind });
     if (grassLocations.length > 2300) break;
   }

@@ -34,7 +34,8 @@ export function computeAiInput(
   targetSpeed = Math.max(54, targetSpeed);
 
   const lookAhead = clamp(42 + speed * 0.55, 54, 142);
-  let lateral = clamp(curvature * 2600, -18, 18);
+  const maxLateralLane = (track.width / 2) * 0.55;
+  let lateral = clamp(curvature * 2800, -maxLateralLane, maxLateralLane);
 
   for (const other of racers) {
     if (other.id === racer.id || other.finished) continue;
@@ -42,17 +43,16 @@ export function computeAiInput(
     const dy = other.y - racer.y;
     const forward = dx * Math.cos(racer.angle) + dy * Math.sin(racer.angle);
     const side = -dx * Math.sin(racer.angle) + dy * Math.cos(racer.angle);
-    if (forward > 0 && forward < 72 && Math.abs(side) < 26) {
-      lateral += side >= 0 ? -22 : 22;
-      if (forward < 30) targetSpeed = Math.min(targetSpeed, speed * 0.72);
+    if (forward > 0 && forward < 80 && Math.abs(side) < 32) {
+      lateral += side >= 0 ? -28 : 28;
+      if (forward < 32) targetSpeed = Math.min(targetSpeed, speed * 0.72);
     }
   }
 
-  const target = pointAtDistance(track, racer.s + lookAhead, clamp(lateral, -28, 28));
+  const target = pointAtDistance(track, racer.s + lookAhead, clamp(lateral, -maxLateralLane, maxLateralLane));
   const desiredAngle = Math.atan2(target.y - racer.y, target.x - racer.x);
   const angleError = shortestAngle(racer.angle, desiredAngle);
   let steer = clamp(angleError * 2.7, -1, 1);
-  steer += clamp(lateral * 0.008, -0.12, 0.12);
 
   if (Math.abs(angleError) > 1.2 && speed < 28) {
     steer = angleError > 0 ? 1 : -1;

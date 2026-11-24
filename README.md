@@ -36,18 +36,18 @@ Gas selalu menyala otomatis. Drift mengisi meter nitro, dan garis chevron oranye
 | Kamera | V | tombol KAM di HUD | Y |
 | Jeda | Esc atau P | tombol jeda di HUD | Start |
 
-Tiga sudut kamera tersedia: chase, top, dan cockpit. Chase adalah tampilan awal. Pemain mulai dari grid P6, jadi seluruh pack terlihat di depan dan kamera punya ruang untuk mengikuti balapan.
+Tiga sudut kamera tersedia: top (default awal bergaya Mini Motor Racing), chase, dan cockpit. Perpindahan kamera berlangsung mulus dengan camera rig terpadu (damped easing 0.6s). Pemain mulai dari grid P6 dengan jalan yang lebar (4-5 lebar mobil), sehingga seluruh pack terlihat jelas dan ada banyak ruang untuk bermanuver dan menyalip.
 
 Menu dapat dioperasikan dengan keyboard dan gamepad: D-pad memindah fokus, A memilih, B kembali.
 
 ## Yang ada sekarang
 
-- Dua lintasan di Teluk Sore: **Teluk Sore** yang mengelilingi pesisir, dan **Mata Air** yang melingkari danau di tengah kebun.
+- Dua lintasan lebar di Teluk Sore: **Teluk Sore** yang mengelilingi pesisir (lebar 176 unit), dan **Mata Air** yang melingkari danau di tengah kebun (lebar 160 unit), memberikan ruang salip 4-5 mobil.
 - Pilihan lintasan dengan preview rute dan rekor terpisah untuk setiap lintasan.
-- Empat mobil dengan model 3D dan karakter fisika berbeda: Sirip, Bagas, Okra, dan Kepik.
-- Lima AI dengan livery berbeda, grid enam mobil, tiga putaran, boost pad, drift, dan tabrakan.
+- Empat mobil dengan model 3D bervolume tebal (voxel/sprite-stacking chunky racer): Sirip (rally hatchback dengan roof scoop & spoiler), Bagas (muscle car dengan supercharger blower), Okra (truk pikap kargo dengan rollbar & lampu sorot), dan Kepik (buggy offroad dengan sangkar pipa & ban raksasa). Detail gerak hidup: suspensi mental, kemiringan bodi di tikungan (body roll), roda berputar dan membelok, semburan nitro ganda, dan lampu rem dinamis.
+- Lima AI dengan livery berbeda, grid enam mobil dengan posisi start berjarak, tiga putaran, boost pad lebar, drift, dan tabrakan tanpa crash macet.
 - Renderer 3D dengan framebuffer internal 960x540, tekstur nearest-neighbor, langit, awan, air, vegetasi, mercusuar, gantry start, dan bayangan.
-- Kamera chase, top, dan cockpit, dengan tombol KAM untuk pengguna sentuh.
+- Kamera rig terpadu dengan 3 sudut pandang (top-down default, chase, cockpit), transisi terbang mulus tanpa cut, getaran kamera responsif benturan/laju, serta efek FOV kick saat nitro aktif. Tombol KAM di HUD menampilkan mode kamera aktif.
 - Judul dengan tiga mobil demo yang mengikuti lintasan, serta thumbnail mobil 3D di garasi.
 - Hasil balapan dengan waktu nyata, rekor putaran lokal, dan dukungan keyboard, sentuh, serta gamepad.
 - UI responsif untuk desktop, ponsel lanskap, dan ponsel potret.

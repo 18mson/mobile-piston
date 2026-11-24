@@ -67,6 +67,7 @@ export default function GameApp() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const [isTouch, setIsTouch] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [cameraMode, setCameraMode] = useState<string>('top');
   const [announcement, setAnnouncement] = useState('');
   const hintTimer = useRef<number | null>(null);
   const lapRef = useRef(0);
@@ -176,6 +177,7 @@ export default function GameApp() {
     setControlsOpen(false);
     setAnnouncement('Balapan dimulai. Gas otomatis.');
     setShowHint(true);
+    setCameraMode('top');
     lapRef.current = 0;
     if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => setShowHint(false), 8000);
@@ -313,7 +315,17 @@ export default function GameApp() {
           )}
           {racingScreen && (
             <>
-              <RaceHud snapshot={snapshot} track={selectedTrack} onPause={() => engineRef.current?.pause()} onCycleCamera={() => engineRef.current?.cycleCamera()} showHint={showHint} />
+              <RaceHud
+                snapshot={snapshot}
+                track={selectedTrack}
+                onPause={() => engineRef.current?.pause()}
+                onCycleCamera={() => {
+                  const next = engineRef.current?.cycleCamera();
+                  if (next) setCameraMode(next);
+                }}
+                cameraMode={cameraMode}
+                showHint={showHint}
+              />
               {isTouch && (
                 <TouchControls
                   onChange={(action, pressed) => engineRef.current?.setTouchControl(action, pressed)}
@@ -323,7 +335,14 @@ export default function GameApp() {
           )}
           {paused && (
             <>
-              <RaceHud snapshot={snapshot} track={selectedTrack} onPause={() => undefined} onCycleCamera={() => undefined} showHint={false} />
+              <RaceHud
+                snapshot={snapshot}
+                track={selectedTrack}
+                onPause={() => undefined}
+                onCycleCamera={() => undefined}
+                cameraMode={cameraMode}
+                showHint={false}
+              />
               <PauseDialog
                 open={paused}
                 muted={save.audioMuted}

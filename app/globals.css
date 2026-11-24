@@ -1249,13 +1249,21 @@ p {
   pointer-events: auto;
 }
 
-.pause-button {
+.pause-button,
+.camera-button {
   min-height: 46px;
   background: rgba(12, 24, 32, 0.9);
   border-color: var(--line-strong);
   box-shadow: none;
   color: var(--bone);
   letter-spacing: 0.08em;
+}
+
+.camera-button {
+  width: auto;
+  min-width: 46px;
+  padding: 0 10px;
+  font-size: 10px;
 }
 
 .pause-button:hover {

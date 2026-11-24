@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import type { RacerState, Track } from '../types';
 import { createWorld, type World3D } from './world';
 import { CarView } from './cars';
+import { CameraRig, type CameraMode } from './cameraRig';
 import { AI_LIVERIES } from '../data/cars';
 import { sampleAtDistance } from '../track/geometry';
-import { RENDER_HEIGHT, RENDER_WIDTH, ROAD_Y, toSceneX, toSceneZ, WORLD_SCALE } from './constants';
+import { RENDER_HEIGHT, RENDER_WIDTH, ROAD_Y, toSceneX, toSceneZ } from './constants';
 
-export type CameraMode = 'chase' | 'top' | 'cockpit';
+export { type CameraMode } from './cameraRig';
 
 interface RenderMode {
   paused?: boolean;
@@ -16,7 +17,7 @@ export class Renderer3D {
   private canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(58, RENDER_WIDTH / RENDER_HEIGHT, 0.1, 1600);
+  private cameraRig = new CameraRig(RENDER_WIDTH / RENDER_HEIGHT);
   private world: World3D;
   private track: Track;
   private carRoot = new THREE.Group();
@@ -25,12 +26,16 @@ export class Renderer3D {
   private cars = new Map<string, CarView>();
   private playerCar: CarView | null = null;
   private player: RacerState | null = null;
-  private cameraInitialized = false;
-  private cameraTarget = new THREE.Vector3();
-  private cameraPosition = new THREE.Vector3();
   private reducedMotion = false;
-  private cameraMode: CameraMode = 'chase';
-  private shake = 0;
+
+  // Cockpit view overlay parts (attached to camera when in cockpit view)
+  private cockpitRoot = new THREE.Group();
+  private steeringWheel: THREE.Group | null = null;
+
+  // Attract camera smoothing
+  private attractCamPos = new THREE.Vector3();
+  private attractCamLook = new THREE.Vector3();
+  private attractInitialized = false;
 
   constructor(canvas: HTMLCanvasElement, track: Track) {
     this.canvas = canvas;
@@ -51,14 +56,17 @@ export class Renderer3D {
     this.renderer.setClearColor('#8ebfcb', 1);
     canvas.width = RENDER_WIDTH;
     canvas.height = RENDER_HEIGHT;
-    canvas.dataset.cameraMode = this.cameraMode;
+    canvas.dataset.cameraMode = this.cameraRig.mode;
 
     this.scene.fog = new THREE.Fog('#a8cfd5', 210, 720);
     this.world = createWorld(track);
     this.scene.add(this.world.root);
     this.scene.add(this.carRoot);
     this.scene.add(this.attractRoot);
-    this.scene.add(this.camera);
+    this.scene.add(this.cameraRig.camera);
+
+    this.buildCockpitView();
+    this.cameraRig.camera.add(this.cockpitRoot);
 
     for (let i = 0; i < 3; i += 1) {
       const livery = AI_LIVERIES[i];
@@ -67,25 +75,91 @@ export class Renderer3D {
       this.attractRoot.add(view.group);
     }
 
-    const ambient = new THREE.AmbientLight('#ffffff', 0.24);
+    const ambient = new THREE.AmbientLight('#ffffff', 0.28);
     this.scene.add(ambient);
+  }
+
+  private buildCockpitView(): void {
+    // Low-poly cockpit dashboard, hood preview, rearview mirror, steering wheel, and pixel hands
+    // Positioned relative to camera local space (looking down -Z in standard Three.js camera)
+    const darkMat = new THREE.MeshLambertMaterial({ color: '#182026', flatShading: true });
+    const dashMat = new THREE.MeshLambertMaterial({ color: '#25303a', flatShading: true });
+    const trimMat = new THREE.MeshLambertMaterial({ color: '#ff8f3d', flatShading: true });
+    const mirrorMat = new THREE.MeshBasicMaterial({ color: '#567280' });
+    const skinMat = new THREE.MeshLambertMaterial({ color: '#e2b083', flatShading: true });
+    const gloveMat = new THREE.MeshLambertMaterial({ color: '#d83a2b', flatShading: true });
+
+    // Dashboard base
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 0.8), dashMat);
+    dash.position.set(0, -0.42, -0.85);
+    this.cockpitRoot.add(dash);
+
+    // Instrument cluster hood
+    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.16, 0.35), darkMat);
+    cluster.position.set(0, -0.22, -0.72);
+    this.cockpitRoot.add(cluster);
+
+    // Front hood / bonnet visible out front
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.22, 1.4), trimMat);
+    hood.position.set(0, -0.48, -1.65);
+    this.cockpitRoot.add(hood);
+
+    // Center rearview mirror
+    const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.24, 0.08), darkMat);
+    mirrorFrame.position.set(0, 0.46, -0.85);
+    const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.18), mirrorMat);
+    mirrorGlass.position.set(0, 0.46, -0.8);
+    this.cockpitRoot.add(mirrorFrame, mirrorGlass);
+
+    // Steering wheel pivot & wheel
+    const wheelGroup = new THREE.Group();
+    wheelGroup.position.set(0, -0.26, -0.56);
+    wheelGroup.rotation.x = Math.PI / 8; // Slanted towards driver
+
+    // Chunky pixel-style wheel rim
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 5, 10), darkMat);
+    wheelGroup.add(rim);
+
+    // Center spoke
+    const centerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.04, 6), trimMat);
+    centerCap.rotation.x = Math.PI / 2;
+    wheelGroup.add(centerCap);
+
+    // Driver hands on 9-and-3
+    for (const side of [-1, 1]) {
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.14), gloveMat);
+      hand.position.set(side * 0.23, 0, 0.02);
+      wheelGroup.add(hand);
+
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.26), skinMat);
+      arm.position.set(side * 0.24, -0.06, 0.18);
+      arm.rotation.x = -Math.PI / 6;
+      wheelGroup.add(arm);
+    }
+
+    this.cockpitRoot.add(wheelGroup);
+    this.steeringWheel = wheelGroup;
+    this.cockpitRoot.visible = false;
   }
 
   setReducedMotion(reduced: boolean): void {
     this.reducedMotion = reduced;
+    this.cameraRig.setReducedMotion(reduced);
   }
 
   cycleCamera(): CameraMode {
-    const modes: CameraMode[] = ['chase', 'top', 'cockpit'];
-    const index = modes.indexOf(this.cameraMode);
-    this.cameraMode = modes[(index + 1) % modes.length];
-    this.cameraInitialized = false;
-    this.canvas.dataset.cameraMode = this.cameraMode;
-    return this.cameraMode;
+    const nextMode = this.cameraRig.cycle();
+    this.canvas.dataset.cameraMode = nextMode;
+    return nextMode;
+  }
+
+  setCameraMode(mode: CameraMode): void {
+    this.cameraRig.setMode(mode, false);
+    this.canvas.dataset.cameraMode = mode;
   }
 
   get viewMode(): CameraMode {
-    return this.cameraMode;
+    return this.cameraRig.mode;
   }
 
   setRacers(racers: RacerState[]): void {
@@ -99,23 +173,27 @@ export class Renderer3D {
         this.player = racer;
       }
     }
-    this.cameraInitialized = false;
+    this.cameraRig.setMode('top', true);
+    this.canvas.dataset.cameraMode = 'top';
   }
 
   resetMarks(): void {
-    // The 3D renderer has no persistent tyre mark layer yet.
+    // Persistent tyre mark layer slot
   }
 
   renderAttract(time: number, dt: number): void {
     this.carRoot.visible = false;
     this.attractRoot.visible = true;
+    this.cockpitRoot.visible = false;
+
     const clock = this.reducedMotion ? 0 : time;
     const baseDistance = this.track.length * this.track.attract.fraction + clock * 36;
     let leadScene = new THREE.Vector3();
     let leadForward = new THREE.Vector3(1, 0, 0);
+
     this.attractCars.forEach((view, index) => {
       const ahead = index * 38;
-      const lateral = index === 0 ? 0 : index === 1 ? -10 : 10;
+      const lateral = index === 0 ? 0 : index === 1 ? -16 : 16;
       const sample = sampleAtDistance(this.track, baseDistance + ahead);
       const worldX = sample.x + sample.nx * lateral;
       const worldY = sample.y + sample.ny * lateral;
@@ -157,23 +235,30 @@ export class Renderer3D {
         leadForward = new THREE.Vector3(sample.tx, 0, sample.ty);
       }
     });
+
     const focus = new THREE.Vector3(leadScene.x, 1.2, leadScene.z);
     this.world.update(time, dt, focus, this.reducedMotion);
-    const desired = leadScene.clone().addScaledVector(leadForward, -17).add(new THREE.Vector3(0, 8.5, 0));
-    const look = leadScene.clone().addScaledVector(leadForward, 26).add(new THREE.Vector3(0, 1.5, 0));
-    if (!this.cameraInitialized) {
-      this.camera.position.copy(desired);
-      this.cameraTarget.copy(look);
-      this.cameraInitialized = true;
+
+    // Attract view: pleasant overview chase
+    const desired = leadScene.clone().addScaledVector(leadForward, -26).add(new THREE.Vector3(0, 14.0, 0));
+    const look = leadScene.clone().addScaledVector(leadForward, 24).add(new THREE.Vector3(0, 1.5, 0));
+
+    if (!this.attractInitialized) {
+      this.attractCamPos.copy(desired);
+      this.attractCamLook.copy(look);
+      this.attractInitialized = true;
     } else {
-      const alpha = Math.min(1, dt * 2.6);
-      this.camera.position.lerp(desired, alpha);
-      this.cameraTarget.lerp(look, alpha);
+      const alpha = Math.min(1, dt * 2.8);
+      this.attractCamPos.lerp(desired, alpha);
+      this.attractCamLook.lerp(look, alpha);
     }
-    this.camera.lookAt(this.cameraTarget);
-    this.camera.fov = 59;
-    this.camera.updateProjectionMatrix();
-    this.renderer.render(this.scene, this.camera);
+
+    this.cameraRig.camera.position.copy(this.attractCamPos);
+    this.cameraRig.camera.lookAt(this.attractCamLook);
+    this.cameraRig.camera.fov = 54;
+    this.cameraRig.camera.updateProjectionMatrix();
+
+    this.renderer.render(this.scene, this.cameraRig.camera);
   }
 
   renderRace(
@@ -187,16 +272,38 @@ export class Renderer3D {
     this.player = player;
     this.carRoot.visible = true;
     this.attractRoot.visible = false;
+    const isPaused = mode === 'paused';
+    const effectiveDt = isPaused ? 0 : dt;
+
     for (const racer of racers) {
-      this.cars.get(racer.id)?.update(racer, mode === 'paused' ? 0 : dt);
+      this.cars.get(racer.id)?.update(racer, effectiveDt);
     }
+
     const playerView = this.cars.get(player.id);
     this.playerCar = playerView ?? null;
-    if (this.playerCar) this.playerCar.group.visible = this.cameraMode !== 'cockpit';
+
+    // Cockpit visibility & clipping handling:
+    // Only switch to driver interior when the camera rig actually arrives inside
+    const isCockpit = this.cameraRig.inCockpit;
+    if (this.playerCar) {
+      // Hide player's full body mesh only when fully seated in cockpit to prevent eye clipping
+      // When flying in from outside, the car body remains visible as the camera enters
+      this.playerCar.group.visible = !isCockpit;
+    }
+    this.cockpitRoot.visible = isCockpit;
+
+    if (isCockpit && this.steeringWheel) {
+      // Steer the steering wheel with player input
+      this.steeringWheel.rotation.z = -player.steer * 0.95;
+    }
+
     const focus = new THREE.Vector3(toSceneX(player.x), ROAD_Y, toSceneZ(player.y));
-    this.world.update(time, mode === 'paused' ? 0 : dt, focus, this.reducedMotion);
-    this.updateCamera(player, mode === 'paused' ? 0 : dt, impact);
-    this.renderer.render(this.scene, this.camera);
+    this.world.update(time, effectiveDt, focus, this.reducedMotion);
+
+    // Update unified camera rig
+    this.cameraRig.update(player, effectiveDt, impact);
+
+    this.renderer.render(this.scene, this.cameraRig.camera);
   }
 
   dispose(): void {
@@ -242,58 +349,5 @@ export class Renderer3D {
     }
     this.cars.clear();
     this.playerCar = null;
-  }
-
-  private updateCamera(player: RacerState, dt: number, impact: number): void {
-    const forward = new THREE.Vector3(Math.cos(player.angle), 0, Math.sin(player.angle));
-    const car = new THREE.Vector3(toSceneX(player.x), ROAD_Y, toSceneZ(player.y));
-    const speed = Math.hypot(player.vx, player.vy);
-    const speedNorm = Math.min(1, speed / 200);
-    let desiredPosition: THREE.Vector3;
-    let desiredTarget: THREE.Vector3;
-    let fov = 58;
-
-    if (this.cameraMode === 'top') {
-      desiredPosition = car.clone().addScaledVector(forward, -5).add(new THREE.Vector3(0, 31, 0));
-      desiredTarget = car.clone().addScaledVector(forward, 8).add(new THREE.Vector3(0, 1, 0));
-      fov = 43;
-    } else if (this.cameraMode === 'cockpit') {
-      desiredPosition = car.clone().addScaledVector(forward, 3.4).add(new THREE.Vector3(0, 2.0, 0));
-      desiredTarget = car.clone().addScaledVector(forward, 34).add(new THREE.Vector3(0, 1.4, 0));
-      fov = 68;
-    } else {
-      const distance = 17.5 + speedNorm * 3.5;
-      desiredPosition = car
-        .clone()
-        .addScaledVector(forward, -distance)
-        .add(new THREE.Vector3(0, 9.2 + speedNorm * 1.0, 0));
-      desiredTarget = car
-        .clone()
-        .addScaledVector(forward, 17 + speedNorm * 5)
-        .add(new THREE.Vector3(0, 1.4, 0));
-      fov = 60 + speedNorm * 3;
-    }
-
-    if (!this.cameraInitialized || dt <= 0) {
-      this.camera.position.copy(desiredPosition);
-      this.cameraTarget.copy(desiredTarget);
-      this.cameraInitialized = true;
-    } else {
-      const alpha = 1 - Math.exp(-dt * (this.cameraMode === 'chase' ? 6.5 : 9));
-      this.camera.position.lerp(desiredPosition, alpha);
-      this.cameraTarget.lerp(desiredTarget, alpha * 0.85);
-    }
-
-    this.shake = Math.max(this.shake, impact > 0.2 ? impact : 0);
-    this.shake = Math.max(0, this.shake - dt * 3.5);
-    if (this.shake > 0 && !this.reducedMotion) {
-      const amount = this.shake * 0.35;
-      this.camera.position.x += Math.sin(performance.now() * 0.07) * amount;
-      this.camera.position.y += Math.cos(performance.now() * 0.09) * amount;
-    }
-
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, fov, Math.min(1, dt * 5));
-    this.camera.updateProjectionMatrix();
-    this.camera.lookAt(this.cameraTarget);
   }
 }
