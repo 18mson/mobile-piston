@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RacerState } from '../types';
 import { ROAD_Y, toSceneX, toSceneZ } from './constants';
+import { shortestAngle } from '../utils';
 
 export type CameraMode = 'top' | 'chase' | 'cockpit';
 
@@ -31,6 +32,9 @@ export class CameraRig {
   private currentCamPos = new THREE.Vector3();
   private currentCamTarget = new THREE.Vector3();
   private initialized = false;
+
+  // Smoothed heading used by the top & chase cameras so drifts and spin-outs don't whip the view around
+  private camHeading = 0;
 
   // Target and origin for smooth flight
   private startFlightPos = new THREE.Vector3();
@@ -128,6 +132,29 @@ export class CameraRig {
     }
   }
 
+  /**
+   * Heading the chase / top cameras follow. Normally the car's nose; when the car is sliding
+   * sideways it leans toward the direction of travel, so a drift stays readable and a spin-out
+   * doesn't spin the whole screen.
+   */
+  private updateHeading(player: RacerState, dt: number): void {
+    const speed = Math.hypot(player.vx, player.vy);
+    let target = player.angle;
+    if (speed > 28) {
+      const travel = Math.atan2(player.vy, player.vx);
+      const slip = shortestAngle(player.angle, travel);
+      const t = THREE.MathUtils.clamp((Math.abs(slip) - 0.15) / 0.75, 0, 1);
+      const weight = t * t * (3 - 2 * t) * 0.85;
+      target = player.angle + slip * weight;
+    }
+    if (!this.initialized || dt <= 0) {
+      this.camHeading = target;
+      return;
+    }
+    const rate = 1 - Math.exp(-dt * 9);
+    this.camHeading += shortestAngle(this.camHeading, target) * rate;
+  }
+
   private computeTargetWorld(player: RacerState, mode: CameraMode): { pos: THREE.Vector3; look: THREE.Vector3 } {
     const params = this.getBaseParams(mode);
     const carPos = new THREE.Vector3(toSceneX(player.x), ROAD_Y, toSceneZ(player.y));
@@ -140,14 +167,15 @@ export class CameraRig {
 
     if (params.isWorldRelative) {
       // North-up fixed orientation with smooth speed/heading look-ahead
-      const forwardHeading = new THREE.Vector3(Math.cos(player.angle), 0, Math.sin(player.angle));
+      const forwardHeading = new THREE.Vector3(Math.cos(this.camHeading), 0, Math.sin(this.camHeading));
       const lookAhead = forwardHeading.clone().multiplyScalar(THREE.MathUtils.lerp(4.0, 12.0, speedNorm));
       pos.copy(carPos).add(params.posOffset).add(lookAhead.clone().multiplyScalar(0.4));
       look.copy(carPos).add(lookAhead);
     } else {
       // Car-relative orientation (chase & cockpit)
-      const cosA = Math.cos(player.angle);
-      const sinA = Math.sin(player.angle);
+      const heading = mode === 'chase' ? this.camHeading : player.angle;
+      const cosA = Math.cos(heading);
+      const sinA = Math.sin(heading);
 
       const pullBack = nitroActive ? (mode === 'chase' ? 2.5 : 0.3) : 0;
       const localPosX = params.posOffset.x - pullBack;
@@ -178,6 +206,7 @@ export class CameraRig {
     const targetFovKick = nitroActive ? 5.5 : 0;
     this.fovKick = THREE.MathUtils.lerp(this.fovKick, targetFovKick, Math.min(1, dt * 8));
 
+    this.updateHeading(player, dt);
     const targetModeWorld = this.computeTargetWorld(player, this.currentMode);
     const targetParams = this.getBaseParams(this.currentMode);
 

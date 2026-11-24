@@ -117,57 +117,57 @@ export class Renderer3D {
     const gloveMat = new THREE.MeshLambertMaterial({ color: '#d83a2b', flatShading: true });
 
     // Dashboard base (lowered into bottom periphery)
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.35), dashMat);
-    dash.position.set(0, -0.56, -0.75);
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.16, 0.35), dashMat);
+    dash.position.set(0, -0.62, -0.75);
     this.cockpitRoot.add(dash);
 
     // Instrument cluster cowl (compact, sitting low under steering rim)
-    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.07, 0.18), darkMat);
-    cluster.position.set(0, -0.42, -0.72);
+    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.06, 0.16), darkMat);
+    cluster.position.set(0, -0.48, -0.72);
     this.cockpitRoot.add(cluster);
 
     // Front hood nose (slender and low so road ahead is completely visible)
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.10, 0.45), trimMat);
-    hood.position.set(0, -0.62, -1.05);
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.45), trimMat);
+    hood.position.set(0, -0.68, -1.05);
     this.cockpitRoot.add(hood);
 
-    // Center rearview mirror (compact and tucked high to avoid obstructing the road)
-    const mirrorStem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 4), darkMat);
-    mirrorStem.position.set(0, 0.52, -0.78);
-    const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.03), darkMat);
-    mirrorFrame.position.set(0, 0.48, -0.78);
-    const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.06), mirrorMat);
-    mirrorGlass.position.set(0, 0.48, -0.76);
+    // Center rearview mirror (sleek, miniature, tucked high at roof edge to give full forward visibility)
+    const mirrorStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.025, 4), darkMat);
+    mirrorStem.position.set(0, 0.525, -0.76);
+    const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.02), darkMat);
+    mirrorFrame.position.set(0, 0.51, -0.76);
+    const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.03), mirrorMat);
+    mirrorGlass.position.set(0, 0.51, -0.74);
     this.cockpitRoot.add(mirrorStem, mirrorFrame, mirrorGlass);
 
     // Steering column extending from dash towards lower driver position
-    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.26, 6), darkMat);
-    steeringColumn.position.set(0, -0.40, -0.58);
+    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.24, 6), darkMat);
+    steeringColumn.position.set(0, -0.44, -0.56);
     steeringColumn.rotation.x = Math.PI / 4.8;
     this.cockpitRoot.add(steeringColumn);
 
-    // Steering wheel pivot & wheel (compact, positioned in bottom third of screen)
+    // Steering wheel pivot & wheel (compact, positioned cleanly in lower screen)
     const wheelGroup = new THREE.Group();
-    wheelGroup.position.set(0, -0.32, -0.50);
+    wheelGroup.position.set(0, -0.38, -0.48);
     wheelGroup.rotation.x = Math.PI / 6.5; // Slanted towards driver
 
     // Compact pixel-style wheel rim
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.024, 5, 10), darkMat);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.020, 5, 10), darkMat);
     wheelGroup.add(rim);
 
     // Center spoke
-    const centerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 6), trimMat);
+    const centerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 6), trimMat);
     centerCap.rotation.x = Math.PI / 2;
     wheelGroup.add(centerCap);
 
     // Driver hands on 9-and-3
     for (const side of [-1, 1]) {
-      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.08), gloveMat);
-      hand.position.set(side * 0.125, 0, 0.015);
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.07), gloveMat);
+      hand.position.set(side * 0.105, 0, 0.015);
       wheelGroup.add(hand);
 
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.18), skinMat);
-      arm.position.set(side * 0.135, -0.05, 0.12);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.16), skinMat);
+      arm.position.set(side * 0.115, -0.05, 0.10);
       arm.rotation.x = -Math.PI / 6;
       wheelGroup.add(arm);
     }
@@ -276,6 +276,8 @@ export class Renderer3D {
         prevAngle: Math.atan2(sample.ty, sample.tx),
         wrongWay: false,
         wrongWayTime: 0,
+        yawRate: 0,
+        longAccel: 0,
       } as RacerState;
       view.update(fake, dt);
       if (index === 0) {

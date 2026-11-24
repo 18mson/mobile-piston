@@ -14,6 +14,7 @@ export interface EngineCallbacks {
   onFinished: (results: RaceResults) => void;
   onPause: () => void;
   onError: (message: string) => void;
+  onCameraChange?: (mode: CameraMode) => void;
 }
 
 const FIXED_STEP = 1 / 120;
@@ -107,7 +108,9 @@ export class GameEngine {
   }
 
   cycleCamera(): CameraMode {
-    return this.renderer.cycleCamera();
+    const next = this.renderer.cycleCamera();
+    this.callbacks.onCameraChange?.(next);
+    return next;
   }
 
   setTouchControl(action: 'left' | 'right' | 'brake' | 'nitro', pressed: boolean): void {
@@ -233,7 +236,10 @@ export class GameEngine {
       event.preventDefault();
     }
     if (event.code === 'KeyV' && (this.mode === 'racing' || this.mode === 'countdown')) {
-      if (!event.repeat) this.renderer.cycleCamera();
+      if (!event.repeat) {
+        const next = this.renderer.cycleCamera();
+        this.callbacks.onCameraChange?.(next);
+      }
       return;
     }
     if (event.code === 'KeyR' && (this.mode === 'racing' || this.mode === 'countdown')) {
@@ -277,7 +283,8 @@ export class GameEngine {
         if (this.mode === 'racing' || this.mode === 'countdown') this.pause();
       }
       if (this.input.consumeCameraRequest() && (this.mode === 'racing' || this.mode === 'countdown')) {
-        this.renderer.cycleCamera();
+        const next = this.renderer.cycleCamera();
+        this.callbacks.onCameraChange?.(next);
       }
       if (this.input.consumeResetRequest() && (this.mode === 'racing' || this.mode === 'countdown')) {
         this.resetCar();

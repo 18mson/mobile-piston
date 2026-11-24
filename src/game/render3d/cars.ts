@@ -15,11 +15,14 @@ export class CarView {
   readonly interior = new THREE.Group(); // Detail specifically for cockpit view or visible driver
   private wheels: WheelRef[] = [];
   private flames: THREE.Mesh[] = [];
+  private flameGroups: THREE.Group[] = [];
+  private windTrails: THREE.Mesh[] = [];
   private brakeLights: THREE.Mesh[] = [];
   private dropShadow: THREE.Mesh | null = null;
   private sparkGroup = new THREE.Group();
-  private sparks: THREE.Mesh[] = [];
+  private sparks: { mesh: THREE.Mesh; angle: number; speed: number; vy: number }[] = [];
   private sparkTimer = 0;
+  private sparkDuration = 0.22;
   private impactStrength = 0;
   private smokeGroup = new THREE.Group();
   private smokePuffs: { mesh: THREE.Mesh; life: number; maxLife: number; vx: number; vy: number; vz: number }[] = [];
@@ -39,6 +42,7 @@ export class CarView {
     this.build(carId, palette, number);
     this.buildSparks();
     this.buildSmoke();
+    this.buildWindTrails();
 
     if (isPlayer) {
       const marker = new THREE.Mesh(
@@ -52,15 +56,49 @@ export class CarView {
   }
 
   private buildSparks(): void {
-    const sparkMat = new THREE.MeshBasicMaterial({ color: '#ffe44d' });
+    const yellowMat = new THREE.MeshBasicMaterial({ color: '#ffe44d' });
     const orangeMat = new THREE.MeshBasicMaterial({ color: '#ff621f' });
-    for (let i = 0; i < 8; i += 1) {
-      const spark = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), i % 2 === 0 ? sparkMat : orangeMat);
-      spark.visible = false;
-      this.sparkGroup.add(spark);
-      this.sparks.push(spark);
+    const whiteMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+    for (let i = 0; i < 16; i += 1) {
+      const mat = i % 3 === 0 ? whiteMat : i % 2 === 0 ? yellowMat : orangeMat;
+      const size = 0.10 + (i % 3) * 0.04;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), mat);
+      mesh.visible = false;
+      this.sparkGroup.add(mesh);
+      this.sparks.push({
+        mesh,
+        angle: (i / 16) * Math.PI * 2 + ((i * 37) % 17) * 0.1,
+        speed: 0.65 + ((i * 23) % 10) * 0.08,
+        vy: 0.7 + ((i * 13) % 10) * 0.06,
+      });
     }
     this.group.add(this.sparkGroup);
+  }
+
+  private buildWindTrails(): void {
+    const trailMat = new THREE.MeshBasicMaterial({
+      color: '#e0f7ff',
+      transparent: true,
+      opacity: 0.65,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    // Streamline wind streaks trailing from rear corners and roof
+    const offsets: [number, number, number][] = [
+      [-1.8, 1.15, -0.9],
+      [-1.8, 1.15, 0.9],
+      [-1.9, 0.52, -1.2],
+      [-1.9, 0.52, 1.2],
+    ];
+    for (const [x, y, z] of offsets) {
+      const geo = new THREE.PlaneGeometry(2.4, 0.07);
+      const mesh = new THREE.Mesh(geo, trailMat);
+      mesh.position.set(x - 1.2, y, z);
+      mesh.rotation.y = 0;
+      mesh.visible = false;
+      this.body.add(mesh);
+      this.windTrails.push(mesh);
+    }
   }
 
   private buildSmoke(): void {
@@ -190,15 +228,15 @@ export class CarView {
       flameGroup.position.set(x, 0.72, z + side * 0.48);
 
       const coreFlame = new THREE.Mesh(
-        new THREE.ConeGeometry(0.24, 1.6, 6),
-        new THREE.MeshBasicMaterial({ color: '#ffb338', transparent: true, opacity: 0.95 }),
+        new THREE.ConeGeometry(0.20, 1.8, 6),
+        new THREE.MeshBasicMaterial({ color: '#ffe066', transparent: true, opacity: 0.95 }),
       );
       coreFlame.rotation.z = Math.PI / 2;
       flameGroup.add(coreFlame);
 
       const outerFlame = new THREE.Mesh(
-        new THREE.ConeGeometry(0.34, 1.2, 6),
-        new THREE.MeshBasicMaterial({ color: '#ff4820', transparent: true, opacity: 0.75 }),
+        new THREE.ConeGeometry(0.32, 1.3, 6),
+        new THREE.MeshBasicMaterial({ color: '#ff4820', transparent: true, opacity: 0.8 }),
       );
       outerFlame.rotation.z = Math.PI / 2;
       outerFlame.position.x = -0.2;
@@ -207,6 +245,7 @@ export class CarView {
       flameGroup.visible = false;
       this.body.add(flameGroup);
       this.flames.push(coreFlame);
+      this.flameGroups.push(flameGroup);
     }
   }
 
@@ -520,42 +559,65 @@ export class CarView {
     this.body.rotation.x = THREE.MathUtils.lerp(this.body.rotation.x, targetPitch, Math.min(1, dt * 8));
 
     // Collision impact response: chassis jolt and spark particles
-    if (racer.impact > 0.18) {
-      this.sparkTimer = 0.22;
+    if (racer.impact > 0.16) {
       this.impactStrength = racer.impact;
+      this.sparkDuration = THREE.MathUtils.lerp(0.14, 0.38, Math.min(1, racer.impact));
+      this.sparkTimer = this.sparkDuration;
     }
 
     if (this.sparkTimer > 0) {
       this.sparkTimer -= dt;
-      const progress = 1.0 - this.sparkTimer / 0.22;
-      const jolt = Math.sin(this.sparkTimer * 40) * 0.09 * this.impactStrength;
+      const progress = 1.0 - this.sparkTimer / this.sparkDuration;
+      const jolt = Math.sin(this.sparkTimer * 45) * 0.12 * this.impactStrength;
       this.body.position.set(jolt, 0, jolt * 0.4);
       this.sparkGroup.position.set(0, 0.4, 0);
-      this.sparks.forEach((spark, index) => {
-        spark.visible = true;
-        const sparkAngle = (index / 8) * Math.PI * 2;
-        const sparkDist = 0.5 + progress * 2.2 * this.impactStrength;
-        spark.position.set(
-          Math.cos(sparkAngle) * sparkDist,
-          0.2 + Math.sin(progress * Math.PI) * 0.6,
-          Math.sin(sparkAngle) * sparkDist,
-        );
-        const sparkScale = Math.max(0.1, (1.0 - progress) * 1.3);
-        spark.scale.setScalar(sparkScale);
-      });
+
+      // Scale spark count and burst dispersion according to collision force
+      const activeCount = this.impactStrength < 0.32 ? 4 : this.impactStrength < 0.65 ? 9 : 16;
+      const burstRadius = 0.5 + progress * (1.6 + this.impactStrength * 2.8);
+
+      for (let i = 0; i < this.sparks.length; i += 1) {
+        const item = this.sparks[i];
+        if (i < activeCount) {
+          item.mesh.visible = true;
+          const dist = burstRadius * item.speed;
+          const arc = Math.sin(progress * Math.PI) * (0.5 + this.impactStrength * 1.2) * item.vy;
+          item.mesh.position.set(
+            Math.cos(item.angle) * dist,
+            0.2 + arc,
+            Math.sin(item.angle) * dist,
+          );
+          const sparkScale = Math.max(0.08, (1.0 - progress) * (1.0 + this.impactStrength * 0.6));
+          item.mesh.scale.setScalar(sparkScale);
+        } else {
+          item.mesh.visible = false;
+        }
+      }
     } else {
       this.body.position.set(0, 0, 0);
-      for (const spark of this.sparks) {
-        spark.visible = false;
+      for (const item of this.sparks) {
+        item.mesh.visible = false;
       }
     }
 
-    // Nitro flames
-    this.nitroPulse += dt * 24;
+    // Nitro flames & wind trails
+    this.nitroPulse += dt * 26;
+    for (const group of this.flameGroups) {
+      group.visible = racer.nitroActive;
+    }
     for (const flame of this.flames) {
-      flame.visible = racer.nitroActive;
-      const scale = 0.85 + Math.sin(this.nitroPulse) * 0.25;
-      flame.scale.set(scale, 0.9 + Math.sin(this.nitroPulse + 1.2) * 0.35, scale);
+      const scale = 0.85 + Math.sin(this.nitroPulse) * 0.28;
+      flame.scale.set(scale, 0.95 + Math.sin(this.nitroPulse + 1.2) * 0.45, scale);
+    }
+    for (let i = 0; i < this.windTrails.length; i += 1) {
+      const trail = this.windTrails[i];
+      trail.visible = racer.nitroActive;
+      if (racer.nitroActive) {
+        const streakScale = 0.9 + Math.sin(this.nitroPulse + i * 1.5) * 0.35 + (speed / 200) * 0.4;
+        trail.scale.set(streakScale, 1.0, 1.0);
+        const mat = trail.material as THREE.MeshBasicMaterial;
+        mat.opacity = 0.45 + Math.sin(this.nitroPulse * 1.4 + i) * 0.25;
+      }
     }
 
     // Brake lights

@@ -1359,7 +1359,9 @@ p {
 .hud-map {
   padding: 3px;
   border: 1px solid var(--line);
-  background: rgba(12, 24, 32, 0.84);
+  background: rgba(12, 24, 32, 0.88);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
 }
 
 .minimap {
@@ -1704,7 +1706,13 @@ kbd {
   }
 
   .hud-map {
-    display: none;
+    display: block;
+    padding: 2px;
+  }
+
+  .hud-map .minimap {
+    width: 108px;
+    height: 64px;
   }
 
   .race-hint {

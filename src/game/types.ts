@@ -119,6 +119,8 @@ export interface RacerState {
   prevAngle: number;
   wrongWay: boolean;
   wrongWayTime: number;
+  yawRate: number;
+  longAccel: number;
 }
 
 export interface RaceSnapshot {

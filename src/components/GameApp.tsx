@@ -136,6 +136,9 @@ export default function GameApp() {
           setErrorMessage(message);
           setScreen('error');
         },
+        onCameraChange: (mode) => {
+          setCameraMode(mode);
+        },
       }, getTrack(loaded.selectedTrackId));
     } catch (error) {
       setErrorMessage('WebGL tidak tersedia di browser ini. Aktifkan akselerasi grafis lalu muat ulang.');

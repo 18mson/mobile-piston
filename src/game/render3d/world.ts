@@ -167,34 +167,60 @@ function createRibbon(
   closeLoop = true,
 ): THREE.Mesh {
   const positions: number[] = [];
+  const normals: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
   const count = track.samples.length;
+  const nominalLateral = halfWidth * WORLD_SCALE;
+
   for (let i = 0; i < count; i += 1) {
     const sample = track.samples[i];
-    const lateral = halfWidth * WORLD_SCALE;
+    const prev = track.samples[(i - 1 + count) % count];
+    const next = track.samples[(i + 1) % count];
+
+    // Compute local curvature to prevent inner-edge self-intersection on sharp bends
+    const cross = prev.tx * next.ty - prev.ty * next.tx;
+    const dotVal = Math.max(-1, Math.min(1, prev.tx * next.tx + prev.ty * next.ty));
+    const dTheta = Math.abs(Math.atan2(cross, dotVal));
+    const ds = Math.max(0.1, (sample.dist - prev.dist + track.length) % track.length);
+    const localR = dTheta > 0.001 ? (ds / dTheta) * WORLD_SCALE : 9999;
+
+    // Inside edge limit: keep inner vertex from flipping past curve center
+    const maxInner = Math.max(3.0, localR * 0.85);
+
+    // If cross > 0, track turns left (positive lateral is inside). If cross < 0, turns right (negative lateral is inside).
+    const latPos = cross > 0 ? Math.min(nominalLateral, maxInner) : nominalLateral;
+    const latNeg = cross < 0 ? Math.min(nominalLateral, maxInner) : nominalLateral;
+
     const x = toSceneX(sample.x);
     const z = toSceneZ(sample.y);
     const nx = sample.nx;
     const nz = sample.ny;
-    positions.push(x + nx * lateral, y, z + nz * lateral);
-    positions.push(x - nx * lateral, y, z - nz * lateral);
+
+    positions.push(x + nx * latPos, y, z + nz * latPos);
+    positions.push(x - nx * latNeg, y, z - nz * latNeg);
+
+    // Upward normals for perfectly clean, artifact-free lighting on all corners
+    normals.push(0, 1, 0, 0, 1, 0);
+
     const u = (sample.dist * WORLD_SCALE) / 9;
     uvs.push(0, u, 1, u);
+
     if (i < count - 1 || closeLoop) {
-      const next = (i + 1) % count;
+      const nextIdx = (i + 1) % count;
       const a = i * 2;
       const b = a + 1;
-      const c = next * 2;
+      const c = nextIdx * 2;
       const d = c + 1;
       indices.push(a, c, b, b, c, d);
     }
   }
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
-  geometry.computeVertexNormals();
   const mesh = new THREE.Mesh(geometry, material);
   mesh.receiveShadow = true;
   return mesh;
@@ -207,7 +233,7 @@ function addRoad(group: THREE.Group, track: Track): void {
     track,
     track.width / 2 + track.shoulder,
     ROAD_Y - 0.06,
-    new THREE.MeshLambertMaterial({ map: shoulderTexture, color: '#ffffff' }),
+    new THREE.MeshLambertMaterial({ map: shoulderTexture, color: '#ffffff', side: THREE.DoubleSide }),
   );
   shoulder.name = 'shoulder';
   group.add(shoulder);
@@ -216,7 +242,7 @@ function addRoad(group: THREE.Group, track: Track): void {
     track,
     track.width / 2,
     ROAD_Y,
-    new THREE.MeshLambertMaterial({ map: asphaltTexture, color: '#ffffff' }),
+    new THREE.MeshLambertMaterial({ map: asphaltTexture, color: '#ffffff', side: THREE.DoubleSide }),
   );
   asphalt.name = 'asphalt';
   group.add(asphalt);
@@ -224,6 +250,7 @@ function addRoad(group: THREE.Group, track: Track): void {
   const curbTexture = createCurbTexture();
   for (const side of [1, -1]) {
     const positions: number[] = [];
+    const normals: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
     const count = track.samples.length;
@@ -237,6 +264,7 @@ function addRoad(group: THREE.Group, track: Track): void {
       const width = 0.55;
       positions.push(centerX + nx * (edge - width * side), ROAD_Y + 0.02, centerZ + nz * (edge - width * side));
       positions.push(centerX + nx * (edge + width * side), ROAD_Y + 0.02, centerZ + nz * (edge + width * side));
+      normals.push(0, 1, 0, 0, 1, 0);
       const u = (sample.dist * WORLD_SCALE) / 3;
       uvs.push(0, u, 1, u);
       const next = (i + 1) % count;
@@ -244,9 +272,9 @@ function addRoad(group: THREE.Group, track: Track): void {
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
-    geometry.computeVertexNormals();
     const curb = new THREE.Mesh(
       geometry,
       new THREE.MeshLambertMaterial({ map: curbTexture, color: '#ffffff', side: THREE.DoubleSide }),

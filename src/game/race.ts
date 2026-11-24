@@ -58,6 +58,8 @@ function createRacer(config: RacerConfig, track: Track, slotIndex: number): Race
     prevAngle: Math.atan2(sample.ty, sample.tx),
     wrongWay: false,
     wrongWayTime: 0,
+    yawRate: 0,
+    longAccel: 0,
   };
 }
 
@@ -131,6 +133,8 @@ export class RaceSim {
         racer.angle = Math.atan2(sample.ty, sample.tx);
         racer.vx = sample.tx * 44;
         racer.vy = sample.ty * 44;
+        racer.yawRate = 0;
+        racer.longAccel = 0;
         racer.stuckTime = 0;
         racer.impact = 0.5;
       }
@@ -213,6 +217,8 @@ export class RaceSim {
     racer.angle = Math.atan2(hit.ty, hit.tx);
     racer.vx = 0;
     racer.vy = 0;
+    racer.yawRate = 0;
+    racer.longAccel = 0;
     racer.prevX = hit.x;
     racer.prevY = hit.y;
     racer.prevAngle = racer.angle;
