@@ -99,6 +99,13 @@ export class GameEngine {
     this.audio.setMuted(muted);
   }
 
+  resetCar(): void {
+    if (this.destroyed || !this.race || (this.mode !== 'racing' && this.mode !== 'countdown')) return;
+    this.race.resetPlayerCar();
+    this.audio.beep(520, 0.12, 0.2);
+    this.emitSnapshot();
+  }
+
   cycleCamera(): CameraMode {
     return this.renderer.cycleCamera();
   }
@@ -220,12 +227,17 @@ export class GameEngine {
       'Escape',
       'KeyP',
       'KeyV',
+      'KeyR',
     ];
     if (gameKeys.includes(event.code) && (this.mode === 'racing' || this.mode === 'countdown')) {
       event.preventDefault();
     }
     if (event.code === 'KeyV' && (this.mode === 'racing' || this.mode === 'countdown')) {
       if (!event.repeat) this.renderer.cycleCamera();
+      return;
+    }
+    if (event.code === 'KeyR' && (this.mode === 'racing' || this.mode === 'countdown')) {
+      if (!event.repeat) this.resetCar();
       return;
     }
     if (event.code === 'Escape' || event.code === 'KeyP') {
@@ -266,6 +278,9 @@ export class GameEngine {
       }
       if (this.input.consumeCameraRequest() && (this.mode === 'racing' || this.mode === 'countdown')) {
         this.renderer.cycleCamera();
+      }
+      if (this.input.consumeResetRequest() && (this.mode === 'racing' || this.mode === 'countdown')) {
+        this.resetCar();
       }
       if (this.mode === 'attract') {
         this.renderer.renderAttract(this.visualTime, frameDt);
@@ -336,7 +351,8 @@ export class GameEngine {
       true,
     );
 
-    this.renderCurrentFrame(dt);
+    const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
+    this.renderCurrentFrame(dt, alpha);
     this.snapshotTimer += dt;
     if (this.snapshotTimer >= 0.075) {
       this.snapshotTimer = 0;
@@ -358,7 +374,7 @@ export class GameEngine {
     this.callbacks.onFinished(results);
   }
 
-  private renderCurrentFrame(dt: number): void {
+  private renderCurrentFrame(dt: number, alpha = 1): void {
     if (!this.race) {
       this.renderer.renderAttract(this.visualTime, dt);
       return;
@@ -378,6 +394,7 @@ export class GameEngine {
       dt,
       this.race.player.impact,
       snapshotMode,
+      alpha,
     );
   }
 

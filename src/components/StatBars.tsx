@@ -2,8 +2,8 @@ import type { CarSpec } from '../game/types';
 import { statRatio } from '../game/data/cars';
 
 const BARS: { key: 'topSpeed' | 'acceleration' | 'grip'; label: string }[] = [
-  { key: 'topSpeed', label: 'Top' },
-  { key: 'acceleration', label: 'Aksel' },
+  { key: 'topSpeed', label: 'Top Speed' },
+  { key: 'acceleration', label: 'Akselerasi' },
   { key: 'grip', label: 'Grip' },
 ];
 

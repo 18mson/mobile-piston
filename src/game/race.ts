@@ -53,6 +53,11 @@ function createRacer(config: RacerConfig, track: Track, slotIndex: number): Race
     stuckTime: 0,
     impact: 0,
     padCooldown: 0,
+    prevX: point.x,
+    prevY: point.y,
+    prevAngle: Math.atan2(sample.ty, sample.tx),
+    wrongWay: false,
+    wrongWayTime: 0,
   };
 }
 
@@ -101,6 +106,9 @@ export class RaceSim {
     this.elapsed += dt;
     const previous = new Map<string, number>();
     for (const racer of this.racers) {
+      racer.prevX = racer.x;
+      racer.prevY = racer.y;
+      racer.prevAngle = racer.angle;
       previous.set(racer.id, racer.s);
       if (racer.finished) continue;
 
@@ -179,6 +187,13 @@ export class RaceSim {
       this.update(1 / 120, NEUTRAL_INPUT);
       simulated += 1 / 120;
     }
+    for (const racer of this.racers) {
+      if (!racer.finished) {
+        racer.finished = true;
+        const estLap = racer.bestLapMs ? racer.bestLapMs / 1000 : 25;
+        racer.finishTime = this.elapsed + (this.totalLaps - racer.lap) * estLap;
+      }
+    }
   }
 
   private ranked(): RacerState[] {
@@ -188,6 +203,22 @@ export class RaceSim {
       if (b.finished) return 1;
       return b.progress - a.progress;
     });
+  }
+
+  resetPlayerCar(): void {
+    const racer = this.player;
+    const hit = nearestOnTrack(this.track, racer.x, racer.y);
+    racer.x = hit.x;
+    racer.y = hit.y;
+    racer.angle = Math.atan2(hit.ty, hit.tx);
+    racer.vx = 0;
+    racer.vy = 0;
+    racer.prevX = hit.x;
+    racer.prevY = hit.y;
+    racer.prevAngle = racer.angle;
+    racer.wrongWay = false;
+    racer.wrongWayTime = 0;
+    racer.impact = 0.6;
   }
 
   snapshot(mode: RaceSnapshot['mode'], countdown: number | null, totalRacers = this.racers.length): RaceSnapshot {
@@ -206,6 +237,7 @@ export class RaceSim {
       bestLapMs: this.player.bestLapMs,
       lastLapMs: this.player.lastLapMs,
       playerFinished: this.player.finished,
+      wrongWay: Boolean(this.player.wrongWay),
       racers: ranked.map((racer, index) => ({
         id: racer.id,
         number: racer.number,

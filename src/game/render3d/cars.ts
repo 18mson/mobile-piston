@@ -17,9 +17,14 @@ export class CarView {
   private flames: THREE.Mesh[] = [];
   private brakeLights: THREE.Mesh[] = [];
   private dropShadow: THREE.Mesh | null = null;
+  private sparkGroup = new THREE.Group();
+  private sparks: THREE.Mesh[] = [];
+  private sparkTimer = 0;
+  private impactStrength = 0;
+  private smokeGroup = new THREE.Group();
+  private smokePuffs: { mesh: THREE.Mesh; life: number; maxLife: number; vx: number; vy: number; vz: number }[] = [];
   private spin = 0;
   private nitroPulse = 0;
-  private bounceTime = 0;
   private carId: CarId;
 
   constructor(carId: CarId, palette: CarPalette, number: number, isPlayer: boolean) {
@@ -32,6 +37,8 @@ export class CarView {
 
     this.addDropShadow(carId);
     this.build(carId, palette, number);
+    this.buildSparks();
+    this.buildSmoke();
 
     if (isPlayer) {
       const marker = new THREE.Mesh(
@@ -42,6 +49,35 @@ export class CarView {
       marker.position.y = 4.6;
       this.group.add(marker);
     }
+  }
+
+  private buildSparks(): void {
+    const sparkMat = new THREE.MeshBasicMaterial({ color: '#ffe44d' });
+    const orangeMat = new THREE.MeshBasicMaterial({ color: '#ff621f' });
+    for (let i = 0; i < 8; i += 1) {
+      const spark = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), i % 2 === 0 ? sparkMat : orangeMat);
+      spark.visible = false;
+      this.sparkGroup.add(spark);
+      this.sparks.push(spark);
+    }
+    this.group.add(this.sparkGroup);
+  }
+
+  private buildSmoke(): void {
+    const smokeMat = new THREE.MeshBasicMaterial({
+      color: '#dedac8',
+      transparent: true,
+      opacity: 0.45,
+      depthWrite: false,
+    });
+    const geo = new THREE.BoxGeometry(0.28, 0.24, 0.28);
+    for (let i = 0; i < 12; i += 1) {
+      const mesh = new THREE.Mesh(geo, smokeMat);
+      mesh.visible = false;
+      this.smokeGroup.add(mesh);
+      this.smokePuffs.push({ mesh, life: 0, maxLife: 0.36, vx: 0, vy: 0, vz: 0 });
+    }
+    this.group.add(this.smokeGroup);
   }
 
   private material(hex: string, transparent = false, opacity = 1): THREE.MeshLambertMaterial {
@@ -456,37 +492,63 @@ export class CarView {
     }
   }
 
-  update(racer: RacerState, dt: number): void {
+  update(racer: RacerState, dt: number, interpX?: number, interpY?: number, interpAngle?: number): void {
     this.group.visible = true;
-    this.group.position.set(toSceneX(racer.x), ROAD_Y + 0.03, toSceneZ(racer.y));
-    this.group.rotation.y = -racer.angle;
+    const posX = interpX ?? racer.x;
+    const posY = interpY ?? racer.y;
+    const angle = interpAngle ?? racer.angle;
+
+    this.group.position.set(toSceneX(posX), ROAD_Y + 0.03, toSceneZ(posY));
+    this.group.rotation.y = -angle;
 
     const speed = Math.hypot(racer.vx, racer.vy);
     this.spin += (speed / 0.65) * dt;
 
-    // Wheel rotation and front steering
+    // Wheel rotation and front steering (turning matches steer direction)
     for (const wheel of this.wheels) {
       wheel.mesh.rotation.z = this.spin;
       if (wheel.front) {
-        wheel.pivot.rotation.y = racer.steer * 0.38;
+        wheel.pivot.rotation.y = -racer.steer * 0.38;
       }
     }
 
-    // Suspension bounce and dynamic body roll in corners (gentle, no jitter)
-    if (speed > 8) {
-      this.bounceTime += dt * Math.min(16, speed * 0.12);
-      const tinyBounce = Math.sin(this.bounceTime) * 0.008;
-      this.body.position.y = tinyBounce;
-    } else {
-      this.body.position.y = 0;
-    }
-
-    // Body roll / lean into turns: leaning naturally during hard cornering
+    // Dynamic body roll in corners (stable, no vertical jitter)
     const steerAmount = racer.steer * Math.min(1.2, speed / 55);
     const targetRoll = -steerAmount * 0.12; // Roll around local Z axis
     const targetPitch = racer.nitroActive ? -0.05 : 0; // Squat on nitro
     this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, targetRoll, Math.min(1, dt * 10));
     this.body.rotation.x = THREE.MathUtils.lerp(this.body.rotation.x, targetPitch, Math.min(1, dt * 8));
+
+    // Collision impact response: chassis jolt and spark particles
+    if (racer.impact > 0.18) {
+      this.sparkTimer = 0.22;
+      this.impactStrength = racer.impact;
+    }
+
+    if (this.sparkTimer > 0) {
+      this.sparkTimer -= dt;
+      const progress = 1.0 - this.sparkTimer / 0.22;
+      const jolt = Math.sin(this.sparkTimer * 40) * 0.09 * this.impactStrength;
+      this.body.position.set(jolt, 0, jolt * 0.4);
+      this.sparkGroup.position.set(0, 0.4, 0);
+      this.sparks.forEach((spark, index) => {
+        spark.visible = true;
+        const sparkAngle = (index / 8) * Math.PI * 2;
+        const sparkDist = 0.5 + progress * 2.2 * this.impactStrength;
+        spark.position.set(
+          Math.cos(sparkAngle) * sparkDist,
+          0.2 + Math.sin(progress * Math.PI) * 0.6,
+          Math.sin(sparkAngle) * sparkDist,
+        );
+        const sparkScale = Math.max(0.1, (1.0 - progress) * 1.3);
+        spark.scale.setScalar(sparkScale);
+      });
+    } else {
+      this.body.position.set(0, 0, 0);
+      for (const spark of this.sparks) {
+        spark.visible = false;
+      }
+    }
 
     // Nitro flames
     this.nitroPulse += dt * 24;
@@ -501,6 +563,34 @@ export class CarView {
       (tail.material as THREE.MeshBasicMaterial).color.setHex(
         speed < 8 || racer.drifting ? 0xff5030 : 0xa02518,
       );
+    }
+
+    // Drift tire smoke
+    if (racer.drifting && speed > 35) {
+      const puff = this.smokePuffs.find((p) => p.life <= 0);
+      if (puff) {
+        puff.life = puff.maxLife;
+        const side = Math.random() > 0.5 ? 1.25 : -1.25;
+        puff.mesh.position.set(-1.05, 0.22, side);
+        puff.mesh.scale.setScalar(0.75 + Math.random() * 0.35);
+        puff.mesh.visible = true;
+        puff.vx = -1.6 - Math.random() * 1.0;
+        puff.vy = 0.8 + Math.random() * 0.5;
+        puff.vz = (Math.random() - 0.5) * 0.5;
+      }
+    }
+
+    for (const puff of this.smokePuffs) {
+      if (puff.life > 0) {
+        puff.life -= dt;
+        const progress = 1.0 - puff.life / puff.maxLife;
+        puff.mesh.position.x += puff.vx * dt;
+        puff.mesh.position.y += puff.vy * dt;
+        puff.mesh.position.z += puff.vz * dt;
+        puff.mesh.scale.setScalar((1.0 + progress * 1.5) * 0.85);
+        (puff.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1.0 - progress) * 0.45);
+        if (puff.life <= 0) puff.mesh.visible = false;
+      }
     }
   }
 

@@ -80,6 +80,7 @@ export interface PlayerInput {
   brake: boolean;
   nitro: boolean;
   pause: boolean;
+  gas?: boolean;
 }
 
 export interface RacerState {
@@ -113,6 +114,11 @@ export interface RacerState {
   stuckTime: number;
   impact: number;
   padCooldown: number;
+  prevX: number;
+  prevY: number;
+  prevAngle: number;
+  wrongWay: boolean;
+  wrongWayTime: number;
 }
 
 export interface RaceSnapshot {
@@ -128,6 +134,7 @@ export interface RaceSnapshot {
   bestLapMs: number | null;
   lastLapMs: number | null;
   playerFinished: boolean;
+  wrongWay: boolean;
   racers: {
     id: string;
     number: number;

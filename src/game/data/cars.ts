@@ -7,12 +7,12 @@ export const CARS: Record<CarId, CarSpec> = {
     kind: 'Hatchback',
     blurb: 'Ringan dan seimbang. Pintu masuk paling ramah untuk semua tikungan.',
     stats: {
-      topSpeed: 186,
-      acceleration: 192,
-      grip: 8.7,
+      topSpeed: 232,
+      acceleration: 236,
+      grip: 8.8,
       steerRate: 2.7,
-      nitroBoost: 62,
-      nitroAcceleration: 170,
+      nitroBoost: 68,
+      nitroAcceleration: 180,
       mass: 1,
     },
     palette: {
@@ -30,12 +30,12 @@ export const CARS: Record<CarId, CarSpec> = {
     kind: 'Muskel',
     blurb: 'Panjang dan buas. Menang di lurus, ekornya suka lepas di tikungan.',
     stats: {
-      topSpeed: 207,
-      acceleration: 166,
-      grip: 7.1,
+      topSpeed: 258,
+      acceleration: 206,
+      grip: 7.2,
       steerRate: 2.35,
-      nitroBoost: 70,
-      nitroAcceleration: 185,
+      nitroBoost: 76,
+      nitroAcceleration: 195,
       mass: 1.18,
     },
     palette: {
@@ -53,12 +53,12 @@ export const CARS: Record<CarId, CarSpec> = {
     kind: 'Pikap',
     blurb: 'Berat dan lengket. Paling tenang saat rem dan banting setir.',
     stats: {
-      topSpeed: 174,
-      acceleration: 181,
-      grip: 9.5,
+      topSpeed: 222,
+      acceleration: 224,
+      grip: 9.6,
       steerRate: 2.5,
-      nitroBoost: 56,
-      nitroAcceleration: 165,
+      nitroBoost: 62,
+      nitroAcceleration: 175,
       mass: 1.26,
     },
     palette: {
@@ -76,12 +76,12 @@ export const CARS: Record<CarId, CarSpec> = {
     kind: 'Buggy',
     blurb: 'Lincah dan ringan. Akselerasi tajam, tapi lurus panjang bukan rumahnya.',
     stats: {
-      topSpeed: 166,
-      acceleration: 222,
-      grip: 10.1,
+      topSpeed: 210,
+      acceleration: 274,
+      grip: 10.2,
       steerRate: 2.95,
-      nitroBoost: 52,
-      nitroAcceleration: 195,
+      nitroBoost: 56,
+      nitroAcceleration: 205,
       mass: 0.86,
     },
     palette: {
@@ -153,9 +153,9 @@ export function getCar(id: CarId): CarSpec {
 
 export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip'): number {
   const values = {
-    topSpeed: [166, 207],
-    acceleration: [166, 222],
-    grip: [7.1, 10.1],
+    topSpeed: [210, 258],
+    acceleration: [206, 274],
+    grip: [7.2, 10.2],
   } as const;
   const [min, max] = values[key];
   return Math.max(0, Math.min(1, (car.stats[key] - min) / (max - min)));

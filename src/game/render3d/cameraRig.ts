@@ -110,8 +110,8 @@ export class CameraRig {
         };
       case 'cockpit':
         return {
-          posOffset: new THREE.Vector3(0.12, 1.85, 0.0), // Eye-level driver view
-          targetOffset: new THREE.Vector3(30.0, 1.6, 0.0), // Looking forward along track
+          posOffset: new THREE.Vector3(0.42, 2.05, 0.0), // Elevated driver view for wide open road visibility
+          targetOffset: new THREE.Vector3(30.0, 1.85, 0.0), // Looking forward along track
           fov: 70,
           followLag: 16.0,
           isWorldRelative: false,
@@ -242,7 +242,9 @@ export class CameraRig {
     );
     this.camera.lookAt(this.currentCamTarget);
 
-    this.camera.fov = this.activeFov + this.fovKick;
+    const speedRatio = Math.min(1.2, speed / 240);
+    const speedFov = THREE.MathUtils.lerp(0, 6.0, Math.max(0, speedRatio - 0.25));
+    this.camera.fov = this.activeFov + this.fovKick + speedFov;
     this.camera.updateProjectionMatrix();
   }
 }

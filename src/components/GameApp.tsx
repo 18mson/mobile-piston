@@ -323,6 +323,7 @@ export default function GameApp() {
                   const next = engineRef.current?.cycleCamera();
                   if (next) setCameraMode(next);
                 }}
+                onResetCar={() => engineRef.current?.resetCar()}
                 cameraMode={cameraMode}
                 showHint={showHint}
               />

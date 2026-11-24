@@ -26,17 +26,21 @@ Jika WebGL tidak tersedia, game menampilkan layar error yang menjelaskan masalah
 
 ## Kontrol
 
-Gas selalu menyala otomatis. Drift mengisi meter nitro, dan garis chevron oranye di lintasan adalah boost pad.
+Pemain dapat mengendalikan gas secara manual (W / panah atas) atau membiarkan gas otomatis. Melepas gas (lepas gas / coasting) atau mengerem (S / panah bawah) sebelum tikungan tajam memindahkan bobot ke depan dan menjaga ban tetap di dalam batas traksi. Drift mengisi meter nitro, dan garis chevron oranye di lintasan adalah boost pad.
 
 | Aksi | Keyboard | Sentuh | Gamepad standar |
 | --- | --- | --- | --- |
 | Setir | A / D atau panah kiri / kanan | tombol kiri dan kanan | stik kiri atau D-pad |
+| Gas / akselerasi | W atau panah atas (atau otomatis) | otomatis | RT atau A |
 | Rem / mundur | S atau panah bawah | tombol rem | LT atau B |
 | Nitro | Space | tombol nitro | RT atau A |
 | Kamera | V | tombol KAM di HUD | Y |
+| Reset mobil | R | tombol RESET di HUD | Select / D-pad Atas |
 | Jeda | Esc atau P | tombol jeda di HUD | Start |
 
-Tiga sudut kamera tersedia: top (default awal bergaya Mini Motor Racing), chase, dan cockpit. Perpindahan kamera berlangsung mulus dengan camera rig terpadu (damped easing 0.6s). Pemain mulai dari grid P6 dengan jalan yang lebar (4-5 lebar mobil), sehingga seluruh pack terlihat jelas dan ada banyak ruang untuk bermanuver dan menyalip.
+Model kendali mengadopsi rasa berkendara Circuit Superstars: pemain harus menjaga kecepatan dan titik pengereman atau lepas gas sebelum tikungan. Masuk tikungan terlalu kencang menyebabkan ban pecah traksi dan mobil tergelincir (slip/understeer), di mana gesekan ban yang meluncur menyerap kecepatan mobil. Tabrakan antar mobil dan benturan pembatas memicu efek percikan api dan perlambatan laju (slowdown). Jika mobil berbalik arah, peringatan arcade SALAH JALAN akan muncul dan mobil dapat dikembalikan ke tengah lintasan dengan tombol RESET atau tombol R.
+
+Tiga sudut kamera tersedia: top (default awal bergaya Mini Motor Racing), chase, dan cockpit. Perpindahan kamera berlangsung mulus dengan camera rig terpadu (damped easing 0.6s). Interpolasi fisika memastikan gerakan mobil meluncur stabil tanpa jitter pixel. Pemain mulai dari grid P6 dengan jalan yang sangat lebar (4-5 lebar mobil), sehingga seluruh pack terlihat jelas dan ada banyak ruang untuk bermanuver dan menyalip.
 
 Menu dapat dioperasikan dengan keyboard dan gamepad: D-pad memindah fokus, A memilih, B kembali.
 
@@ -44,7 +48,7 @@ Menu dapat dioperasikan dengan keyboard dan gamepad: D-pad memindah fokus, A mem
 
 - Dua lintasan lebar di Teluk Sore: **Teluk Sore** yang mengelilingi pesisir (lebar 176 unit), dan **Mata Air** yang melingkari danau di tengah kebun (lebar 160 unit), memberikan ruang salip 4-5 mobil.
 - Pilihan lintasan dengan preview rute dan rekor terpisah untuk setiap lintasan.
-- Empat mobil dengan model 3D bervolume tebal (voxel/sprite-stacking chunky racer): Sirip (rally hatchback dengan roof scoop & spoiler), Bagas (muscle car dengan supercharger blower), Okra (truk pikap kargo dengan rollbar & lampu sorot), dan Kepik (buggy offroad dengan sangkar pipa & ban raksasa). Detail gerak hidup: suspensi mental, kemiringan bodi di tikungan (body roll), roda berputar dan membelok, semburan nitro ganda, dan lampu rem dinamis.
+- Empat mobil dengan model 3D bervolume tebal (voxel/sprite-stacking chunky racer): Sirip (rally hatchback dengan roof scoop & spoiler), Bagas (muscle car dengan supercharger blower), Okra (truk pikap kargo dengan rollbar & lampu sorot), dan Kepik (buggy offroad dengan sangkar pipa & ban raksasa). Detail gerak hidup: suspensi mental, kemiringan bodi di tikungan (body roll), roda berputar dan membelok, semburan nitro ganda, lampu rem dinamis, bekas ban aspal ganda (skid marks) di permukaan jalan saat mobil drifting/slip, serta gumpalan asap ban.
 - Lima AI dengan livery berbeda, grid enam mobil dengan posisi start berjarak, tiga putaran, boost pad lebar, drift, dan tabrakan tanpa crash macet.
 - Renderer 3D dengan framebuffer internal 960x540, tekstur nearest-neighbor, langit, awan, air, vegetasi, mercusuar, gantry start, dan bayangan.
 - Kamera rig terpadu dengan 3 sudut pandang (top-down default, chase, cockpit), transisi terbang mulus tanpa cut, getaran kamera responsif benturan/laju, serta efek FOV kick saat nitro aktif. Tombol KAM di HUD menampilkan mode kamera aktif.

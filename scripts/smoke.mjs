@@ -202,7 +202,7 @@ async function main() {
     assert((await gameCanvas.getAttribute('data-camera-mode')) === 'chase', 'Tombol kamera tidak beralih ke chase.');
     await page.screenshot({ path: path.join(ARTIFACTS, 'desktop-race.png'), fullPage: true });
     await page.getByRole('button', { name: 'Ganti sudut kamera' }).click();
-    await page.waitForTimeout(180);
+    await page.waitForTimeout(700);
     assert((await gameCanvas.getAttribute('data-camera-mode')) === 'cockpit', 'Tombol kamera tidak beralih ke cockpit.');
     await page.screenshot({ path: path.join(ARTIFACTS, 'desktop-race-cockpit.png'), fullPage: true });
     await page.getByRole('button', { name: 'Ganti sudut kamera' }).click();

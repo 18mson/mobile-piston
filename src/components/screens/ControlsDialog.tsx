@@ -39,8 +39,8 @@ export default function ControlsDialog({
       </div>
 
       <p className="dialog-lead">
-        Gas otomatis. Fokus pada arah, pengereman, dan nitro. Drift mengisi nitro, dan garis oranye di lintasan
-        adalah boost pad.
+        Gas dapat dikontrol manual (W / panah atas) atau otomatis. Lepas gas atau rem sebelum tikungan tajam
+        untuk menjaga traksi ban. Drift mengisi nitro, dan garis oranye di lintasan adalah boost pad.
       </p>
 
       <div className="control-groups">
@@ -50,6 +50,10 @@ export default function ControlsDialog({
             <div>
               <dt>Setir</dt>
               <dd><kbd>A</kbd> <kbd>D</kbd> atau panah kiri / kanan</dd>
+            </div>
+            <div>
+              <dt>Gas / akselerasi</dt>
+              <dd><kbd>W</kbd> atau panah atas (lepas untuk coasting)</dd>
             </div>
             <div>
               <dt>Rem / mundur</dt>

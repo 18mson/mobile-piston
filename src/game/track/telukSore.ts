@@ -40,12 +40,12 @@ export const TELUK_SORE: Track = buildTrack({
   attract: { fraction: 0.4, offsetX: 34, offsetY: -104 },
   light: null,
   gridSlots: [
-    { distance: -54, lateral: -32 },
-    { distance: -54, lateral: 32 },
-    { distance: -90, lateral: -32 },
-    { distance: -90, lateral: 32 },
-    { distance: -126, lateral: -32 },
-    { distance: -126, lateral: 32 },
+    { distance: -44, lateral: -26 },
+    { distance: -44, lateral: 26 },
+    { distance: -80, lateral: -26 },
+    { distance: -80, lateral: 26 },
+    { distance: -116, lateral: -26 },
+    { distance: -116, lateral: 26 },
   ],
   boostPadFractions: [
     { fraction: 0.2, lateral: -18, length: 44 },

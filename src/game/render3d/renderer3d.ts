@@ -32,6 +32,13 @@ export class Renderer3D {
   private cockpitRoot = new THREE.Group();
   private steeringWheel: THREE.Group | null = null;
 
+  // Skid marks on road surface when drifting or slipping
+  private skidMesh: THREE.InstancedMesh;
+  private skidDummy = new THREE.Object3D();
+  private skidIndex = 0;
+  private maxSkids = 800;
+  private lastSkidPos = new Map<string, { x: number; y: number }>();
+
   // Attract camera smoothing
   private attractCamPos = new THREE.Vector3();
   private attractCamLook = new THREE.Vector3();
@@ -77,10 +84,30 @@ export class Renderer3D {
 
     const ambient = new THREE.AmbientLight('#ffffff', 0.28);
     this.scene.add(ambient);
+
+    // Tire skid marks on road surface
+    const skidGeo = new THREE.PlaneGeometry(0.36, 0.85);
+    skidGeo.rotateX(-Math.PI / 2);
+    const skidMat = new THREE.MeshBasicMaterial({
+      color: 0x14161a,
+      transparent: true,
+      opacity: 0.58,
+      depthWrite: false,
+    });
+    this.skidMesh = new THREE.InstancedMesh(skidGeo, skidMat, this.maxSkids);
+    this.skidMesh.frustumCulled = false;
+    for (let i = 0; i < this.maxSkids; i += 1) {
+      this.skidDummy.position.set(0, -999, 0);
+      this.skidDummy.scale.set(0, 0, 0);
+      this.skidDummy.updateMatrix();
+      this.skidMesh.setMatrixAt(i, this.skidDummy.matrix);
+    }
+    this.skidMesh.instanceMatrix.needsUpdate = true;
+    this.scene.add(this.skidMesh);
   }
 
   private buildCockpitView(): void {
-    // Low-poly cockpit dashboard, hood preview, rearview mirror, steering wheel, and pixel hands
+    // Low-poly cockpit dashboard, hood preview, compact rearview mirror, compact steering wheel, and pixel hands
     // Positioned relative to camera local space (looking down -Z in standard Three.js camera)
     const darkMat = new THREE.MeshLambertMaterial({ color: '#182026', flatShading: true });
     const dashMat = new THREE.MeshLambertMaterial({ color: '#25303a', flatShading: true });
@@ -89,50 +116,58 @@ export class Renderer3D {
     const skinMat = new THREE.MeshLambertMaterial({ color: '#e2b083', flatShading: true });
     const gloveMat = new THREE.MeshLambertMaterial({ color: '#d83a2b', flatShading: true });
 
-    // Dashboard base
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 0.8), dashMat);
-    dash.position.set(0, -0.42, -0.85);
+    // Dashboard base (lowered into bottom periphery)
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.35), dashMat);
+    dash.position.set(0, -0.56, -0.75);
     this.cockpitRoot.add(dash);
 
-    // Instrument cluster hood
-    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.16, 0.35), darkMat);
-    cluster.position.set(0, -0.22, -0.72);
+    // Instrument cluster cowl (compact, sitting low under steering rim)
+    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.07, 0.18), darkMat);
+    cluster.position.set(0, -0.42, -0.72);
     this.cockpitRoot.add(cluster);
 
-    // Front hood / bonnet visible out front
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.22, 1.4), trimMat);
-    hood.position.set(0, -0.48, -1.65);
+    // Front hood nose (slender and low so road ahead is completely visible)
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.10, 0.45), trimMat);
+    hood.position.set(0, -0.62, -1.05);
     this.cockpitRoot.add(hood);
 
-    // Center rearview mirror
-    const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.24, 0.08), darkMat);
-    mirrorFrame.position.set(0, 0.46, -0.85);
-    const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.18), mirrorMat);
-    mirrorGlass.position.set(0, 0.46, -0.8);
-    this.cockpitRoot.add(mirrorFrame, mirrorGlass);
+    // Center rearview mirror (compact and tucked high to avoid obstructing the road)
+    const mirrorStem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 4), darkMat);
+    mirrorStem.position.set(0, 0.52, -0.78);
+    const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.03), darkMat);
+    mirrorFrame.position.set(0, 0.48, -0.78);
+    const mirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.06), mirrorMat);
+    mirrorGlass.position.set(0, 0.48, -0.76);
+    this.cockpitRoot.add(mirrorStem, mirrorFrame, mirrorGlass);
 
-    // Steering wheel pivot & wheel
+    // Steering column extending from dash towards lower driver position
+    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.26, 6), darkMat);
+    steeringColumn.position.set(0, -0.40, -0.58);
+    steeringColumn.rotation.x = Math.PI / 4.8;
+    this.cockpitRoot.add(steeringColumn);
+
+    // Steering wheel pivot & wheel (compact, positioned in bottom third of screen)
     const wheelGroup = new THREE.Group();
-    wheelGroup.position.set(0, -0.26, -0.56);
-    wheelGroup.rotation.x = Math.PI / 8; // Slanted towards driver
+    wheelGroup.position.set(0, -0.32, -0.50);
+    wheelGroup.rotation.x = Math.PI / 6.5; // Slanted towards driver
 
-    // Chunky pixel-style wheel rim
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 5, 10), darkMat);
+    // Compact pixel-style wheel rim
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.024, 5, 10), darkMat);
     wheelGroup.add(rim);
 
     // Center spoke
-    const centerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.04, 6), trimMat);
+    const centerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 6), trimMat);
     centerCap.rotation.x = Math.PI / 2;
     wheelGroup.add(centerCap);
 
     // Driver hands on 9-and-3
     for (const side of [-1, 1]) {
-      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.14), gloveMat);
-      hand.position.set(side * 0.23, 0, 0.02);
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.08), gloveMat);
+      hand.position.set(side * 0.125, 0, 0.015);
       wheelGroup.add(hand);
 
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.26), skinMat);
-      arm.position.set(side * 0.24, -0.06, 0.18);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.18), skinMat);
+      arm.position.set(side * 0.135, -0.05, 0.12);
       arm.rotation.x = -Math.PI / 6;
       wheelGroup.add(arm);
     }
@@ -178,7 +213,15 @@ export class Renderer3D {
   }
 
   resetMarks(): void {
-    // Persistent tyre mark layer slot
+    this.skidIndex = 0;
+    this.lastSkidPos.clear();
+    for (let i = 0; i < this.maxSkids; i += 1) {
+      this.skidDummy.position.set(0, -999, 0);
+      this.skidDummy.scale.set(0, 0, 0);
+      this.skidDummy.updateMatrix();
+      this.skidMesh.setMatrixAt(i, this.skidDummy.matrix);
+    }
+    this.skidMesh.instanceMatrix.needsUpdate = true;
   }
 
   renderAttract(time: number, dt: number): void {
@@ -228,6 +271,11 @@ export class Renderer3D {
         stuckTime: 0,
         impact: 0,
         padCooldown: 0,
+        prevX: worldX,
+        prevY: worldY,
+        prevAngle: Math.atan2(sample.ty, sample.tx),
+        wrongWay: false,
+        wrongWayTime: 0,
       } as RacerState;
       view.update(fake, dt);
       if (index === 0) {
@@ -268,6 +316,7 @@ export class Renderer3D {
     dt: number,
     impact: number,
     mode: 'countdown' | 'racing' | 'finished' | 'paused' | RenderMode,
+    alpha = 1,
   ): void {
     this.player = player;
     this.carRoot.visible = true;
@@ -276,7 +325,47 @@ export class Renderer3D {
     const effectiveDt = isPaused ? 0 : dt;
 
     for (const racer of racers) {
-      this.cars.get(racer.id)?.update(racer, effectiveDt);
+      const prevX = racer.prevX ?? racer.x;
+      const prevY = racer.prevY ?? racer.y;
+      const prevAngle = racer.prevAngle ?? racer.angle;
+      const diffAngle = Math.atan2(Math.sin(racer.angle - prevAngle), Math.cos(racer.angle - prevAngle));
+      const interpAngle = prevAngle + diffAngle * alpha;
+      const interpX = THREE.MathUtils.lerp(prevX, racer.x, alpha);
+      const interpY = THREE.MathUtils.lerp(prevY, racer.y, alpha);
+      this.cars.get(racer.id)?.update(racer, effectiveDt, interpX, interpY, interpAngle);
+
+      // Deposit tire skid marks on road surface when drifting or slipping
+      const speed = Math.hypot(racer.vx, racer.vy);
+      if (racer.drifting && speed > 32 && !isPaused) {
+        const last = this.lastSkidPos.get(racer.id);
+        const dist = last ? Math.hypot(interpX - last.x, interpY - last.y) : 999;
+        if (dist >= 0.58) {
+          this.lastSkidPos.set(racer.id, { x: interpX, y: interpY });
+
+          const sceneX = toSceneX(interpX);
+          const sceneZ = toSceneZ(interpY);
+          const cosA = Math.cos(interpAngle);
+          const sinA = Math.sin(interpAngle);
+
+          // Rear wheel offsets relative to car heading
+          const rearX = -0.95;
+          for (const side of [-1.22, 1.22]) {
+            const markX = sceneX + rearX * cosA - side * sinA;
+            const markZ = sceneZ + rearX * sinA + side * cosA;
+
+            this.skidDummy.position.set(markX, ROAD_Y + 0.024, markZ);
+            this.skidDummy.rotation.set(0, -interpAngle, 0);
+            this.skidDummy.scale.set(1, 1, 1);
+            this.skidDummy.updateMatrix();
+
+            this.skidMesh.setMatrixAt(this.skidIndex, this.skidDummy.matrix);
+            this.skidIndex = (this.skidIndex + 1) % this.maxSkids;
+          }
+          this.skidMesh.instanceMatrix.needsUpdate = true;
+        }
+      } else {
+        this.lastSkidPos.delete(racer.id);
+      }
     }
 
     const playerView = this.cars.get(player.id);
@@ -297,11 +386,25 @@ export class Renderer3D {
       this.steeringWheel.rotation.z = -player.steer * 0.95;
     }
 
-    const focus = new THREE.Vector3(toSceneX(player.x), ROAD_Y, toSceneZ(player.y));
+    const playerPrevX = player.prevX ?? player.x;
+    const playerPrevY = player.prevY ?? player.y;
+    const playerPrevAngle = player.prevAngle ?? player.angle;
+    const playerDiff = Math.atan2(Math.sin(player.angle - playerPrevAngle), Math.cos(player.angle - playerPrevAngle));
+    const playerInterpAngle = playerPrevAngle + playerDiff * alpha;
+    const playerInterpX = THREE.MathUtils.lerp(playerPrevX, player.x, alpha);
+    const playerInterpY = THREE.MathUtils.lerp(playerPrevY, player.y, alpha);
+    const interpPlayer = {
+      ...player,
+      x: playerInterpX,
+      y: playerInterpY,
+      angle: playerInterpAngle,
+    };
+
+    const focus = new THREE.Vector3(toSceneX(playerInterpX), ROAD_Y, toSceneZ(playerInterpY));
     this.world.update(time, effectiveDt, focus, this.reducedMotion);
 
-    // Update unified camera rig
-    this.cameraRig.update(player, effectiveDt, impact);
+    // Update unified camera rig with smoothly interpolated player
+    this.cameraRig.update(interpPlayer, effectiveDt, impact);
 
     this.renderer.render(this.scene, this.cameraRig.camera);
   }

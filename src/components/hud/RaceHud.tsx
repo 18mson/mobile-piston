@@ -9,6 +9,7 @@ export default function RaceHud({
   track,
   onPause,
   onCycleCamera,
+  onResetCar,
   cameraMode,
   showHint,
 }: {
@@ -16,13 +17,15 @@ export default function RaceHud({
   track: Track;
   onPause: () => void;
   onCycleCamera: () => void;
+  onResetCar?: () => void;
   cameraMode?: string;
   showHint: boolean;
 }) {
   if (!snapshot) return null;
   const countdown = snapshot.countdown;
   const nitro = Math.round(snapshot.nitro);
-  const speedRatio = Math.min(1, snapshot.speed / 220);
+  const speedRatio = Math.min(1, snapshot.speed / 280);
+  const speedKmh = Math.round(snapshot.speed);
 
   const cameraLabel =
     cameraMode === 'top'
@@ -64,9 +67,19 @@ export default function RaceHud({
         >
           <span aria-hidden="true">{cameraLabel}</span>
         </button>
+        {onResetCar && (
+          <button
+            className="btn btn-icon reset-button"
+            type="button"
+            onClick={onResetCar}
+            aria-label="Kembalikan mobil ke lintasan (R)"
+          >
+            <span aria-hidden="true">RESET</span>
+          </button>
+        )}
         {showHint && (
           <p className="race-hint">
-            Gas otomatis. V atau KAM untuk kamera.
+            W/Gas, S/Rem, V Kamera, R Reset
           </p>
         )}
       </div>
@@ -101,11 +114,22 @@ export default function RaceHud({
         </div>
         <div className="speed-row">
           <span className="hud-label">Laju</span>
+          <span className="speed-readout">
+            <strong className="speed-number">{speedKmh}</strong>
+            <small className="speed-unit">KM/H</small>
+          </span>
           <span className="speed-track">
             <span style={{ width: `${speedRatio * 100}%` }} />
           </span>
         </div>
       </div>
+
+      {snapshot.wrongWay && (
+        <div className="wrong-way-banner" role="alert" aria-live="assertive">
+          <span className="wrong-way-title">SALAH JALAN!</span>
+          <span className="wrong-way-sub">PUTAR BALIK ATAU TEKAN [RESET]</span>
+        </div>
+      )}
 
       {countdown != null && (
         <div className="countdown-overlay" role="status" aria-live="assertive">

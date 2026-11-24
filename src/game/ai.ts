@@ -29,9 +29,9 @@ export function computeAiInput(
   const catchUp = clamp((leaderProgress - ownProgress) / 2200, -0.032, 0.032);
   const speedFactor = skill * (1 + catchUp);
 
-  let targetSpeed = spec.stats.topSpeed * speedFactor * (1 - clamp(maxCurve * 48, 0, 0.52));
-  if (maxCurve > 0.012) targetSpeed *= 0.72;
-  targetSpeed = Math.max(54, targetSpeed);
+  let targetSpeed = spec.stats.topSpeed * speedFactor * (1 - clamp(maxCurve * 42, 0, 0.46));
+  if (maxCurve > 0.015) targetSpeed *= 0.78;
+  targetSpeed = Math.max(68, targetSpeed);
 
   const lookAhead = clamp(42 + speed * 0.55, 54, 142);
   const maxLateralLane = (track.width / 2) * 0.55;

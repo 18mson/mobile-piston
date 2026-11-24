@@ -175,8 +175,8 @@ function createRibbon(
     const lateral = halfWidth * WORLD_SCALE;
     const x = toSceneX(sample.x);
     const z = toSceneZ(sample.y);
-    const nx = sample.nx * WORLD_SCALE;
-    const nz = sample.ny * WORLD_SCALE;
+    const nx = sample.nx;
+    const nz = sample.ny;
     positions.push(x + nx * lateral, y, z + nz * lateral);
     positions.push(x - nx * lateral, y, z - nz * lateral);
     const u = (sample.dist * WORLD_SCALE) / 9;
@@ -231,12 +231,12 @@ function addRoad(group: THREE.Group, track: Track): void {
       const sample = track.samples[i];
       const centerX = toSceneX(sample.x);
       const centerZ = toSceneZ(sample.y);
-      const nx = sample.nx * WORLD_SCALE;
-      const nz = sample.ny * WORLD_SCALE;
+      const nx = sample.nx;
+      const nz = sample.ny;
       const edge = (track.width / 2) * WORLD_SCALE * side;
       const width = 0.55;
-      positions.push(centerX + nx * (edge - width), ROAD_Y + 0.02, centerZ + nz * (edge - width));
-      positions.push(centerX + nx * (edge + width), ROAD_Y + 0.02, centerZ + nz * (edge + width));
+      positions.push(centerX + nx * (edge - width * side), ROAD_Y + 0.02, centerZ + nz * (edge - width * side));
+      positions.push(centerX + nx * (edge + width * side), ROAD_Y + 0.02, centerZ + nz * (edge + width * side));
       const u = (sample.dist * WORLD_SCALE) / 3;
       uvs.push(0, u, 1, u);
       const next = (i + 1) % count;
@@ -296,7 +296,7 @@ function addRoad(group: THREE.Group, track: Track): void {
     );
     padGroup.rotation.y = Math.atan2(sample.tx, sample.ty);
     const decal = new THREE.Mesh(
-      new THREE.PlaneGeometry(10.5, pad.length * WORLD_SCALE),
+      new THREE.PlaneGeometry(pad.length * WORLD_SCALE, 12.0),
       new THREE.MeshBasicMaterial({
         map: createBoostTexture(),
         transparent: true,
@@ -305,7 +305,7 @@ function addRoad(group: THREE.Group, track: Track): void {
       }),
     );
     decal.rotation.x = -Math.PI / 2;
-    decal.rotation.z = Math.PI / 2; // Orient forward along road direction (heading)
+    decal.rotation.z = -Math.PI / 2; // Orient chevrons pointing forward along road direction (heading)
     padGroup.add(decal);
     group.add(padGroup);
   }
@@ -791,7 +791,7 @@ export function createWorld(track: Track): World3D {
     if (terrainPlacements.length > 1000) break;
   }
 
-  const canPlace = (place: TerrainPlacement, minExtra: number) =>
+  const canPlace = (place: { trackDistance: number; kind: string }, minExtra: number) =>
     place.trackDistance >= roadMargin + minExtra && place.kind !== 'sea' && place.kind !== 'pond';
 
   const palms = terrainPlacements.filter((place, index) => canPlace(place, 24) && index % 2 === 0);
@@ -803,11 +803,12 @@ export function createWorld(track: Track): World3D {
     const sample = track.samples[i];
     for (const side of [-1, 1]) {
       if (rng() > 0.55) continue;
-      const offset = (track.width / 2 + track.shoulder + 18 + rng() * 24) * side;
+      const offset = (track.width / 2 + track.shoulder + 22 + rng() * 24) * side;
       const wx = sample.x + sample.nx * offset;
       const wy = sample.y + sample.ny * offset;
       const info = terrainHeightAt(track, COAST, wx, wy);
-      if (info.kind !== 'sea' && info.kind !== 'pond') {
+      // Strictly verify clearance from ALL segments of the road so trees never intrude on curves
+      if (info.kind !== 'sea' && info.kind !== 'pond' && canPlace(info, 24)) {
         palms.push({ x: wx, y: wy, height: info.height, trackDistance: info.trackDistance, kind: info.kind });
       }
     }
@@ -888,7 +889,7 @@ export function createWorld(track: Track): World3D {
   ];
   for (const [x, y, angle] of hutPositions) {
     const info = terrainHeightAt(track, COAST, x, y);
-    if (info.kind === 'sea') continue;
+    if (info.kind === 'sea' || info.trackDistance < roadMargin + 26) continue;
     const hut = createHut(x, y, info.height, angle);
     root.add(hut);
   }
@@ -899,7 +900,7 @@ export function createWorld(track: Track): World3D {
 
   for (let i = 0; i < 12; i += 1) {
     const sample = track.samples[Math.floor((i / 12) * track.samples.length)];
-    const offset = (track.width / 2 + 10) * WORLD_SCALE * (i % 2 === 0 ? 1 : -1);
+    const offset = (track.width / 2 + track.shoulder + 8) * WORLD_SCALE * (i % 2 === 0 ? 1 : -1);
     const flag = createFlag(rng() * Math.PI * 2);
     flag.position.set(
       toSceneX(sample.x) + sample.nx * offset,

@@ -16,8 +16,12 @@ export class InputManager {
   private gamepadCamera = false;
   private prevGamepadCamera = false;
   private cameraRequested = false;
+  private resetRequested = false;
   private steer = 0;
   private pauseRequested = false;
+  private manualThrottleUsed = false;
+  private gamepadReset = false;
+  private prevGamepadReset = false;
   lastSource: 'keyboard' | 'touch' | 'gamepad' = 'keyboard';
 
   setKey(code: string, pressed: boolean, isRepeat = false): void {
@@ -46,6 +50,10 @@ export class InputManager {
     this.pauseRequested = true;
   }
 
+  requestReset(): void {
+    this.resetRequested = true;
+  }
+
   consumePauseRequest(): boolean {
     if (!this.pauseRequested) return false;
     this.pauseRequested = false;
@@ -58,6 +66,12 @@ export class InputManager {
     return true;
   }
 
+  consumeResetRequest(): boolean {
+    if (!this.resetRequested) return false;
+    this.resetRequested = false;
+    return true;
+  }
+
   update(dt: number): void {
     const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = pads && pads[0];
@@ -66,6 +80,7 @@ export class InputManager {
     this.gamepadNitro = false;
     this.gamepadPause = false;
     this.gamepadCamera = false;
+    this.gamepadReset = false;
 
     if (pad) {
       const axis = pad.axes[0] ?? 0;
@@ -78,16 +93,20 @@ export class InputManager {
       this.gamepadNitro = Boolean(pad.buttons[7]?.pressed || pad.buttons[0]?.pressed);
       this.gamepadPause = Boolean(pad.buttons[9]?.pressed);
       this.gamepadCamera = Boolean(pad.buttons[3]?.pressed);
+      this.gamepadReset = Boolean(pad.buttons[8]?.pressed || pad.buttons[12]?.pressed);
       if (padSteer !== 0 || this.gamepadBrake || this.gamepadNitro) this.lastSource = 'gamepad';
       if (this.gamepadPause && !this.prevGamepadPause) this.pauseRequested = true;
       if (this.gamepadCamera && !this.prevGamepadCamera) this.cameraRequested = true;
+      if (this.gamepadReset && !this.prevGamepadReset) this.resetRequested = true;
       this.prevGamepadPause = this.gamepadPause;
       this.prevGamepadCamera = this.gamepadCamera;
+      this.prevGamepadReset = this.gamepadReset;
       this.gamepadSteer = padSteer;
     } else {
       this.gamepadSteer = 0;
       this.prevGamepadPause = false;
       this.prevGamepadCamera = false;
+      this.prevGamepadReset = false;
     }
 
     const left = this.keys.has('ArrowLeft') || this.keys.has('KeyA') || this.touch.left;
@@ -101,18 +120,36 @@ export class InputManager {
   }
 
   getInput(): PlayerInput {
+    const brake =
+      this.keys.has('ArrowDown') ||
+      this.keys.has('KeyS') ||
+      this.touch.brake ||
+      this.gamepadBrake;
+
+    const manualGasPressed =
+      this.keys.has('ArrowUp') ||
+      this.keys.has('KeyW');
+
+    if (manualGasPressed) {
+      this.manualThrottleUsed = true;
+    }
+
+    let gas: boolean;
+    if (this.manualThrottleUsed && this.lastSource === 'keyboard') {
+      gas = manualGasPressed;
+    } else {
+      gas = !brake;
+    }
+
     return {
       steer: clamp(this.steer, -1, 1),
-      brake:
-        this.keys.has('ArrowDown') ||
-        this.keys.has('KeyS') ||
-        this.touch.brake ||
-        this.gamepadBrake,
+      brake,
       nitro:
         this.keys.has('Space') ||
         this.touch.nitro ||
         this.gamepadNitro,
       pause: false,
+      gas,
     };
   }
 

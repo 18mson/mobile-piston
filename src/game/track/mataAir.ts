@@ -28,12 +28,12 @@ export const MATA_AIR: Track = buildTrack({
   startPoint: { x: 1140, y: 1205 },
   startHeading: Math.PI,
   gridSlots: [
-    { distance: -54, lateral: -30 },
-    { distance: -54, lateral: 30 },
-    { distance: -90, lateral: -30 },
-    { distance: -90, lateral: 30 },
-    { distance: -126, lateral: -30 },
-    { distance: -126, lateral: 30 },
+    { distance: -44, lateral: -24 },
+    { distance: -44, lateral: 24 },
+    { distance: -80, lateral: -24 },
+    { distance: -80, lateral: 24 },
+    { distance: -116, lateral: -24 },
+    { distance: -116, lateral: 24 },
   ],
   boostPadFractions: [
     { fraction: 0.2, lateral: -16, length: 40 },
