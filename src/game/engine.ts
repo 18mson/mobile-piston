@@ -1,0 +1,395 @@
+import type { CarId, RaceResults, RaceSnapshot, Track } from './types';
+import { RaceSim } from './race';
+import { Renderer3D, type CameraMode } from './render3d/renderer3d';
+import { InputManager } from './input';
+import { GameAudio } from './audio';
+import { clamp } from './utils';
+import { computeAiInput } from './ai';
+
+type EngineMode = 'attract' | 'countdown' | 'racing' | 'paused' | 'finished' | 'error';
+
+export interface EngineCallbacks {
+  onReady: () => void;
+  onSnapshot: (snapshot: RaceSnapshot) => void;
+  onFinished: (results: RaceResults) => void;
+  onPause: () => void;
+  onError: (message: string) => void;
+}
+
+const FIXED_STEP = 1 / 120;
+
+export class GameEngine {
+  private callbacks: EngineCallbacks;
+  private canvas: HTMLCanvasElement;
+  private track: Track;
+  private renderer: Renderer3D;
+  private input = new InputManager();
+  private audio = new GameAudio();
+  private race: RaceSim | null = null;
+  private mode: EngineMode = 'attract';
+  private pausedFrom: 'countdown' | 'racing' = 'racing';
+  private countdownRemaining = 0;
+  private countdownLastShown = 0;
+  private goTimer = 0;
+  private accumulator = 0;
+  private lastFrame = 0;
+  private visualTime = 0;
+  private snapshotTimer = 0;
+  private raf = 0;
+  private destroyed = false;
+  private reducedMotion = false;
+  private selectedCar: CarId = 'sirip';
+  private previousBestLapMs: number | null = null;
+  private impactSoundCooldown = 0;
+  private motionQuery: MediaQueryList | null = null;
+
+  constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks, track: Track) {
+    this.callbacks = callbacks;
+    this.canvas = canvas;
+    this.track = track;
+    try {
+      this.renderer = new Renderer3D(canvas, track);
+    } catch (error) {
+      this.mode = 'error';
+      throw error;
+    }
+    this.motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    this.reducedMotion = this.motionQuery.matches;
+    this.renderer.setReducedMotion(this.reducedMotion);
+    this.motionQuery.addEventListener('change', this.handleMotionChange);
+    this.attachWindowListeners();
+    this.lastFrame = performance.now();
+    this.raf = requestAnimationFrame(this.frame);
+    this.callbacks.onReady();
+  }
+
+  get audioController(): GameAudio {
+    return this.audio;
+  }
+
+  get currentMode(): EngineMode {
+    return this.mode;
+  }
+
+  get currentTrackId(): string {
+    return this.track.id;
+  }
+
+  setTrack(track: Track): void {
+    if (this.destroyed || track.id === this.track.id) return;
+    try {
+      this.track = track;
+      this.race = null;
+      this.mode = 'attract';
+      this.accumulator = 0;
+      this.input.clearTouch();
+      this.input.clearKeys();
+      this.renderer.dispose();
+      this.renderer = new Renderer3D(this.canvas, track);
+      this.renderer.setReducedMotion(this.reducedMotion);
+      this.audio.updateEngine(0, 1, false, false, false);
+    } catch (error) {
+      console.error(error);
+      this.mode = 'error';
+      this.callbacks.onError('Lintasan gagal dimuat. Coba pilih lintasan lain.');
+    }
+  }
+
+  setMuted(muted: boolean): void {
+    this.audio.setMuted(muted);
+  }
+
+  cycleCamera(): CameraMode {
+    return this.renderer.cycleCamera();
+  }
+
+  setTouchControl(action: 'left' | 'right' | 'brake' | 'nitro', pressed: boolean): void {
+    this.input.setTouch(action, pressed);
+    if (pressed) void this.audio.unlock();
+  }
+
+  startRace(carId: CarId, previousBestLapMs: number | null): void {
+    if (this.destroyed) return;
+    void this.audio.unlock();
+    this.selectedCar = carId;
+    this.previousBestLapMs = previousBestLapMs;
+    this.race = new RaceSim(this.track, carId);
+    this.renderer.setRacers(this.race.racers);
+    this.renderer.resetMarks();
+    this.mode = 'countdown';
+    this.countdownRemaining = 3;
+    this.countdownLastShown = 3;
+    this.goTimer = 0;
+    this.accumulator = 0;
+    this.snapshotTimer = 0;
+    this.input.clearTouch();
+    this.audio.beep(420, 0.09, 0.12);
+    this.emitSnapshot();
+  }
+
+  pause(): void {
+    if (this.mode !== 'racing' && this.mode !== 'countdown') return;
+    this.pausedFrom = this.mode;
+    this.mode = 'paused';
+    this.input.clearKeys();
+    this.input.clearTouch();
+    this.audio.updateEngine(0, 1, false, false, false);
+    this.callbacks.onPause();
+  }
+
+  resume(): void {
+    if (this.mode !== 'paused') return;
+    this.mode = this.pausedFrom;
+    this.lastFrame = performance.now();
+    this.input.clearKeys();
+    this.input.clearTouch();
+  }
+
+  quitToTitle(): void {
+    this.mode = 'attract';
+    this.race = null;
+    this.accumulator = 0;
+    this.input.clearTouch();
+    this.input.clearKeys();
+    this.audio.updateEngine(0, 1, false, false, false);
+  }
+
+  debugState(): Record<string, number | string> {
+    return {
+      mode: this.mode,
+      track: this.track.id,
+      countdown: this.countdownRemaining,
+      visualTime: this.visualTime,
+      elapsed: this.race?.elapsed ?? 0,
+    };
+  }
+
+  debugFinishRace(): boolean {
+    if (!this.race) return false;
+    this.mode = 'racing';
+    this.goTimer = 0;
+    let steps = 0;
+    while (!this.race.playerFinished && steps < 120 * 150) {
+      const input = computeAiInput(this.race.player, this.race.racers, this.track, this.race.elapsed);
+      this.race.update(1 / 120, input);
+      steps += 1;
+    }
+    if (!this.race.playerFinished) return false;
+    this.finishRace();
+    return true;
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    cancelAnimationFrame(this.raf);
+    this.detachWindowListeners();
+    this.motionQuery?.removeEventListener('change', this.handleMotionChange);
+    this.renderer.dispose();
+    this.audio.dispose();
+  }
+
+  private handleMotionChange = (): void => {
+    this.reducedMotion = Boolean(this.motionQuery?.matches);
+    this.renderer.setReducedMotion(this.reducedMotion);
+  };
+
+  private attachWindowListeners(): void {
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('blur', this.handleWindowBlur);
+    document.addEventListener('visibilitychange', this.handleVisibility);
+  }
+
+  private detachWindowListeners(): void {
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('blur', this.handleWindowBlur);
+    document.removeEventListener('visibilitychange', this.handleVisibility);
+  }
+
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    const gameKeys = [
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowDown',
+      'ArrowUp',
+      'KeyA',
+      'KeyD',
+      'KeyS',
+      'Space',
+      'Escape',
+      'KeyP',
+      'KeyV',
+    ];
+    if (gameKeys.includes(event.code) && (this.mode === 'racing' || this.mode === 'countdown')) {
+      event.preventDefault();
+    }
+    if (event.code === 'KeyV' && (this.mode === 'racing' || this.mode === 'countdown')) {
+      if (!event.repeat) this.renderer.cycleCamera();
+      return;
+    }
+    if (event.code === 'Escape' || event.code === 'KeyP') {
+      if (!event.repeat) {
+        if (this.mode === 'racing' || this.mode === 'countdown') this.pause();
+      }
+      return;
+    }
+    this.input.setKey(event.code, true, event.repeat);
+    if (this.mode === 'racing' || this.mode === 'countdown') void this.audio.unlock();
+  };
+
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    this.input.setKey(event.code, false);
+  };
+
+  private handleWindowBlur = (): void => {
+    this.input.clearKeys();
+    this.input.clearTouch();
+    if (this.mode === 'racing' || this.mode === 'countdown') this.pause();
+  };
+
+  private handleVisibility = (): void => {
+    if (document.hidden && (this.mode === 'racing' || this.mode === 'countdown')) {
+      this.pause();
+    }
+  };
+
+  private frame = (now: number): void => {
+    if (this.destroyed) return;
+    const frameDt = clamp((now - this.lastFrame) / 1000, 0, 0.1);
+    this.lastFrame = now;
+    this.visualTime += frameDt;
+    try {
+      this.input.update(frameDt);
+      if (this.input.consumePauseRequest()) {
+        if (this.mode === 'racing' || this.mode === 'countdown') this.pause();
+      }
+      if (this.input.consumeCameraRequest() && (this.mode === 'racing' || this.mode === 'countdown')) {
+        this.renderer.cycleCamera();
+      }
+      if (this.mode === 'attract') {
+        this.renderer.renderAttract(this.visualTime, frameDt);
+      } else if (this.mode === 'countdown') {
+        this.updateCountdown(frameDt);
+      } else if (this.mode === 'racing') {
+        this.updateRace(frameDt);
+      } else if (this.mode === 'paused' || this.mode === 'finished') {
+        this.renderCurrentFrame(0);
+      }
+    } catch (error) {
+      console.error(error);
+      this.mode = 'error';
+      this.callbacks.onError('Game gagal dimuat. Coba muat ulang.');
+      return;
+    }
+
+    if (!this.destroyed && this.mode !== 'error') {
+      this.raf = requestAnimationFrame(this.frame);
+    }
+  };
+
+  private updateCountdown(dt: number): void {
+    if (!this.race) return;
+    this.countdownRemaining = Math.max(0, this.countdownRemaining - dt);
+    const shown = Math.ceil(this.countdownRemaining);
+    if (shown !== this.countdownLastShown && shown > 0) {
+      this.countdownLastShown = shown;
+      this.audio.beep(shown === 1 ? 740 : 600, 0.1, 0.14);
+    }
+    this.race.elapsed = 0;
+    if (this.countdownRemaining <= 0) {
+      this.mode = 'racing';
+      this.goTimer = 0.78;
+      this.audio.beep(980, 0.2, 0.18);
+    }
+    this.renderCurrentFrame(dt);
+    this.snapshotTimer += dt;
+    if (this.snapshotTimer >= 0.06) {
+      this.snapshotTimer = 0;
+      this.emitSnapshot();
+    }
+    this.audio.updateEngine(0, 1, false, false, false);
+  }
+
+  private updateRace(dt: number): void {
+    if (!this.race) return;
+    this.goTimer = Math.max(0, this.goTimer - dt);
+    this.accumulator += dt;
+    const playerInput = this.input.getInput();
+    let steps = 0;
+    while (this.accumulator >= FIXED_STEP && steps < 16) {
+      this.race.update(FIXED_STEP, playerInput);
+      this.accumulator -= FIXED_STEP;
+      steps += 1;
+    }
+
+    this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
+    if (this.race.player.impact > 0.34 && this.impactSoundCooldown <= 0) {
+      this.audio.impact(this.race.player.impact);
+      this.impactSoundCooldown = 0.16;
+    }
+    this.audio.updateEngine(
+      Math.hypot(this.race.player.vx, this.race.player.vy),
+      this.race.player.carId === 'bagas' ? 207 : 186,
+      this.race.player.drifting,
+      this.race.player.nitroActive,
+      true,
+    );
+
+    this.renderCurrentFrame(dt);
+    this.snapshotTimer += dt;
+    if (this.snapshotTimer >= 0.075) {
+      this.snapshotTimer = 0;
+      this.emitSnapshot();
+    }
+
+    if (this.race.playerFinished) {
+      this.finishRace();
+    }
+  }
+
+  private finishRace(): void {
+    if (!this.race) return;
+    this.race.completeRace();
+    const results = this.race.results(this.previousBestLapMs);
+    this.mode = 'finished';
+    this.audio.updateEngine(0, 1, false, false, false);
+    this.emitSnapshot();
+    this.callbacks.onFinished(results);
+  }
+
+  private renderCurrentFrame(dt: number): void {
+    if (!this.race) {
+      this.renderer.renderAttract(this.visualTime, dt);
+      return;
+    }
+    const snapshotMode =
+      this.mode === 'paused'
+        ? 'paused'
+        : this.mode === 'finished'
+          ? 'finished'
+          : this.mode === 'countdown'
+            ? 'countdown'
+            : 'racing';
+    this.renderer.renderRace(
+      this.race.racers,
+      this.race.player,
+      this.visualTime,
+      dt,
+      this.race.player.impact,
+      snapshotMode,
+    );
+  }
+
+  private emitSnapshot(): void {
+    if (!this.race) return;
+    const countdown =
+      this.mode === 'countdown'
+        ? Math.max(1, Math.ceil(this.countdownRemaining))
+        : this.mode === 'racing' && this.goTimer > 0
+          ? 0
+          : null;
+    this.callbacks.onSnapshot(this.race.snapshot(this.mode === 'countdown' ? 'countdown' : 'racing', countdown));
+  }
+
+}
