@@ -141,11 +141,13 @@ export class NetRaceSync {
     const dx = oldVisualX - player.x;
     const dy = oldVisualY - player.y;
     const err = Math.hypot(dx, dy);
+    const speed = Math.hypot(oldVx, oldVy);
+    const dynamicThreshold = Math.max(RECONCILE_THRESHOLD, speed * 0.045);
 
-    if (err <= RECONCILE_THRESHOLD) {
+    if (err <= dynamicThreshold) {
       // Within normal clock-phase tolerance: keep smooth local physics and gently nudge position
-      const nudgeX = (player.x - oldX) * 0.04;
-      const nudgeY = (player.y - oldY) * 0.04;
+      const nudgeX = (player.x - oldX) * 0.08;
+      const nudgeY = (player.y - oldY) * 0.08;
       player.x = oldX + nudgeX;
       player.y = oldY + nudgeY;
       player.vx = oldVx;
