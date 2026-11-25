@@ -24,16 +24,39 @@ export const CARS: Record<CarId, CarSpec> = {
       wheel: '#181b22',
     },
   },
+  go: {
+    id: 'go',
+    name: 'GO',
+    kind: 'City Car',
+    blurb: 'Kecil, tinggi, dan irit napas. Jalannya makin kencang di lurusan, tapi lambat saat keluar tikungan.',
+    stats: {
+      topSpeed: 240,
+      acceleration: 214,
+      grip: 8.9,
+      steerRate: 2.65,
+      nitroBoost: 66,
+      nitroAcceleration: 170,
+      mass: 0.96,
+    },
+    palette: {
+      body: '#dfe7ec',
+      shade: '#8d9ca8',
+      highlight: '#ffffff',
+      stripe: '#e0452f',
+      glass: '#233746',
+      wheel: '#181b22',
+    },
+  },
   bagas: {
     id: 'bagas',
     name: 'BAGAS',
     kind: 'Muskel',
-    blurb: 'Panjang dan buas. Menang di lurus, ekornya suka lepas di tikungan.',
+    blurb: 'Panjang dan buas. Raja lurusan, tapi ekornya suka lepas kalau masuk tikungan tanpa rem.',
     stats: {
-      topSpeed: 258,
-      acceleration: 206,
-      grip: 7.2,
-      steerRate: 2.35,
+      topSpeed: 262,
+      acceleration: 220,
+      grip: 7.9,
+      steerRate: 2.45,
       nitroBoost: 76,
       nitroAcceleration: 195,
       mass: 1.18,
@@ -53,8 +76,8 @@ export const CARS: Record<CarId, CarSpec> = {
     kind: 'Pikap',
     blurb: 'Berat dan lengket. Paling tenang saat rem dan banting setir.',
     stats: {
-      topSpeed: 222,
-      acceleration: 224,
+      topSpeed: 220,
+      acceleration: 222,
       grip: 9.6,
       steerRate: 2.5,
       nitroBoost: 62,
@@ -74,12 +97,12 @@ export const CARS: Record<CarId, CarSpec> = {
     id: 'kepik',
     name: 'KEPIK',
     kind: 'Buggy',
-    blurb: 'Lincah dan ringan. Akselerasi tajam, tapi lurus panjang bukan rumahnya.',
+    blurb: 'Lincah dan ringan. Akselerasi tajam dan setir paling responsif, tapi lurusan panjang bukan rumahnya.',
     stats: {
-      topSpeed: 210,
-      acceleration: 274,
-      grip: 10.2,
-      steerRate: 2.95,
+      topSpeed: 218,
+      acceleration: 252,
+      grip: 9.4,
+      steerRate: 2.9,
       nitroBoost: 56,
       nitroAcceleration: 205,
       mass: 0.86,
@@ -95,7 +118,7 @@ export const CARS: Record<CarId, CarSpec> = {
   },
 };
 
-export const CAR_ORDER: CarId[] = ['sirip', 'bagas', 'okra', 'kepik'];
+export const CAR_ORDER: CarId[] = ['sirip', 'go', 'bagas', 'okra', 'kepik'];
 
 export const AI_LIVERIES: {
   id: string;
@@ -138,11 +161,11 @@ export const AI_LIVERIES: {
     skill: 0.94,
   },
   {
-    id: 'ai-kepik-4',
-    label: 'KEPIK #4',
-    carId: 'kepik',
+    id: 'ai-go',
+    label: 'GO #4',
+    carId: 'go',
     number: 4,
-    palette: { body: '#c965a0', shade: '#843a6b', highlight: '#f3a8ce', stripe: '#f7e7c2', glass: '#23343b', wheel: '#191b1f' },
+    palette: { body: '#e8742f', shade: '#a3471b', highlight: '#ffc08a', stripe: '#f4ece0', glass: '#233746', wheel: '#181b22' },
     skill: 0.92,
   },
 ];
@@ -164,6 +187,24 @@ export const CAR_COLORS: Record<CarId, CarColorOption[]> = {
       id: 'taxi',
       label: 'Kuning Taksi',
       palette: { body: '#f2b938', shade: '#b57b1b', highlight: '#ffe88a', stripe: '#1d242b', glass: '#223447', wheel: '#181b22' },
+    },
+  ],
+  go: [
+    { id: 'silver', label: 'Putih Kota', palette: CARS.go.palette },
+    {
+      id: 'sunset',
+      label: 'Oranye Senja',
+      palette: { body: '#e8742f', shade: '#a3471b', highlight: '#ffc08a', stripe: '#f4ece0', glass: '#233746', wheel: '#181b22' },
+    },
+    {
+      id: 'mint',
+      label: 'Hijau Mint',
+      palette: { body: '#4eb89a', shade: '#287561', highlight: '#9ef0d6', stripe: '#f7f1e3', glass: '#233746', wheel: '#181b22' },
+    },
+    {
+      id: 'navy',
+      label: 'Biru Malam',
+      palette: { body: '#36588c', shade: '#1f3659', highlight: '#7da5e0', stripe: '#f5b942', glass: '#233746', wheel: '#181b22' },
     },
   ],
   bagas: [
@@ -233,9 +274,9 @@ export function getCarPalette(id: CarId, colorIndex = 0): CarPalette {
 
 export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip'): number {
   const values = {
-    topSpeed: [210, 258],
-    acceleration: [206, 274],
-    grip: [7.2, 10.2],
+    topSpeed: [210, 264],
+    acceleration: [210, 262],
+    grip: [7.6, 9.8],
   } as const;
   const [min, max] = values[key];
   return Math.max(0, Math.min(1, (car.stats[key] - min) / (max - min)));

@@ -29,7 +29,9 @@ export default function TitleScreen({
           <p className="title-tagline">
             {track.id === 'mata-air'
               ? 'Tiga putaran mengelilingi danau. Belok, drifting, lalu tekan nitro pada momen yang tepat.'
-              : 'Tiga putaran di pesisir Teluk Sore. Belok, drifting, lalu tekan nitro pada momen yang tepat.'}
+              : track.id === 'lereng-kopi'
+                ? 'Tiga putaran menyusuri lereng kopi. Rem sebelum tikungan jepit, atau bersiap berputar.'
+                : 'Tiga putaran di pesisir Teluk Sore. Belok, drifting, lalu tekan nitro pada momen yang tepat.'}
           </p>
         </div>
 

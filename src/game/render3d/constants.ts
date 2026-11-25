@@ -50,6 +50,22 @@ export function terrainHeightAt(
   worldX: number,
   worldY: number,
 ): { height: number; kind: 'sea' | 'sand' | 'grass' | 'rock' | 'pond'; trackDistance: number } {
+  if (track.theme === 'highland') {
+    // Mountain slopes: no sea, no pond. Flat corridor around the road, rolling ridges further out.
+    const distance = Math.min(9999, nearestDistance(track, worldX, worldY));
+    const bank = smoothstep(60, 100, distance) * 0.8;
+    const flat = 1 - smoothstep(96, 250, distance);
+    const ridges =
+      (Math.sin(worldX * 0.009) * 0.7 +
+        Math.sin(worldY * 0.011 + 1.1) * 0.5 +
+        Math.sin((worldX + worldY) * 0.005) * 0.5 +
+        Math.sin(worldX * 0.021 - worldY * 0.017) * 0.18 +
+        1.2) *
+      7.2;
+    const edgeRise = smoothstep(180, 420, Math.min(worldX, 2400 - worldX, worldY, 1600 - worldY) * -1 + 420) * 5;
+    const height = 0.6 + bank + ridges * (1 - flat) + edgeRise;
+    return { height, kind: height > 11.5 ? 'rock' : 'grass', trackDistance: distance };
+  }
   const coast = coastYAt(worldX, coastline);
   if (worldY < coast - 2) {
     return { height: -1.4, kind: 'sea', trackDistance: 9999 };

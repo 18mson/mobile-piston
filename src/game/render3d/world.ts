@@ -107,6 +107,10 @@ function buildTerrain(track: Track): THREE.Mesh {
   const rock = color('#6b7270');
   const pond = color('#1a4d5c');
   const sea = color('#0c3f55');
+  const teaFlat = color('#4f8f3f');
+  const teaA = color('#2f7a3a');
+  const teaB = color('#3d8d44');
+  const teaDark = color('#1f5a35');
 
   for (let iy = 0; iy <= depth; iy += 1) {
     const wy = iy * stepY;
@@ -123,7 +127,14 @@ function buildTerrain(track: Track): THREE.Mesh {
       else {
         const value = hash2d(ix, iy, 31);
         const patch = Math.sin(wx * 0.005) * Math.cos(wy * 0.007 + 0.6);
-        c = patch > 0.38 ? grassC : patch < -0.3 ? grassA : value > 0.62 ? grassB : grassA;
+        if (track.theme === 'highland') {
+          // contour-line terraces, like tea / coffee plantation steps on a hillside
+          const band = Math.floor(info.height * 1.6) % 2 === 0;
+          c = info.height < 2.4 ? teaFlat : band ? teaA : teaB;
+          if (value > 0.82) c = teaDark;
+        } else {
+          c = patch > 0.38 ? grassC : patch < -0.3 ? grassA : value > 0.62 ? grassB : grassA;
+        }
       }
       const shade = 0.86 + hash2d(ix, iy, 47) * 0.27;
       colors.push(c.r * shade, c.g * shade, c.b * shade);
@@ -362,6 +373,10 @@ function sampleAt(track: Track, distance: number) {
 }
 
 function createWater(track: Track, group: THREE.Group): { texture: THREE.Texture; mesh: THREE.Mesh } {
+  if (track.theme === 'highland') {
+    // no sea or pond on the mountain; keep a harmless placeholder so the update loop stays the same
+    return { texture: new THREE.Texture(), mesh: new THREE.Mesh() };
+  }
   const texture = createWaterTexture();
   const material = new THREE.MeshLambertMaterial({ map: texture, color: '#c9f3ef' });
   const ocean = new THREE.Mesh(new THREE.PlaneGeometry(2400, 1600), material);
@@ -805,7 +820,7 @@ export function createWorld(track: Track): World3D {
   const water = createWater(track, root);
   root.add(buildTerrain(track));
   addRoad(root, track);
-  addCoastFoam(root);
+  if (track.theme !== 'highland') addCoastFoam(root);
 
   const terrainPlacements: TerrainPlacement[] = [];
   const roadMargin = track.width / 2 + track.shoulder;
@@ -921,8 +936,10 @@ export function createWorld(track: Track): World3D {
     const hut = createHut(x, y, info.height, angle);
     root.add(hut);
   }
-  const lighthouse = createLighthouse(1670, 480, terrainHeightAt(track, COAST, 1670, 480).height);
-  root.add(lighthouse);
+  if (track.theme !== 'highland') {
+    const lighthouse = createLighthouse(1670, 480, terrainHeightAt(track, COAST, 1670, 480).height);
+    root.add(lighthouse);
+  }
   root.add(createStartTowers(track));
   root.add(createRoadsideTires(track));
 

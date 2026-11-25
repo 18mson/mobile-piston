@@ -1,5 +1,6 @@
-export type CarId = 'sirip' | 'bagas' | 'okra' | 'kepik';
-export type TrackId = 'teluk-sore' | 'mata-air';
+export type CarId = 'sirip' | 'go' | 'bagas' | 'okra' | 'kepik';
+export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi';
+export type TrackTheme = 'coast' | 'highland';
 
 export type ScreenName = 'loading' | 'title' | 'garage' | 'racing' | 'paused' | 'results' | 'error';
 
@@ -60,6 +61,7 @@ export interface BoostPad {
 
 export interface Track {
   id: TrackId;
+  theme?: TrackTheme;
   name: string;
   subtitle: string;
   width: number;

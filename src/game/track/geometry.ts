@@ -1,4 +1,4 @@
-import type { Track, TrackId, TrackSample } from '../types';
+import type { Track, TrackId, TrackSample, TrackTheme } from '../types';
 import { clamp, mod } from '../utils';
 
 interface Vec2 {
@@ -33,6 +33,7 @@ export interface BuildTrackOptions {
   id: TrackId;
   name: string;
   subtitle: string;
+  theme?: TrackTheme;
   worldWidth: number;
   worldHeight: number;
   width: number;
@@ -149,6 +150,7 @@ export function buildTrack(options: BuildTrackOptions): Track {
   const length = samples.length * uniformStep;
   const track: Track = {
     id: options.id,
+    theme: options.theme ?? 'coast',
     name: options.name,
     subtitle: options.subtitle,
     width: options.width,

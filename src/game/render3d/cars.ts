@@ -128,8 +128,8 @@ export class CarView {
   }
 
   private addDropShadow(carId: CarId): void {
-    const l = carId === 'bagas' ? 6.2 : carId === 'okra' ? 5.6 : carId === 'kepik' ? 5.0 : 5.4;
-    const w = carId === 'bagas' ? 4.0 : carId === 'okra' ? 3.9 : carId === 'kepik' ? 3.8 : 3.7;
+    const l = carId === 'bagas' ? 6.2 : carId === 'okra' ? 5.6 : carId === 'kepik' ? 5.0 : carId === 'go' ? 5.0 : 5.4;
+    const w = carId === 'bagas' ? 4.0 : carId === 'okra' ? 3.9 : carId === 'kepik' ? 3.8 : carId === 'go' ? 3.5 : 3.7;
     const geo = new THREE.PlaneGeometry(l, w);
     const mat = new THREE.MeshBasicMaterial({
       color: '#081217',
@@ -334,6 +334,59 @@ export class CarView {
 
       // Number badge
       this.addNumber(number, -length * 0.06, 2.03, 0, '#15222a', width);
+      this.addFlames(-length / 2 - 0.15, 0);
+
+    } else if (carId === 'go') {
+      // GO: upright little city hatchback inspired by the Datsun GO - short nose, tall greenhouse,
+      // chrome grille bar, wrap-around headlights, hubcap wheels and a tiny roof spoiler
+      const length = 4.9;
+      const width = 3.2;
+      const wheelRadius = 0.7;
+      const wheelWidth = 0.48;
+
+      // Layer 1: slim undercarriage + plain bumpers
+      this.addBox([length * 0.98, 0.34, width * 0.92], [0, 0.52, 0], darkTrimMat, true, true);
+      this.addBox([0.3, 0.3, width * 0.9], [length / 2 + 0.04, 0.62, 0], darkTrimMat); // Front bumper
+      this.addBox([0.3, 0.3, width * 0.88], [-length / 2 - 0.04, 0.62, 0], darkTrimMat); // Rear bumper
+
+      // Layer 2: boxy lower body with a thin side accent line
+      this.addBox([length * 0.96, 0.58, width], [0, 0.92, 0], bodyMat, true, true);
+      this.addBox([length * 0.62, 0.1, width + 0.06], [-length * 0.02, 0.8, 0], stripeMat);
+
+      // Layer 3: short, steep hood and front fascia
+      this.addBox([length * 0.26, 0.2, width * 0.86], [length * 0.35, 1.22, 0], bodyMat, true, true);
+      this.addBox([0.14, 0.14, width * 0.5], [length / 2 + 0.02, 1.02, 0], chromeMat); // Chrome grille bar
+      this.addBox([0.12, 0.2, width * 0.5], [length / 2 + 0.01, 0.84, 0], darkTrimMat); // Lower grille
+
+      // Layer 4: tall, upright greenhouse (the Go's most recognisable trait) + hatch rear
+      this.addBox([length * 0.5, 0.86, width * 0.78], [-length * 0.07, 1.66, 0], glassMat, true, true);
+      this.addBox([0.36, 0.8, width * 0.74], [-length * 0.33, 1.62, 0], bodyMat, true, true); // Hatch / C-pillars
+      this.addBox([length * 0.54, 0.12, width * 0.76], [-length * 0.1, 2.14, 0], bodyMat, true, true); // Roof
+      for (const side of [-1, 1]) {
+        this.addBox([length * 0.4, 0.06, 0.1], [-length * 0.08, 2.23, side * width * 0.34], darkTrimMat); // Roof rails
+        this.addBox([0.22, 0.18, 0.28], [length * 0.13, 1.5, side * (width / 2 + 0.1)], bodyMat); // Door mirrors
+      }
+
+      // Tiny roof spoiler over the hatch
+      this.addBox([0.42, 0.1, width * 0.62], [-length * 0.34, 2.24, 0], stripeMat);
+
+      // Driver sits upright inside the tall cabin
+      this.addDriver(-length * 0.04, 1.66, 0, '#e0452f', '#1a2228', 0.95);
+
+      // Hubcap wheels, small and tall like a city car
+      for (const side of [-1, 1]) {
+        this.addWheel(wheelRadius, wheelWidth, length * 0.3, side * (width / 2 + 0.06), true, palette.wheel, '#c9d1d7');
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.3, side * (width / 2 + 0.06), false, palette.wheel, '#c9d1d7');
+      }
+
+      // Wrap-around headlights and vertical-ish tail lights
+      for (const side of [-1, 1]) {
+        this.addBox([0.16, 0.26, 0.56], [length / 2 - 0.02, 1.0, side * width * 0.36], lightMat, false);
+        const tail = this.addBox([0.16, 0.5, 0.26], [-length / 2 + 0.02, 1.08, side * width * 0.4], tailMat, false);
+        this.brakeLights.push(tail);
+      }
+
+      this.addNumber(number, -length * 0.1, 2.22, 0, '#15222a', width);
       this.addFlames(-length / 2 - 0.15, 0);
 
     } else if (carId === 'bagas') {
