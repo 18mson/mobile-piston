@@ -1618,39 +1618,41 @@ p {
 
 .touch-cluster {
   position: absolute;
-  bottom: max(14px, env(safe-area-inset-bottom));
+  bottom: max(18px, env(safe-area-inset-bottom));
   display: flex;
-  gap: 10px;
+  gap: 14px;
   pointer-events: none;
 }
 
 .touch-cluster-left {
-  left: max(14px, env(safe-area-inset-left));
+  left: max(18px, env(safe-area-inset-left));
 }
 
 .touch-cluster-right {
-  right: max(14px, env(safe-area-inset-right));
+  right: max(18px, env(safe-area-inset-right));
   align-items: flex-end;
 }
 
 .touch-button {
   display: grid;
   place-items: center;
-  min-width: 64px;
-  min-height: 64px;
-  padding: 6px;
+  min-width: 84px;
+  min-height: 84px;
+  padding: 8px;
   border: 2px solid var(--line-strong);
   border-radius: 0;
   background: rgba(12, 24, 32, 0.82);
   color: var(--bone);
-  font-family: var(--font-pixel-stack);
-  font-size: 9px;
-  line-height: 1.2;
-  text-align: center;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   pointer-events: auto;
+}
+
+.touch-icon {
+  width: 40px;
+  height: 40px;
+  display: block;
 }
 
 .touch-button[data-active="true"] {
@@ -1661,12 +1663,16 @@ p {
 }
 
 .touch-nitro {
-  min-width: 76px;
-  min-height: 76px;
+  min-width: 96px;
+  min-height: 96px;
   border-color: var(--orange);
   background: rgba(91, 46, 22, 0.76);
   color: var(--orange);
-  font-size: 10px;
+}
+
+.touch-nitro .touch-icon {
+  width: 46px;
+  height: 46px;
 }
 
 .touch-left {

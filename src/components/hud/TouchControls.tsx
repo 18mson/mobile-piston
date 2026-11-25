@@ -5,12 +5,41 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 
 type TouchAction = 'left' | 'right' | 'brake' | 'nitro';
 
-const ACTIONS: { action: TouchAction; label: string; short: string; className: string; aria: string }[] = [
-  { action: 'left', label: 'Kiri', short: 'KIRI', className: 'touch-steer touch-left', aria: 'Belok kiri' },
-  { action: 'right', label: 'Kanan', short: 'KANAN', className: 'touch-steer touch-right', aria: 'Belok kanan' },
-  { action: 'brake', label: 'Rem', short: 'REM', className: 'touch-brake', aria: 'Rem dan mundur' },
-  { action: 'nitro', label: 'Nitro', short: 'NITRO', className: 'touch-nitro', aria: 'Nitro' },
+const ACTIONS: { action: TouchAction; className: string; aria: string }[] = [
+  { action: 'left', className: 'touch-steer touch-left', aria: 'Belok kiri' },
+  { action: 'right', className: 'touch-steer touch-right', aria: 'Belok kanan' },
+  { action: 'brake', className: 'touch-brake', aria: 'Rem dan mundur' },
+  { action: 'nitro', className: 'touch-nitro', aria: 'Nitro' },
 ];
+
+function TouchArrowIcon({ action }: { action: TouchAction }) {
+  if (action === 'left') {
+    return (
+      <svg className="touch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16 4L6 12L16 20V4Z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (action === 'right') {
+    return (
+      <svg className="touch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 4L18 12L8 20V4Z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (action === 'brake') {
+    return (
+      <svg className="touch-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7L12 17L20 7H4Z" fill="currentColor" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="touch-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 17L12 7L20 17H4Z" fill="currentColor" />
+    </svg>
+  );
+}
 
 export default function TouchControls({
   onChange,
@@ -59,7 +88,7 @@ export default function TouchControls({
             onLostPointerCapture={() => setPressed(item.action, false)}
             onContextMenu={(event) => event.preventDefault()}
           >
-            <span>{item.short}</span>
+            <TouchArrowIcon action={item.action} />
           </button>
         ))}
       </div>
@@ -77,7 +106,7 @@ export default function TouchControls({
             onLostPointerCapture={() => setPressed(item.action, false)}
             onContextMenu={(event) => event.preventDefault()}
           >
-            <span>{item.short}</span>
+            <TouchArrowIcon action={item.action} />
           </button>
         ))}
       </div>

@@ -91,7 +91,12 @@ export class NetRaceSync {
     this.sim.elapsed = snapshot.elapsed;
     this.sim.tick = snapshot.tick;
 
-    this.snapshotBuffer.push({ receivedAt, snapshot });
+    const prevBuffered = this.snapshotBuffer[this.snapshotBuffer.length - 1];
+    const smoothReceivedAt =
+      prevBuffered && snapshot.elapsed > prevBuffered.snapshot.elapsed
+        ? Math.max(receivedAt, prevBuffered.receivedAt + 35)
+        : receivedAt;
+    this.snapshotBuffer.push({ receivedAt: smoothReceivedAt, snapshot });
     if (this.snapshotBuffer.length > 24) {
       this.snapshotBuffer.shift();
     }
@@ -201,9 +206,6 @@ export class NetRaceSync {
 
     for (const racer of this.sim.racers) {
       if (racer.id === this.localPlayerId) continue;
-      racer.prevX = racer.x;
-      racer.prevY = racer.y;
-      racer.prevAngle = racer.angle;
 
       if (before && after) {
         const span = Math.max(1, after.receivedAt - before.receivedAt);
@@ -218,18 +220,24 @@ export class NetRaceSync {
           racer.vx = a.vx + (b.vx - a.vx) * t;
           racer.vy = a.vy + (b.vy - a.vy) * t;
           racer.steer = a.steer + (b.steer - a.steer) * t;
+          racer.prevX = racer.x;
+          racer.prevY = racer.y;
+          racer.prevAngle = racer.angle;
           continue;
         }
       }
 
-      // Fallback: latest snapshot (with brief velocity extrapolation up to 100ms)
+      // Fallback: latest snapshot (with brief velocity extrapolation up to 80ms)
       const latest = this.snapshotBuffer[this.snapshotBuffer.length - 1];
       const state = latest.snapshot.racers.find((r) => r.id === racer.id);
       if (state) {
         this.copyNetToRacer(state, racer);
-        const ageSec = Math.min(0.1, Math.max(0, (nowMs - latest.receivedAt) / 1000));
+        const ageSec = Math.min(0.08, Math.max(0, (renderTime - latest.receivedAt) / 1000));
         racer.x += state.vx * ageSec;
         racer.y += state.vy * ageSec;
+        racer.prevX = racer.x;
+        racer.prevY = racer.y;
+        racer.prevAngle = racer.angle;
       }
     }
   }
