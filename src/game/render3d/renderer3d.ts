@@ -4,7 +4,7 @@ import { createWorld, type World3D } from './world';
 import { CarView } from './cars';
 import { CameraRig, type CameraMode } from './cameraRig';
 import { AI_LIVERIES } from '../data/cars';
-import { sampleAtDistance } from '../track/geometry';
+import { nearestOnTrack, sampleAtDistance } from '../track/geometry';
 import { RENDER_HEIGHT, RENDER_WIDTH, ROAD_Y, toSceneX, toSceneZ } from './constants';
 
 export { type CameraMode } from './cameraRig';
@@ -41,6 +41,13 @@ export class Renderer3D {
   private skidIndex = 0;
   private maxSkids = 800;
   private lastSkidPos = new Map<string, { x: number; y: number }>();
+
+  // Dirt tire tracks left when cars drive offroad on soil/grass
+  private dirtMesh: THREE.InstancedMesh;
+  private dirtDummy = new THREE.Object3D();
+  private dirtIndex = 0;
+  private maxDirts = 1000;
+  private lastDirtPos = new Map<string, { x: number; y: number }>();
 
   // Attract camera smoothing
   private attractCamPos = new THREE.Vector3();
@@ -107,6 +114,26 @@ export class Renderer3D {
     }
     this.skidMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(this.skidMesh);
+
+    // Dirt tire tracks on offroad ground
+    const dirtGeo = new THREE.PlaneGeometry(0.44, 0.92);
+    dirtGeo.rotateX(-Math.PI / 2);
+    const dirtMat = new THREE.MeshBasicMaterial({
+      color: 0x5c4028,
+      transparent: true,
+      opacity: 0.68,
+      depthWrite: false,
+    });
+    this.dirtMesh = new THREE.InstancedMesh(dirtGeo, dirtMat, this.maxDirts);
+    this.dirtMesh.frustumCulled = false;
+    for (let i = 0; i < this.maxDirts; i += 1) {
+      this.dirtDummy.position.set(0, -999, 0);
+      this.dirtDummy.scale.set(0, 0, 0);
+      this.dirtDummy.updateMatrix();
+      this.dirtMesh.setMatrixAt(i, this.dirtDummy.matrix);
+    }
+    this.dirtMesh.instanceMatrix.needsUpdate = true;
+    this.scene.add(this.dirtMesh);
   }
 
   private buildCockpitView(): void {
@@ -340,6 +367,16 @@ export class Renderer3D {
       this.skidMesh.setMatrixAt(i, this.skidDummy.matrix);
     }
     this.skidMesh.instanceMatrix.needsUpdate = true;
+
+    this.dirtIndex = 0;
+    this.lastDirtPos.clear();
+    for (let i = 0; i < this.maxDirts; i += 1) {
+      this.dirtDummy.position.set(0, -999, 0);
+      this.dirtDummy.scale.set(0, 0, 0);
+      this.dirtDummy.updateMatrix();
+      this.dirtMesh.setMatrixAt(i, this.dirtDummy.matrix);
+    }
+    this.dirtMesh.instanceMatrix.needsUpdate = true;
   }
 
   renderAttract(time: number, dt: number): void {
@@ -453,10 +490,39 @@ export class Renderer3D {
       const interpAngle = prevAngle + diffAngle * alpha;
       const interpX = THREE.MathUtils.lerp(prevX, src.x, alpha);
       const interpY = THREE.MathUtils.lerp(prevY, src.y, alpha);
-      this.cars.get(racer.id)?.update(src, effectiveDt, interpX, interpY, interpAngle);
+      const trackHit = nearestOnTrack(this.track, interpX, interpY);
+      const offroad = trackHit.distance > this.track.width / 2 + this.track.shoulder * 0.45;
+      this.cars.get(racer.id)?.update(src, effectiveDt, interpX, interpY, interpAngle, offroad);
 
-      // Deposit tire skid marks on road surface when drifting or slipping
+      // Deposit tire skid marks on road surface when drifting, or dirt tracks when driving offroad
       const speed = Math.hypot(src.vx, src.vy);
+      if (offroad && speed > 12 && !isPaused) {
+        const lastDirt = this.lastDirtPos.get(racer.id);
+        const dirtDist = lastDirt ? Math.hypot(interpX - lastDirt.x, interpY - lastDirt.y) : 999;
+        if (dirtDist >= 0.62) {
+          this.lastDirtPos.set(racer.id, { x: interpX, y: interpY });
+
+          const sceneX = toSceneX(interpX);
+          const sceneZ = toSceneZ(interpY);
+          const cosA = Math.cos(interpAngle);
+          const sinA = Math.sin(interpAngle);
+          const rearX = -0.95;
+          for (const side of [-1.22, 1.22]) {
+            const markX = sceneX + rearX * cosA - side * sinA;
+            const markZ = sceneZ + rearX * sinA + side * cosA;
+            this.dirtDummy.position.set(markX, ROAD_Y + 0.022, markZ);
+            this.dirtDummy.rotation.set(0, -interpAngle, 0);
+            this.dirtDummy.scale.set(1, 1, 1);
+            this.dirtDummy.updateMatrix();
+            this.dirtMesh.setMatrixAt(this.dirtIndex, this.dirtDummy.matrix);
+            this.dirtIndex = (this.dirtIndex + 1) % this.maxDirts;
+          }
+          this.dirtMesh.instanceMatrix.needsUpdate = true;
+        }
+      } else {
+        this.lastDirtPos.delete(racer.id);
+      }
+
       if (src.drifting && speed > 32 && !isPaused) {
         const last = this.lastSkidPos.get(racer.id);
         const dist = last ? Math.hypot(interpX - last.x, interpY - last.y) : 999;

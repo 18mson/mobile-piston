@@ -313,58 +313,121 @@ export class CarView {
 
     // Distinct silhouettes, heights, and volumes
     if (carId === 'sirip') {
-      // SIRIP: Chunky rally hatchback with roof scoop, flared arches, rear wing
+      // SIRIP: Sculpted rally hatchback with sloped hood & windshield, flared fenders, roof scoop, and rear wing
       const length = 5.2;
       const width = 3.35;
       const wheelRadius = 0.72;
       const wheelWidth = 0.52;
 
-      // Layer 1: Undercarriage & bumper splitters
-      this.addBox([length, 0.36, width * 0.95], [0, 0.52, 0], darkTrimMat, true, true);
-      this.addBox([0.35, 0.18, width * 0.92], [length / 2 + 0.08, 0.46, 0], shadeMat); // Front splitter
-      this.addBox([0.35, 0.22, width * 0.88], [-length / 2 - 0.08, 0.48, 0], darkTrimMat); // Rear diffuser
+      // Undercarriage & low splitter/diffuser
+      this.addBox([4.85, 0.24, 2.86], [0, 0.42, 0], darkTrimMat, true, false);
+      this.addBox([0.38, 0.12, width * 0.9], [2.52, 0.44, 0], shadeMat);
+      this.addBox([0.36, 0.16, width * 0.86], [-2.48, 0.46, 0], darkTrimMat);
 
-      // Layer 2: Main lower muscular body & wheel arch flares
-      this.addBox([length * 0.94, 0.52, width], [0, 0.88, 0], bodyMat, true, true);
-      // Side skirts & accent strip
-      this.addBox([length * 0.5, 0.14, width + 0.08], [0, 0.76, 0], stripeMat);
+      // Sculpted lower body (sloped front bumper, sloped hood, muscular beltline, rear hatch)
+      this.addProfile(
+        [
+          [2.38, 0.48],
+          [2.6, 0.6],
+          [2.62, 0.92],
+          [2.4, 1.12],
+          [1.1, 1.3],
+          [-2.05, 1.36],
+          [-2.48, 1.24],
+          [-2.56, 0.92],
+          [-2.5, 0.58],
+          [-2.28, 0.48],
+        ],
+        3.04,
+        bodyMat,
+        0.14,
+      );
 
-      // Layer 3: Hood & shoulder line taper
-      this.addBox([length * 0.42, 0.28, width * 0.82], [length * 0.26, 1.2, 0], bodyMat, true, true);
-      this.addBox([0.9, 0.12, 0.7], [length * 0.24, 1.36, 0], shadeMat); // Hood vent
+      // Side skirts & rally stripe
+      for (const side of [-1, 1]) {
+        this.addBox([2.4, 0.11, 0.08], [-0.04, 0.76, side * 1.66], stripeMat, false, false);
+        const mirror = this.addBox([0.24, 0.16, 0.28], [0.88, 1.38, side * 1.54], bodyMat);
+        mirror.rotation.y = side * 0.22;
+      }
 
-      // Layer 4: Raised cabin / canopy with chunky pillars & glass
-      this.addBox([length * 0.46, 0.72, width * 0.72], [-length * 0.08, 1.54, 0], glassMat, true, true);
-      this.addBox([length * 0.36, 0.16, width * 0.68], [-length * 0.06, 1.94, 0], bodyMat, true, true); // Roof slab
+      // Hood rally vent
+      const hoodVent = this.addBox([0.85, 0.1, 0.76], [1.68, 1.24, 0], shadeMat);
+      hoodVent.rotation.z = -0.14;
+
+      // Sculpted greenhouse glass with raked windshield and fastback rear glass
+      this.addProfile(
+        [
+          [1.12, 1.28],
+          [0.18, 1.98],
+          [-1.38, 1.96],
+          [-2.16, 1.28],
+          [-2.16, 1.22],
+          [1.12, 1.22],
+        ],
+        2.5,
+        glassMat,
+        0.05,
+      );
+
+      // Arched roof cap
+      this.addProfile(
+        [
+          [0.22, 1.97],
+          [-0.58, 2.06],
+          [-1.44, 1.96],
+          [-1.44, 1.9],
+          [0.22, 1.9],
+        ],
+        2.42,
+        bodyMat,
+        0.08,
+      );
+
+      // Angled A-pillars, dark B-pillars, C-pillars
+      const aLen = Math.hypot(1.12 - 0.18, 1.98 - 1.28);
+      const aTilt = Math.atan2(1.98 - 1.28, 1.12 - 0.18);
+      const cLen = Math.hypot(2.16 - 1.38, 1.96 - 1.28);
+      const cTilt = Math.atan2(1.96 - 1.28, 2.16 - 1.38);
+      for (const side of [-1, 1]) {
+        const aPillar = this.addBox([aLen, 0.12, 0.14], [0.65, 1.63, side * 1.23], bodyMat, true, false);
+        aPillar.rotation.z = -aTilt;
+        this.addBox([0.14, 0.66, 0.08], [-0.42, 1.62, side * 1.28], darkTrimMat, false, false);
+        const cPillar = this.addBox([cLen, 0.2, 0.18], [-1.77, 1.62, side * 1.18], bodyMat, true, false);
+        cPillar.rotation.z = cTilt;
+      }
 
       // Roof rally air scoop
-      this.addBox([0.7, 0.22, 0.52], [-length * 0.02, 2.08, 0], stripeMat);
-      this.addBox([0.15, 0.12, 0.36], [0.3, 2.08, 0], darkTrimMat); // Intake mouth
+      this.addBox([0.68, 0.2, 0.5], [-0.14, 2.12, 0], stripeMat);
+      this.addBox([0.14, 0.11, 0.36], [0.18, 2.12, 0], darkTrimMat);
 
       // Driver inside cabin
-      this.addDriver(-length * 0.08, 1.55, 0, '#ffffff', '#1a2228', 0.95);
+      this.addDriver(-0.22, 1.54, 0, '#ffffff', '#1a2228', 0.95);
 
-      // Chunky rally rear spoiler / fin
-      this.addBox([0.5, 0.12, width * 0.84], [-length / 2 - 0.12, 1.98, 0], stripeMat);
+      // Angled rally rear wing
+      const wing = this.addBox([0.52, 0.11, width * 0.84], [-2.56, 2.04, 0], stripeMat);
+      wing.rotation.z = -0.1;
       for (const side of [-1, 1]) {
-        this.addBox([0.45, 0.45, 0.1], [-length / 2 - 0.08, 1.76, side * width * 0.38], shadeMat);
+        const strut = this.addBox([0.42, 0.56, 0.1], [-2.44, 1.74, side * width * 0.36], shadeMat);
+        strut.rotation.z = 0.22;
       }
 
       // Wheels
       for (const side of [-1, 1]) {
-        this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.08), true, palette.wheel, palette.stripe);
-        this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.08), false, palette.wheel, palette.stripe);
+        this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.04), true, palette.wheel, palette.stripe);
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.04), false, palette.wheel, palette.stripe);
       }
 
-      // Headlights & Taillights
+      // Swept headlights & taillights
       for (const side of [-1, 1]) {
-        const head = this.addBox([0.16, 0.24, 0.48], [length / 2 - 0.02, 0.96, side * width * 0.32], lightMat, false);
-        const tail = this.addBox([0.16, 0.24, 0.44], [-length / 2 + 0.02, 0.96, side * width * 0.32], tailMat, false);
+        const head = this.addBox([0.38, 0.22, 0.48], [2.4, 0.98, side * 1.06], lightMat, false);
+        head.rotation.y = -side * 0.28;
+        head.rotation.z = -0.18;
+        const tail = this.addBox([0.22, 0.26, 0.48], [-2.44, 0.98, side * 1.06], tailMat, false);
+        tail.rotation.y = side * 0.22;
         this.brakeLights.push(tail);
       }
 
-      // Number badge
-      this.addNumber(number, -length * 0.06, 2.03, 0, '#15222a', width);
+      this.addNumber(number, -0.58, 2.08, 0, '#15222a', width * 0.9);
       this.addFlames(-length / 2 - 0.15, 0);
 
     } else if (carId === 'go') {
@@ -550,152 +613,348 @@ export class CarView {
       this.addFlames(-length / 2 - 0.18, 0);
 
     } else if (carId === 'okra') {
-      // OKRA: Heavy rugged pickup truck with tall cab, open cargo bed with wooden crates, roll bar, and chunky push bumper
+      // OKRA: Sculpted rugged pickup truck with sloped hood & windshield, tubular bull-bar, cargo bed & roll bar
       const length = 5.6;
       const width = 3.5;
       const wheelRadius = 0.78;
       const wheelWidth = 0.56;
 
-      // Heavy lifted undercarriage & steel bull-bar
-      this.addBox([length, 0.44, width * 0.92], [0, 0.58, 0], darkTrimMat, true, true);
-      this.addBox([0.45, 0.55, width * 0.72], [length / 2 + 0.15, 0.82, 0], shadeMat); // Bull bar
+      // Lifted undercarriage & front skid plate
+      this.addBox([5.15, 0.28, 2.94], [0, 0.52, 0], darkTrimMat, true, false);
+      const skid = this.addBox([0.46, 0.16, 2.2], [2.72, 0.52, 0], shadeMat);
+      skid.rotation.z = 0.35;
 
-      // Muscular flared body
-      this.addBox([length * 0.94, 0.56, width], [0, 0.96, 0], bodyMat, true, true);
+      // Sculpted pickup body (beveled nose, sloped hood, long bed beltline, rounded rear bumper)
+      this.addProfile(
+        [
+          [2.56, 0.58],
+          [2.78, 0.72],
+          [2.8, 1.12],
+          [2.64, 1.3],
+          [1.02, 1.46],
+          [-2.58, 1.44],
+          [-2.78, 1.28],
+          [-2.8, 0.74],
+          [-2.56, 0.58],
+        ],
+        3.14,
+        bodyMat,
+        0.15,
+      );
 
-      // Heavy hood
-      this.addBox([length * 0.34, 0.34, width * 0.84], [length * 0.28, 1.28, 0], bodyMat, true, true);
-      this.addBox([length * 0.32, 0.08, width * 0.36], [length * 0.28, 1.48, 0], stripeMat); // Center hood stripe
+      // Sloped hood stripe & grille
+      const hoodStripe = this.addBox([1.56, 0.06, 1.12], [1.82, 1.41, 0], stripeMat);
+      hoodStripe.rotation.z = -0.1;
+      this.addBox([0.1, 0.34, 1.82], [2.84, 1.04, 0], darkTrimMat, false);
 
-      // Tall truck cab & upright windshield
-      this.addBox([length * 0.32, 0.82, width * 0.76], [length * 0.02, 1.72, 0], glassMat, true, true);
-      this.addBox([length * 0.28, 0.14, width * 0.74], [length * 0.02, 2.15, 0], bodyMat, true, true); // Cab roof
+      // Tubular steel bull-bar
+      const bullTop = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.1, 8), shadeMat);
+      bullTop.rotation.x = Math.PI / 2;
+      bullTop.position.set(2.96, 1.06, 0);
+      this.body.add(bullTop);
+      for (const side of [-1, 1]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.55, 8), shadeMat);
+        post.rotation.z = -0.15;
+        post.position.set(2.92, 0.8, side * 0.72);
+        this.body.add(post);
+      }
+
+      // Sculpted cab glass with raked windshield
+      this.addProfile(
+        [
+          [1.04, 1.44],
+          [0.4, 2.12],
+          [-0.58, 2.12],
+          [-0.72, 1.44],
+        ],
+        2.62,
+        glassMat,
+        0.05,
+      );
+
+      // Cab roof cap
+      this.addProfile(
+        [
+          [0.44, 2.11],
+          [-0.08, 2.2],
+          [-0.62, 2.11],
+          [-0.62, 2.05],
+          [0.44, 2.05],
+        ],
+        2.54,
+        bodyMat,
+        0.08,
+      );
+
+      // Angled A-pillars, rear cab pillars, mirrors, and side trim
+      const cabALen = Math.hypot(1.04 - 0.4, 2.12 - 1.44);
+      const cabATilt = Math.atan2(2.12 - 1.44, 1.04 - 0.4);
+      for (const side of [-1, 1]) {
+        const aPillar = this.addBox([cabALen, 0.13, 0.14], [0.72, 1.78, side * 1.3], bodyMat, true, false);
+        aPillar.rotation.z = -cabATilt;
+        this.addBox([0.2, 0.72, 0.16], [-0.64, 1.78, side * 1.28], bodyMat, true, false);
+        const mirror = this.addBox([0.24, 0.22, 0.3], [0.84, 1.54, side * 1.62], darkTrimMat);
+        mirror.rotation.y = side * 0.2;
+        this.addBox([2.4, 0.1, 0.08], [0.1, 0.84, side * 1.72], shadeMat, false, false);
+      }
 
       // Driver
-      this.addDriver(length * 0.02, 1.72, 0, '#588a44', '#152012', 1.0);
+      this.addDriver(0.08, 1.7, 0, '#588a44', '#152012', 1.0);
 
-      // Open cargo bed & roll bars
-      const bedLength = length * 0.38;
-      const bedX = -length * 0.28;
-      // Bed sidewalls
+      // Beveled cargo bed sidewalls & tailgate
+      const bedX = -1.68;
       for (const side of [-1, 1]) {
-        this.addBox([bedLength, 0.45, 0.18], [bedX, 1.42, side * (width * 0.42)], shadeMat, true, true);
+        this.addProfile(
+          [
+            [-0.72, 1.4],
+            [-0.72, 1.7],
+            [-2.62, 1.68],
+            [-2.68, 1.4],
+          ],
+          0.16,
+          shadeMat,
+          0.05,
+        ).position.z = side * 1.38;
       }
-      this.addBox([0.2, 0.45, width * 0.82], [-length / 2 + 0.05, 1.42, 0], shadeMat); // Tailgate
+      this.addBox([0.18, 0.34, 2.7], [-2.68, 1.54, 0], shadeMat);
 
-      // Heavy cargo in bed: layered wooden crates & barrel
-      this.addBox([1.3, 0.58, 1.2], [bedX - 0.1, 1.45, 0.1], this.material('#8a5832'));
-      this.addBox([1.32, 0.12, 1.22], [bedX - 0.1, 1.72, 0.1], this.material('#b8824f'));
+      // Cargo in bed: wooden crate & barrel
+      this.addBox([1.26, 0.56, 1.16], [bedX - 0.08, 1.52, 0.12], this.material('#8a5832'));
+      this.addBox([1.28, 0.12, 1.18], [bedX - 0.08, 1.8, 0.12], this.material('#b8824f'));
       const barrel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.38, 0.38, 0.75, 8),
+        new THREE.CylinderGeometry(0.36, 0.36, 0.72, 10),
         this.material('#2d4052'),
       );
-      barrel.position.set(bedX + 0.65, 1.52, -0.6);
+      barrel.position.set(bedX + 0.62, 1.6, -0.58);
       this.body.add(barrel);
 
-      // Steel roll bar over cab with auxiliary spotlights
+      // Tubular steel roll bar over cab with 4 round spotlights
       for (const side of [-1, 1]) {
-        this.addBox([0.16, 0.9, 0.16], [-length * 0.13, 2.05, side * width * 0.35], darkTrimMat);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.95, 8), darkTrimMat);
+        leg.rotation.z = -0.22;
+        leg.position.set(-0.78, 2.02, side * 1.16);
+        this.body.add(leg);
       }
-      this.addBox([0.16, 0.16, width * 0.78], [-length * 0.13, 2.45, 0], darkTrimMat);
-      // 4 yellow spotlights on roll bar
+      const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.46, 8), darkTrimMat);
+      topBar.rotation.x = Math.PI / 2;
+      topBar.position.set(-0.68, 2.45, 0);
+      this.body.add(topBar);
       for (let s = -3; s <= 3; s += 2) {
-        this.addBox([0.2, 0.22, 0.22], [-length * 0.12, 2.62, s * 0.26], lightMat);
+        const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.18, 8), lightMat);
+        spot.rotation.z = Math.PI / 2;
+        spot.position.set(-0.66, 2.6, s * 0.27);
+        this.body.add(spot);
       }
 
       // Chunky all-terrain wheels
       for (const side of [-1, 1]) {
-        this.addWheel(wheelRadius, wheelWidth, length * 0.28, side * (width / 2 + 0.1), true, palette.wheel, '#8da372');
-        this.addWheel(wheelRadius, wheelWidth, -length * 0.28, side * (width / 2 + 0.1), false, palette.wheel, '#8da372');
+        this.addWheel(wheelRadius, wheelWidth, length * 0.28, side * (width / 2 + 0.04), true, palette.wheel, '#8da372');
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.28, side * (width / 2 + 0.04), false, palette.wheel, '#8da372');
       }
 
-      // Lights
+      // Swept headlights & taillights
       for (const side of [-1, 1]) {
-        this.addBox([0.18, 0.3, 0.42], [length / 2 - 0.02, 1.04, side * width * 0.3], lightMat, false);
-        const tail = this.addBox([0.18, 0.38, 0.3], [-length / 2 + 0.02, 1.1, side * width * 0.38], tailMat, false);
+        const head = this.addBox([0.3, 0.26, 0.44], [2.66, 1.06, side * 1.14], lightMat, false);
+        head.rotation.y = -side * 0.25;
+        const tail = this.addBox([0.2, 0.36, 0.3], [-2.68, 1.1, side * 1.28], tailMat, false);
+        tail.rotation.y = side * 0.2;
         this.brakeLights.push(tail);
       }
 
-      this.addNumber(number, length * 0.02, 2.23, 0, '#ffffff', width);
+      this.addNumber(number, -0.08, 2.22, 0, '#ffffff', width * 0.85);
       this.addFlames(-length / 2 - 0.15, 0);
 
     } else {
-      // KEPIK: Ultra-compact, rounded off-road buggy with exposed chunky tubular exoskeleton roll-cage, huge balloon tires, high-mount engine
+      // KEPIK: Proper open-wheel off-road dune buggy with tapered sculpted tub,
+      // exposed tubular suspension A-arms & coilovers, full exoskeleton roll-cage,
+      // roof light bar, and exposed rear engine with swept megaphone exhausts
       const length = 4.8;
       const width = 3.4;
       const wheelRadius = 0.88;
       const wheelWidth = 0.65;
 
-      // Base buggy tub
-      this.addBox([length * 0.88, 0.42, width * 0.85], [0, 0.65, 0], darkTrimMat, true, true);
-      this.addBox([length * 0.8, 0.44, width * 0.88], [0, 0.98, 0], bodyMat, true, true);
+      // Narrow sculpted skid-pan & chassis tub (leaves wheels exposed!)
+      this.addProfile(
+        [
+          [2.26, 0.68],
+          [1.92, 0.42],
+          [-2.08, 0.42],
+          [-2.32, 0.7],
+          [-2.18, 0.86],
+          [2.05, 0.86],
+        ],
+        1.78,
+        darkTrimMat,
+        0.08,
+      );
 
-      // Compact sloped nose & front bash guard
-      this.addBox([length * 0.3, 0.25, width * 0.65], [length * 0.32, 1.05, 0], bodyMat, true, true);
-      this.addBox([0.3, 0.45, width * 0.62], [length / 2 + 0.05, 0.85, 0], stripeMat); // Front bash bar
+      // Sculpted buggy body shell with sloped nose, open cockpit dip, and rear engine cowl
+      this.addProfile(
+        [
+          [2.12, 0.74],
+          [1.82, 1.04],
+          [0.72, 1.24],
+          [0.52, 0.94],
+          [-0.86, 0.94],
+          [-1.05, 1.26],
+          [-1.92, 1.18],
+          [-2.12, 0.82],
+          [-1.9, 0.68],
+          [1.92, 0.68],
+        ],
+        1.88,
+        bodyMat,
+        0.12,
+      );
 
-      // Open cockpit with exposed driver
-      this.addDriver(-0.05, 1.48, 0, '#f5ebd2', '#e03a3a', 1.05);
-
-      // Prominent tubular roll cage all around
+      // Tapered nose cone & front bash hoop (tubular, not boxy)
+      this.addProfile(
+        [
+          [2.32, 0.72],
+          [2.05, 1.0],
+          [0.95, 1.2],
+          [0.95, 0.72],
+        ],
+        1.22,
+        bodyMat,
+        0.1,
+      );
+      const bashTop = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.46, 8), stripeMat);
+      bashTop.rotation.x = Math.PI / 2;
+      bashTop.position.set(2.44, 0.92, 0);
+      this.body.add(bashTop);
       for (const side of [-1, 1]) {
-        // Front angled strut
-        const fStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6), stripeMat);
-        fStrut.rotation.z = -Math.PI / 4;
-        fStrut.position.set(0.65, 1.65, side * width * 0.36);
+        const bashLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.56, 8), stripeMat);
+        bashLeg.rotation.z = -0.52;
+        bashLeg.position.set(2.3, 0.72, side * 0.68);
+        this.body.add(bashLeg);
+
+        // Side tubular rock-sliders / nerf bars
+        const nerf = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.75, 8), darkTrimMat);
+        nerf.rotation.z = Math.PI / 2;
+        nerf.position.set(0, 0.56, side * 1.16);
+        this.body.add(nerf);
+      }
+
+      // Exposed suspension A-arms & angled coilover shocks to all 4 wheels
+      for (const xPos of [length * 0.29, -length * 0.29]) {
+        for (const side of [-1, 1]) {
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.92, 6), darkTrimMat);
+          arm.rotation.x = Math.PI / 2;
+          arm.position.set(xPos, 0.66, side * 1.26);
+          this.body.add(arm);
+
+          const shock = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.74, 8), stripeMat);
+          shock.rotation.x = side * 0.48;
+          shock.position.set(xPos, 0.98, side * 1.18);
+          this.body.add(shock);
+        }
+      }
+
+      // Open cockpit with exposed driver & racing seat
+      this.addBox([0.28, 0.65, 0.74], [-0.46, 1.24, 0], darkTrimMat);
+      this.addDriver(-0.08, 1.44, 0, '#f5ebd2', '#e03a3a', 1.02);
+
+      // Full tubular exoskeleton roll-cage
+      for (const side of [-1, 1]) {
+        const fStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.48, 8), stripeMat);
+        fStrut.rotation.z = -0.68;
+        fStrut.position.set(0.76, 1.66, side * 0.92);
         fStrut.castShadow = true;
         this.body.add(fStrut);
 
-        // Rear angled strut
-        const rStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.7, 6), stripeMat);
-        rStrut.rotation.z = Math.PI / 4.2;
-        rStrut.position.set(-0.75, 1.68, side * width * 0.36);
+        const rStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.54, 8), stripeMat);
+        rStrut.rotation.z = 0.62;
+        rStrut.position.set(-0.92, 1.66, side * 0.92);
         rStrut.castShadow = true;
         this.body.add(rStrut);
 
-        // Top horizontal rail
-        const tRail = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6), stripeMat);
-        tRail.rotation.x = Math.PI / 2;
-        tRail.rotation.y = Math.PI / 2;
-        tRail.position.set(-0.05, 2.24, side * width * 0.36);
+        const rearBrace = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 1.52, 8), stripeMat);
+        rearBrace.rotation.z = 0.92;
+        rearBrace.position.set(-1.58, 1.46, side * 0.78);
+        this.body.add(rearBrace);
+
+        const tRail = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.28, 8), stripeMat);
+        tRail.rotation.z = Math.PI / 2;
+        tRail.position.set(-0.08, 2.18, side * 0.92);
         this.body.add(tRail);
       }
-      // Cross bars over roof
-      this.addBox([0.16, 0.16, width * 0.76], [0.35, 2.24, 0], stripeMat);
-      this.addBox([0.16, 0.16, width * 0.76], [-0.45, 2.24, 0], stripeMat);
 
-      // High rear engine block with visible intake filter & exhaust header
-      this.addBox([1.1, 0.7, 1.3], [-length * 0.32, 1.35, 0], chromeMat);
-      // Twin high-rise exhausts
+      // Sleek aluminum buggy roof panel & cross-tubes
+      this.addProfile(
+        [
+          [0.48, 2.18],
+          [-0.08, 2.24],
+          [-0.64, 2.18],
+          [-0.64, 2.12],
+          [0.48, 2.12],
+        ],
+        1.72,
+        bodyMat,
+        0.04,
+      );
+
+      // Roof off-road light bar with 4 round rally pods
+      const lightBar = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.68, 8), darkTrimMat);
+      lightBar.rotation.x = Math.PI / 2;
+      lightBar.position.set(0.36, 2.28, 0);
+      this.body.add(lightBar);
+      for (let s = -3; s <= 3; s += 2) {
+        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.16, 8), lightMat);
+        pod.rotation.z = Math.PI / 2;
+        pod.position.set(0.4, 2.34, s * 0.22);
+        this.body.add(pod);
+      }
+
+      // Exposed rear engine block, intake filter cylinder & twin swept megaphone exhausts
+      const engineCore = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.78, 8), chromeMat);
+      engineCore.rotation.z = Math.PI / 2;
+      engineCore.position.set(-1.52, 1.24, 0);
+      this.body.add(engineCore);
+      const airFilter = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.36, 8), darkTrimMat);
+      airFilter.position.set(-1.32, 1.62, 0);
+      this.body.add(airFilter);
+
       for (const side of [-1, 1]) {
-        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 6), darkTrimMat);
-        pipe.position.set(-length * 0.42, 1.85, side * 0.42);
+        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.075, 0.88, 8), darkTrimMat);
+        pipe.rotation.z = 0.62;
+        pipe.position.set(-1.98, 1.54, side * 0.44);
         this.body.add(pipe);
       }
 
       // Massive chunky balloon buggy wheels
       for (const side of [-1, 1]) {
-        this.addWheel(wheelRadius, wheelWidth, length * 0.28, side * (width / 2 + 0.14), true, palette.wheel, palette.stripe);
-        this.addWheel(wheelRadius, wheelWidth, -length * 0.28, side * (width / 2 + 0.14), false, palette.wheel, palette.stripe);
+        this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.06), true, palette.wheel, palette.stripe);
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.06), false, palette.wheel, palette.stripe);
       }
 
-      // Round safari bug-eye headlights
+      // Round safari bug-eye headlights & round rear tail lights
       for (const side of [-1, 1]) {
-        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.25, 8), lightMat);
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.22, 10), lightMat);
         head.rotation.z = Math.PI / 2;
-        head.position.set(length * 0.42, 1.32, side * 0.72);
+        head.position.set(1.94, 1.18, side * 0.62);
         this.body.add(head);
 
-        const tail = this.addBox([0.16, 0.26, 0.32], [-length / 2 + 0.08, 1.15, side * 0.65], tailMat, false);
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 8), tailMat);
+        tail.rotation.z = Math.PI / 2;
+        tail.position.set(-2.14, 1.04, side * 0.62);
+        this.body.add(tail);
         this.brakeLights.push(tail);
       }
 
-      this.addNumber(number, -0.05, 2.28, 0, '#ffffff', width);
-      this.addFlames(-length / 2 - 0.2, 0);
+      this.addNumber(number, -0.08, 2.26, 0, '#15222a', 2.0);
+      this.addFlames(-length / 2 - 0.16, 0);
     }
   }
 
-  update(racer: RacerState, dt: number, interpX?: number, interpY?: number, interpAngle?: number): void {
+  update(
+    racer: RacerState,
+    dt: number,
+    interpX?: number,
+    interpY?: number,
+    interpAngle?: number,
+    offroad = false,
+  ): void {
     this.group.visible = true;
     const posX = interpX ?? racer.x;
     const posY = interpY ?? racer.y;
@@ -791,8 +1050,8 @@ export class CarView {
       );
     }
 
-    // Drift tire smoke
-    if (racer.drifting && speed > 35) {
+    // Drift tire smoke & offroad dirt dust
+    if ((offroad && speed > 18) || (racer.drifting && speed > 35)) {
       const puff = this.smokePuffs.find((p) => p.life <= 0);
       if (puff) {
         puff.life = puff.maxLife;
@@ -800,8 +1059,9 @@ export class CarView {
         puff.mesh.position.set(-1.05, 0.22, side);
         puff.mesh.scale.setScalar(0.75 + Math.random() * 0.35);
         puff.mesh.visible = true;
+        (puff.mesh.material as THREE.MeshBasicMaterial).color.setHex(offroad ? 0x8c6239 : 0xdedac8);
         puff.vx = -1.6 - Math.random() * 1.0;
-        puff.vy = 0.8 + Math.random() * 0.5;
+        puff.vy = (offroad ? 1.15 : 0.8) + Math.random() * 0.5;
         puff.vz = (Math.random() - 0.5) * 0.5;
       }
     }

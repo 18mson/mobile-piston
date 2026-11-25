@@ -50,7 +50,7 @@ export class NetRaceSync {
   }
 
   get currentCountdown(): number | null {
-    return this.latestSnapshot?.countdown ?? 3;
+    return this.latestSnapshot ? this.latestSnapshot.countdown : 3;
   }
 
   /**
