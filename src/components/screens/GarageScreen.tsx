@@ -41,6 +41,52 @@ export default function GarageScreen({
         </div>
 
         <div className="garage-layout">
+          <aside className="car-detail panel" aria-label={`Detail ${selected.name}`}>
+            <div className="car-detail-visual">
+              <CarThumb car={selected} scale={6} />
+            </div>
+
+            <div className="car-detail-info">
+              <div className="car-detail-heading">
+                <div>
+                  <span className="label">Mobil terpilih</span>
+                  <h3>{selected.name}</h3>
+                  <p className="car-kind">{selected.kind}</p>
+                </div>
+                <span className="car-number">#{1}</span>
+              </div>
+
+              <div className="color-picker" role="group" aria-label={`Variasi warna ${selected.name}`}>
+                <span className="label">Warna ({colorOptions[activeColorIndex]?.label ?? colorOptions[0].label})</span>
+                <div className="color-swatches">
+                  {colorOptions.map((option, index) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="color-swatch"
+                      data-active={index === activeColorIndex}
+                      aria-label={`Warna ${option.label}`}
+                      aria-pressed={index === activeColorIndex}
+                      onClick={() => onSelectColor(selectedCarId, index)}
+                      style={{
+                        background: `linear-gradient(135deg, ${option.palette.body} 62%, ${option.palette.stripe} 62%)`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <p className="car-blurb">{selected.blurb}</p>
+              <StatBars car={selected} />
+              <div className="car-detail-actions">
+                <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
+                  Pilih lintasan
+                </button>
+                <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
+              </div>
+            </div>
+          </aside>
+
           <div className="car-grid" role="group" aria-label="Daftar mobil">
             {CAR_ORDER.map((id) => {
               const colorIdx = selectedColors[id] ?? 0;
@@ -59,9 +105,6 @@ export default function GarageScreen({
                   onClick={() => onSelect(id)}
                   data-nav
                 >
-                  <span className="car-card-visual">
-                    <CarThumb car={car} scale={4} />
-                  </span>
                   <span className="car-card-top">
                     <strong>{car.name}</strong>
                     <span>{car.kind}</span>
@@ -72,47 +115,6 @@ export default function GarageScreen({
               );
             })}
           </div>
-
-          <aside className="car-detail panel" aria-label={`Detail ${selected.name}`}>
-            <span className="label">Mobil terpilih</span>
-            <div className="car-detail-heading">
-              <div>
-                <h3>{selected.name}</h3>
-                <p className="car-kind">{selected.kind}</p>
-              </div>
-              <span className="car-number">#{1}</span>
-            </div>
-            <div className="car-detail-visual">
-              <CarThumb car={selected} scale={6} />
-            </div>
-
-            <div className="color-picker" role="group" aria-label={`Variasi warna ${selected.name}`}>
-              <span className="label">Warna ({colorOptions[activeColorIndex]?.label ?? colorOptions[0].label})</span>
-              <div className="color-swatches">
-                {colorOptions.map((option, index) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className="color-swatch"
-                    data-active={index === activeColorIndex}
-                    aria-label={`Warna ${option.label}`}
-                    aria-pressed={index === activeColorIndex}
-                    onClick={() => onSelectColor(selectedCarId, index)}
-                    style={{
-                      background: `linear-gradient(135deg, ${option.palette.body} 62%, ${option.palette.stripe} 62%)`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <p className="car-blurb">{selected.blurb}</p>
-            <StatBars car={selected} />
-            <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
-              Pilih lintasan
-            </button>
-            <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
-          </aside>
         </div>
       </div>
     </section>
