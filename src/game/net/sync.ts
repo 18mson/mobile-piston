@@ -12,7 +12,7 @@ import { shortestAngle } from '../utils';
 
 const INTERP_DELAY_MS = 85;
 const MAX_PENDING_INPUTS = 180;
-const RECONCILE_THRESHOLD = 0.6;
+const RECONCILE_THRESHOLD = 0.001;
 
 interface PendingInput {
   seq: number;
@@ -102,8 +102,8 @@ export class NetRaceSync {
     if (!serverLocal) return;
 
     const player = this.sim.player;
-    const oldX = player.x;
-    const oldY = player.y;
+    const oldVisualX = player.x + this.errorOffsetX;
+    const oldVisualY = player.y + this.errorOffsetY;
 
     // Reset local player to authoritative server state
     this.copyNetToRacer(serverLocal, player);
@@ -116,9 +116,14 @@ export class NetRaceSync {
       }
     }
 
-    // Smooth visual error offset if reconciliation shifted position
-    const dx = oldX - player.x;
-    const dy = oldY - player.y;
+    // Maintain continuous prevX/prevY for sub-frame alpha interpolation
+    player.prevX = player.x - player.vx * (1 / 120);
+    player.prevY = player.y - player.vy * (1 / 120);
+    player.prevAngle = player.angle;
+
+    // Absorb any position difference into visual offset so the car never pops/jitters
+    const dx = oldVisualX - player.x;
+    const dy = oldVisualY - player.y;
     const err = Math.hypot(dx, dy);
     if (err > RECONCILE_THRESHOLD && err < 60) {
       this.errorOffsetX = dx;

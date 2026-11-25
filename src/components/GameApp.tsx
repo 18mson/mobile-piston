@@ -125,7 +125,9 @@ export default function GameApp() {
       setCameraMode(loaded.cameraMode);
     }
     const touchCapable =
-      window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      window.matchMedia('(pointer: coarse)').matches ||
+      navigator.maxTouchPoints > 0 ||
+      'ontouchstart' in window;
     setIsTouch(touchCapable);
 
     const canvas = canvasRef.current;
@@ -219,9 +221,42 @@ export default function GameApp() {
     };
   }, []);
 
+  const enterFullscreenLandscape = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      // Fullscreen may be unsupported on some mobile browsers
+    }
+    try {
+      const orientation = window.screen?.orientation as ScreenOrientation & {
+        lock?: (mode: string) => Promise<void>;
+      };
+      if (orientation?.lock) {
+        await orientation.lock('landscape');
+      }
+    } catch {
+      // Orientation lock may not be permitted outside fullscreen
+    }
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // ignore
+      }
+    } else {
+      await enterFullscreenLandscape();
+    }
+  }, [enterFullscreenLandscape]);
+
   const startRace = useCallback((carId?: CarId) => {
     const engine = engineRef.current;
     if (!engine) return;
+    if (isTouch) void enterFullscreenLandscape();
     const id = carId ?? saveRef.current.selectedCarId;
     const record = saveRef.current.bestLapMs[saveRef.current.selectedTrackId] ?? null;
     const savedCam = saveRef.current.cameraMode ?? 'top';
@@ -244,6 +279,7 @@ export default function GameApp() {
   const startExplore = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
+    if (isTouch) void enterFullscreenLandscape();
     const savedCam = saveRef.current.cameraMode ?? 'top';
     setSnapshot(null);
     setResults(null);
@@ -361,6 +397,7 @@ export default function GameApp() {
       onRaceStarted: (payload) => {
         const engine = engineRef.current;
         if (!engine) return;
+        if (isTouch) void enterFullscreenLandscape();
         const savedCam = saveRef.current.cameraMode ?? 'top';
         const track = getTrack(payload.trackId);
         setOnlineTrackId(payload.trackId);
@@ -426,7 +463,7 @@ export default function GameApp() {
   const showFooter = screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
 
   return (
-    <div className="app-shell" data-screen={screen}>
+    <div className="app-shell" data-screen={screen} data-touch={isTouch ? 'true' : 'false'}>
       <h1 className="sr-only">Mobile Piston, balapan mobil mini di Teluk Sore</h1>
 
       <header className="topbar" hidden={!showTopBar}>
@@ -551,6 +588,7 @@ export default function GameApp() {
                   if (next) setCameraMode(next);
                 }}
                 onResetCar={exploreScreen || onlineScreen ? undefined : () => engineRef.current?.resetCar()}
+                onToggleFullscreen={toggleFullscreen}
                 cameraMode={cameraMode}
                 showHint={showHint}
                 isOnline={onlineScreen}

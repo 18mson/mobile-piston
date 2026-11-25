@@ -1838,19 +1838,26 @@ kbd {
     margin-left: auto;
   }
 
-  .hud-bottom-left,
+  .hud-bottom-left {
+    top: max(62px, calc(env(safe-area-inset-top) + 54px));
+    bottom: auto;
+    left: max(12px, env(safe-area-inset-left));
+  }
+
   .hud-bottom-right {
-    bottom: max(86px, calc(env(safe-area-inset-bottom) + 74px));
+    top: max(68px, calc(env(safe-area-inset-top) + 58px));
+    bottom: auto;
+    right: max(12px, env(safe-area-inset-right));
   }
 
   .hud-map-radar .minimap {
-    width: 96px;
-    height: 96px;
+    width: 84px;
+    height: 84px;
   }
 
   .hud-speed-dial {
-    width: 82px;
-    height: 82px;
+    width: 76px;
+    height: 76px;
   }
 
   .hud-speed-left {
@@ -1858,11 +1865,11 @@ kbd {
   }
 
   .dial-number {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .hud-nitro-compact {
-    width: 92px;
+    width: 86px;
   }
 
   .race-hint {
@@ -1900,9 +1907,30 @@ kbd {
 }
 
 @media (pointer: coarse) {
-  .hud-nitro {
-    bottom: calc(104px + env(safe-area-inset-bottom));
-    width: min(270px, calc(100vw - 32px));
+  .app-shell[data-touch='true'] .hud-bottom-left {
+    top: max(62px, calc(env(safe-area-inset-top) + 54px));
+    bottom: auto;
+    left: max(12px, env(safe-area-inset-left));
+  }
+
+  .app-shell[data-touch='true'] .hud-bottom-right {
+    top: max(68px, calc(env(safe-area-inset-top) + 58px));
+    bottom: auto;
+    right: max(12px, env(safe-area-inset-right));
+  }
+
+  .app-shell[data-touch='true'] .hud-map-radar .minimap {
+    width: 84px;
+    height: 84px;
+  }
+
+  .app-shell[data-touch='true'] .hud-speed-dial {
+    width: 76px;
+    height: 76px;
+  }
+
+  .app-shell[data-touch='true'] .hud-speed-left {
+    display: none;
   }
 }
 

@@ -10,6 +10,7 @@ export default function RaceHud({
   onPause,
   onCycleCamera,
   onResetCar,
+  onToggleFullscreen,
   cameraMode,
   showHint,
   isOnline,
@@ -20,6 +21,7 @@ export default function RaceHud({
   onPause: () => void;
   onCycleCamera: () => void;
   onResetCar?: () => void;
+  onToggleFullscreen?: () => void;
   cameraMode?: string;
   showHint: boolean;
   isOnline?: boolean;
@@ -101,6 +103,16 @@ export default function RaceHud({
         >
           <span aria-hidden="true">{cameraLabel}</span>
         </button>
+        {onToggleFullscreen && (
+          <button
+            className="btn btn-icon fullscreen-button"
+            type="button"
+            onClick={onToggleFullscreen}
+            aria-label="Layar penuh otomatis lanskap"
+          >
+            <span aria-hidden="true">FULL</span>
+          </button>
+        )}
         {!isExplore && onResetCar && (
           <button
             className="btn btn-icon reset-button"

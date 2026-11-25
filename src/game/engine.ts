@@ -472,7 +472,7 @@ export class GameEngine {
     }
 
     this.netInputTimer += dt;
-    if (lastSeq > 0 && this.netInputTimer >= 1 / 30) {
+    if (lastSeq > 0 && this.netInputTimer >= 1 / 60) {
       this.netInputTimer = 0;
       this.netClient.sendInput(lastSeq, playerInput);
     }
