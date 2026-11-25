@@ -66,4 +66,27 @@ describe('race outcomes', () => {
     expect(race.player.startedLap).toBe(true);
     expect(race.player.lap).toBe(0);
   });
+
+  it('supports explore mode without resets, wrong-way flags, or race finish', () => {
+    const sample = TELUK_SORE.samples[20];
+    const race = new RaceSim(TELUK_SORE, 'bagas', {
+      explore: true,
+      initialPose: {
+        x: sample.x,
+        y: sample.y,
+        angle: Math.atan2(sample.ty, sample.tx) + Math.PI,
+        vx: 0,
+        vy: 0,
+        s: sample.dist,
+      },
+    });
+    expect(race.racers).toHaveLength(1);
+    for (let i = 0; i < 120 * 4; i += 1) {
+      race.update(1 / 120, { steer: 0, brake: false, nitro: false, pause: false, gas: false });
+    }
+    expect(race.player.wrongWay).toBe(false);
+    expect(race.player.stuckTime).toBe(0);
+    expect(race.playerFinished).toBe(false);
+    expect(race.snapshot('explore', null).mode).toBe('explore');
+  });
 });

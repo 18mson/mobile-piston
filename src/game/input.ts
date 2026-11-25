@@ -123,6 +123,7 @@ export class InputManager {
     const brake =
       this.keys.has('ArrowDown') ||
       this.keys.has('KeyS') ||
+      this.keys.has('Space') ||
       this.touch.brake ||
       this.gamepadBrake;
 
@@ -145,7 +146,8 @@ export class InputManager {
       steer: clamp(this.steer, -1, 1),
       brake,
       nitro:
-        this.keys.has('Space') ||
+        this.keys.has('ShiftLeft') ||
+        this.keys.has('ShiftRight') ||
         this.touch.nitro ||
         this.gamepadNitro,
       pause: false,

@@ -32,8 +32,8 @@ Pemain dapat mengendalikan gas secara manual (W / panah atas) atau membiarkan ga
 | --- | --- | --- | --- |
 | Setir | A / D atau panah kiri / kanan | tombol kiri dan kanan | stik kiri atau D-pad |
 | Gas / akselerasi | W atau panah atas (atau otomatis) | otomatis | RT atau A |
-| Rem / mundur | S atau panah bawah | tombol rem | LT atau B |
-| Nitro | Space | tombol nitro | RT atau A |
+| Rem / mundur | Space, S, atau panah bawah | tombol rem | LT atau B |
+| Nitro | Shift | tombol nitro | RT atau A |
 | Kamera | V | tombol KAM di HUD | Y |
 | Reset mobil | R | tombol RESET di HUD | Select / D-pad Atas |
 | Jeda | Esc atau P | tombol jeda di HUD | Start |
@@ -57,7 +57,20 @@ Menu dapat dioperasikan dengan keyboard dan gamepad: D-pad memindah fokus, A mem
 - UI responsif untuk desktop, ponsel lanskap, dan ponsel potret.
 - Pengaturan suara, mobil, lintasan terpilih, dan rekor per lintasan disimpan di perangkat dengan key `mobile-piston.save.v2`. Save v1 lama dimigrasikan otomatis.
 
-Career, upgrade, multiplayer, dan lintasan ketiga belum termasuk.
+## Multiplayer Online (WebSocket Server + Render)
+
+Mobile Piston mendukung balapan multiplayer online hingga 6 pemain (sisa slot otomatis diisi Bot AI) dengan *full-contact collision*, prediksi lokal, interpolasi lawan, serta *auto-reconnect* (grace window 15 detik).
+
+Menjalankan server multiplayer secara lokal:
+
+```bash
+npm run server
+```
+
+Deploy gratis di **Render.com** (Blueprint [render.yaml](render.yaml), region Singapore):
+1. Hubungkan repository ke Render sebagai **Web Service** (`npm install` build command, `npm run server` start command, health check `/health`).
+2. Salin URL WebSocket dari Render (mis. `wss://mobile-piston-ws.onrender.com`).
+3. Set environment variable `NEXT_PUBLIC_WS_URL=wss://mobile-piston-ws.onrender.com` di project frontend (Vercel / Next.js).
 
 ## Skrip
 

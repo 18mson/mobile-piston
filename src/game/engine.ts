@@ -1,18 +1,21 @@
-import type { CarId, RaceResults, RaceSnapshot, Track } from './types';
-import { RaceSim } from './race';
+import type { CarId, CarPalette, RaceResults, RaceSnapshot, Track, WorldSnapshot } from './types';
+import { RaceSim, type RaceParticipant } from './race';
 import { Renderer3D, type CameraMode } from './render3d/renderer3d';
 import { InputManager } from './input';
 import { GameAudio } from './audio';
 import { clamp } from './utils';
 import { computeAiInput } from './ai';
+import { NetRaceSync } from './net/sync';
+import type { NetClient } from './net/client';
 
-type EngineMode = 'attract' | 'countdown' | 'racing' | 'paused' | 'finished' | 'error';
+type EngineMode = 'attract' | 'countdown' | 'racing' | 'explore' | 'online' | 'paused' | 'finished' | 'error';
 
 export interface EngineCallbacks {
   onReady: () => void;
   onSnapshot: (snapshot: RaceSnapshot) => void;
   onFinished: (results: RaceResults) => void;
   onPause: () => void;
+  onExitExplore?: () => void;
   onError: (message: string) => void;
   onCameraChange?: (mode: CameraMode) => void;
 }
@@ -43,6 +46,9 @@ export class GameEngine {
   private previousBestLapMs: number | null = null;
   private impactSoundCooldown = 0;
   private motionQuery: MediaQueryList | null = null;
+  private onlineSync: NetRaceSync | null = null;
+  private netClient: NetClient | null = null;
+  private netInputTimer = 0;
 
   constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks, track: Track) {
     this.callbacks = callbacks;
@@ -118,13 +124,13 @@ export class GameEngine {
     if (pressed) void this.audio.unlock();
   }
 
-  startRace(carId: CarId, previousBestLapMs: number | null): void {
+  startRace(carId: CarId, previousBestLapMs: number | null, cameraMode?: CameraMode, playerPalette?: CarPalette): void {
     if (this.destroyed) return;
     void this.audio.unlock();
     this.selectedCar = carId;
     this.previousBestLapMs = previousBestLapMs;
-    this.race = new RaceSim(this.track, carId);
-    this.renderer.setRacers(this.race.racers);
+    this.race = new RaceSim(this.track, carId, playerPalette);
+    this.renderer.setRacers(this.race.racers, cameraMode);
     this.renderer.resetMarks();
     this.mode = 'countdown';
     this.countdownRemaining = 3;
@@ -135,6 +141,74 @@ export class GameEngine {
     this.input.clearTouch();
     this.audio.beep(420, 0.09, 0.12);
     this.emitSnapshot();
+  }
+
+  startExplore(cameraMode?: CameraMode): void {
+    if (this.destroyed) return;
+    void this.audio.unlock();
+    const lead = this.renderer.getAttractLeadState(this.visualTime);
+    this.selectedCar = lead.carId;
+    this.race = new RaceSim(this.track, lead.carId, {
+      playerPalette: lead.palette,
+      explore: true,
+      initialPose: lead,
+    });
+    this.renderer.setRacers(this.race.racers, cameraMode, true);
+    this.renderer.resetMarks();
+    this.mode = 'explore';
+    this.onlineSync = null;
+    this.netClient = null;
+    this.accumulator = 0;
+    this.snapshotTimer = 0;
+    this.input.clearTouch();
+    this.emitSnapshot();
+  }
+
+  startOnlineRace(
+    track: Track,
+    participants: RaceParticipant[],
+    localPlayerId: string,
+    client: NetClient,
+    cameraMode?: CameraMode,
+  ): void {
+    if (this.destroyed) return;
+    void this.audio.unlock();
+    if (track.id !== this.track.id) {
+      this.track = track;
+      this.renderer.dispose();
+      this.renderer = new Renderer3D(this.canvas, track);
+      this.renderer.setReducedMotion(this.reducedMotion);
+    }
+    this.onlineSync = new NetRaceSync(this.track, participants, localPlayerId);
+    this.netClient = client;
+    this.race = this.onlineSync.sim;
+    this.selectedCar = this.race.player.carId;
+    this.renderer.setRacers(this.race.racers, cameraMode, false);
+    this.renderer.resetMarks();
+    this.mode = 'online';
+    this.accumulator = 0;
+    this.snapshotTimer = 0;
+    this.netInputTimer = 0;
+    this.input.clearTouch();
+    this.audio.beep(420, 0.09, 0.12);
+    this.callbacks.onSnapshot(this.onlineSync.toHudSnapshot());
+  }
+
+  applyOnlineSnapshot(snapshot: WorldSnapshot): void {
+    if (!this.onlineSync || this.mode !== 'online') return;
+    const prevMode = this.onlineSync.currentMode;
+    this.onlineSync.applyServerSnapshot(snapshot);
+    if (prevMode === 'countdown' && snapshot.mode === 'racing') {
+      this.goTimer = 0.78;
+      this.audio.beep(980, 0.2, 0.18);
+    }
+  }
+
+  finishOnlineRace(results: RaceResults): void {
+    if (this.mode !== 'online') return;
+    this.mode = 'finished';
+    this.audio.updateEngine(0, 1, false, false, false);
+    this.callbacks.onFinished(results);
   }
 
   pause(): void {
@@ -232,10 +306,12 @@ export class GameEngine {
       'KeyV',
       'KeyR',
     ];
-    if (gameKeys.includes(event.code) && (this.mode === 'racing' || this.mode === 'countdown')) {
+    const isDriving =
+      this.mode === 'racing' || this.mode === 'countdown' || this.mode === 'explore' || this.mode === 'online';
+    if (gameKeys.includes(event.code) && isDriving) {
       event.preventDefault();
     }
-    if (event.code === 'KeyV' && (this.mode === 'racing' || this.mode === 'countdown')) {
+    if (event.code === 'KeyV' && isDriving) {
       if (!event.repeat) {
         const next = this.renderer.cycleCamera();
         this.callbacks.onCameraChange?.(next);
@@ -248,12 +324,17 @@ export class GameEngine {
     }
     if (event.code === 'Escape' || event.code === 'KeyP') {
       if (!event.repeat) {
-        if (this.mode === 'racing' || this.mode === 'countdown') this.pause();
+        if (this.mode === 'explore' && event.code === 'Escape') {
+          this.quitToTitle();
+          this.callbacks.onExitExplore?.();
+        } else if (this.mode === 'racing' || this.mode === 'countdown') {
+          this.pause();
+        }
       }
       return;
     }
     this.input.setKey(event.code, true, event.repeat);
-    if (this.mode === 'racing' || this.mode === 'countdown') void this.audio.unlock();
+    if (isDriving) void this.audio.unlock();
   };
 
   private handleKeyUp = (event: KeyboardEvent): void => {
@@ -282,7 +363,7 @@ export class GameEngine {
       if (this.input.consumePauseRequest()) {
         if (this.mode === 'racing' || this.mode === 'countdown') this.pause();
       }
-      if (this.input.consumeCameraRequest() && (this.mode === 'racing' || this.mode === 'countdown')) {
+      if (this.input.consumeCameraRequest() && (this.mode === 'racing' || this.mode === 'countdown' || this.mode === 'explore' || this.mode === 'online')) {
         const next = this.renderer.cycleCamera();
         this.callbacks.onCameraChange?.(next);
       }
@@ -293,8 +374,10 @@ export class GameEngine {
         this.renderer.renderAttract(this.visualTime, frameDt);
       } else if (this.mode === 'countdown') {
         this.updateCountdown(frameDt);
-      } else if (this.mode === 'racing') {
+      } else if (this.mode === 'racing' || this.mode === 'explore') {
         this.updateRace(frameDt);
+      } else if (this.mode === 'online') {
+        this.updateOnline(frameDt);
       } else if (this.mode === 'paused' || this.mode === 'finished') {
         this.renderCurrentFrame(0);
       }
@@ -371,6 +454,61 @@ export class GameEngine {
     }
   }
 
+  private updateOnline(dt: number): void {
+    if (!this.onlineSync || !this.netClient) return;
+    this.goTimer = Math.max(0, this.goTimer - dt);
+    this.accumulator += dt;
+    const playerInput = this.input.getInput();
+
+    let lastSeq = 0;
+    let steps = 0;
+    while (this.accumulator >= FIXED_STEP && steps < 16) {
+      lastSeq = this.onlineSync.predictLocal(playerInput, FIXED_STEP);
+      this.accumulator -= FIXED_STEP;
+      steps += 1;
+    }
+
+    this.netInputTimer += dt;
+    if (lastSeq > 0 && this.netInputTimer >= 1 / 30) {
+      this.netInputTimer = 0;
+      this.netClient.sendInput(lastSeq, playerInput);
+    }
+
+    this.onlineSync.updateVisuals(dt, Date.now());
+    const renderPlayer = this.onlineSync.getRenderPlayer();
+
+    this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
+    if (renderPlayer.impact > 0.34 && this.impactSoundCooldown <= 0) {
+      this.audio.impact(renderPlayer.impact);
+      this.impactSoundCooldown = 0.16;
+    }
+    this.audio.updateEngine(
+      Math.hypot(renderPlayer.vx, renderPlayer.vy),
+      renderPlayer.carId === 'bagas' ? 207 : 186,
+      renderPlayer.drifting,
+      renderPlayer.nitroActive,
+      this.onlineSync.currentMode === 'racing',
+    );
+
+    const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
+    const snapshotMode = this.onlineSync.currentMode === 'countdown' ? 'countdown' : 'racing';
+    this.renderer.renderRace(
+      this.onlineSync.sim.racers,
+      renderPlayer,
+      this.visualTime,
+      dt,
+      renderPlayer.impact,
+      snapshotMode,
+      alpha,
+    );
+
+    this.snapshotTimer += dt;
+    if (this.snapshotTimer >= 0.075) {
+      this.snapshotTimer = 0;
+      this.callbacks.onSnapshot(this.onlineSync.toHudSnapshot());
+    }
+  }
+
   private finishRace(): void {
     if (!this.race) return;
     this.race.completeRace();
@@ -413,7 +551,12 @@ export class GameEngine {
         : this.mode === 'racing' && this.goTimer > 0
           ? 0
           : null;
-    this.callbacks.onSnapshot(this.race.snapshot(this.mode === 'countdown' ? 'countdown' : 'racing', countdown));
+    this.callbacks.onSnapshot(
+      this.race.snapshot(
+        this.mode === 'countdown' ? 'countdown' : this.mode === 'explore' ? 'explore' : 'racing',
+        countdown,
+      ),
+    );
   }
 
 }

@@ -99,6 +99,7 @@ export function stepRacer(
   const isBraking = Boolean(input.brake && !racer.finished);
   const isCoasting = input.gas === false && !isBraking && !racer.finished;
   const onThrottle = !isBraking && !isCoasting && !racer.finished;
+  const brakeWhileThrottle = isBraking && input.gas !== false;
 
   // 1. Car-local velocity (forward / lateral) in the current heading
   const cosA0 = Math.cos(racer.angle);
@@ -116,9 +117,12 @@ export function stepRacer(
 
   if (isBraking) {
     if (forward > 0) {
-      forward = Math.max(0, forward - 390 * dt);
-    } else {
-      forward = Math.max(-56, forward - 170 * dt);
+      // Progressive braking: gentler deceleration when gas is still held (trail-braking)
+      const brakeDecel = brakeWhileThrottle ? 135 : 210;
+      const minFloor = brakeWhileThrottle ? 18 : 0;
+      forward = Math.max(minFloor, forward - brakeDecel * dt);
+    } else if (!brakeWhileThrottle) {
+      forward = Math.max(-56, forward - 140 * dt);
     }
   } else if (isCoasting) {
     forward *= 1 - 0.55 * dt;

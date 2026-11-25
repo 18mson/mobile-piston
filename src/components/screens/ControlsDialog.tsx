@@ -59,11 +59,11 @@ export default function ControlsDialog({
             </div>
             <div>
               <dt>Rem / mundur</dt>
-              <dd><kbd>S</kbd> atau panah bawah</dd>
+              <dd><kbd>Space</kbd>, <kbd>S</kbd> atau panah bawah</dd>
             </div>
             <div>
               <dt>Nitro</dt>
-              <dd><kbd>Space</kbd></dd>
+              <dd><kbd>Shift</kbd></dd>
             </div>
             <div>
               <dt>Kamera</dt>

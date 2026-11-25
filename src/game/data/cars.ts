@@ -1,4 +1,4 @@
-import type { CarId, CarSpec } from '../types';
+import type { CarColorOption, CarId, CarPalette, CarSpec } from '../types';
 
 export const CARS: Record<CarId, CarSpec> = {
   sirip: {
@@ -147,8 +147,88 @@ export const AI_LIVERIES: {
   },
 ];
 
+export const CAR_COLORS: Record<CarId, CarColorOption[]> = {
+  sirip: [
+    { id: 'coral', label: 'Koral Api', palette: CARS.sirip.palette },
+    {
+      id: 'ocean',
+      label: 'Biru Samudra',
+      palette: { body: '#2f7de1', shade: '#1b4f9c', highlight: '#82beff', stripe: '#f7e6c4', glass: '#223447', wheel: '#181b22' },
+    },
+    {
+      id: 'rally',
+      label: 'Putih Reli',
+      palette: { body: '#eef2f6', shade: '#9ca8b4', highlight: '#ffffff', stripe: '#e64833', glass: '#223447', wheel: '#181b22' },
+    },
+    {
+      id: 'taxi',
+      label: 'Kuning Taksi',
+      palette: { body: '#f2b938', shade: '#b57b1b', highlight: '#ffe88a', stripe: '#1d242b', glass: '#223447', wheel: '#181b22' },
+    },
+  ],
+  bagas: [
+    { id: 'amber', label: 'Emas Gurun', palette: CARS.bagas.palette },
+    {
+      id: 'crimson',
+      label: 'Merah Bara',
+      palette: { body: '#d93829', shade: '#8d1d18', highlight: '#ff8a73', stripe: '#f5f0e1', glass: '#243b47', wheel: '#17191f' },
+    },
+    {
+      id: 'carbon',
+      label: 'Hitam Karbon',
+      palette: { body: '#2a313a', shade: '#161a20', highlight: '#687687', stripe: '#ff8f3d', glass: '#243b47', wheel: '#17191f' },
+    },
+    {
+      id: 'violet',
+      label: 'Ungu Malam',
+      palette: { body: '#7b4bc4', shade: '#4c2985', highlight: '#ba92ff', stripe: '#f2d06b', glass: '#243b47', wheel: '#17191f' },
+    },
+  ],
+  okra: [
+    { id: 'teal', label: 'Toska Pantai', palette: CARS.okra.palette },
+    {
+      id: 'forest',
+      label: 'Hijau Rimba',
+      palette: { body: '#3f7d47', shade: '#244e2a', highlight: '#7dc485', stripe: '#e8d49b', glass: '#203843', wheel: '#171b20' },
+    },
+    {
+      id: 'steel',
+      label: 'Biru Baja',
+      palette: { body: '#4a6b8a', shade: '#2c445c', highlight: '#8ab1d6', stripe: '#ff9447', glass: '#203843', wheel: '#171b20' },
+    },
+    {
+      id: 'terracotta',
+      label: 'Merah Bata',
+      palette: { body: '#b84a39', shade: '#782b20', highlight: '#e68c7d', stripe: '#f2e5cb', glass: '#203843', wheel: '#171b20' },
+    },
+  ],
+  kepik: [
+    { id: 'lime', label: 'Lime Segar', palette: CARS.kepik.palette },
+    {
+      id: 'flamingo',
+      label: 'Pink Flamingo',
+      palette: { body: '#d95b96', shade: '#8f2d5e', highlight: '#ff9ec9', stripe: '#ffffff', glass: '#23343b', wheel: '#191b1f' },
+    },
+    {
+      id: 'cyan',
+      label: 'Sian Elektrik',
+      palette: { body: '#2eb8d9', shade: '#17758f', highlight: '#8be8ff', stripe: '#1b252e', glass: '#23343b', wheel: '#191b1f' },
+    },
+    {
+      id: 'tangerine',
+      label: 'Oranye Jeruk',
+      palette: { body: '#f07829', shade: '#a64514', highlight: '#ffb87a', stripe: '#fff3cc', glass: '#23343b', wheel: '#191b1f' },
+    },
+  ],
+};
+
 export function getCar(id: CarId): CarSpec {
   return CARS[id];
+}
+
+export function getCarPalette(id: CarId, colorIndex = 0): CarPalette {
+  const options = CAR_COLORS[id];
+  return options[colorIndex]?.palette ?? CARS[id].palette;
 }
 
 export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip'): number {

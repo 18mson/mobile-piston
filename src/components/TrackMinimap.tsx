@@ -1,10 +1,15 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { RaceSnapshot } from '../game/types';
-import type { Track } from '../game/types';
+import type { RaceSnapshot, Track } from '../game/types';
 
-export default function TrackMinimap({ snapshot, track }: { snapshot: RaceSnapshot | null; track: Track }) {
+export default function TrackMinimap({
+  snapshot,
+  track,
+}: {
+  snapshot: RaceSnapshot | null;
+  track: Track;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -17,105 +22,178 @@ export default function TrackMinimap({ snapshot, track }: { snapshot: RaceSnapsh
     ctx.clearRect(0, 0, width, height);
     ctx.imageSmoothingEnabled = false;
 
-    const padding = 7;
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (const sample of track.samples) {
-      minX = Math.min(minX, sample.x);
-      maxX = Math.max(maxX, sample.x);
-      minY = Math.min(minY, sample.y);
-      maxY = Math.max(maxY, sample.y);
-    }
-    const margin = 38;
-    minX -= margin;
-    maxX += margin;
-    minY -= margin;
-    maxY += margin;
-    const scale = Math.min((width - padding * 2) / (maxX - minX), (height - padding * 2) / (maxY - minY));
-    const offsetX = (width - (maxX - minX) * scale) / 2 - minX * scale;
-    const offsetY = (height - (maxY - minY) * scale) / 2 - minY * scale;
+    const cx = width / 2;
+    const cy = height / 2;
+    const radarRadius = Math.min(width, height) / 2 - 4;
 
-    const buildPath = () => {
-      ctx.beginPath();
-      for (let i = 0; i < track.samples.length; i += 4) {
-        const sample = track.samples[i];
-        const x = offsetX + sample.x * scale;
-        const y = offsetY + sample.y * scale;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+    const playerRacer = snapshot?.racers.find((r) => r.isPlayer);
+    const px = snapshot?.playerX ?? playerRacer?.x ?? track.startPoint.x;
+    const py = snapshot?.playerY ?? playerRacer?.y ?? track.startPoint.y;
+    const pAngle = snapshot?.playerAngle ?? 0;
+
+    // Dynamic rotation: car heading always points straight UP (-Y)
+    const rot = -pAngle - Math.PI / 2;
+    const cosR = Math.cos(rot);
+    const sinR = Math.sin(rot);
+    // Zoomed radius: ~220 world units around player
+    const viewRange = 220;
+    const scale = radarRadius / viewRange;
+
+    // 1. Radar background with circular clipping (semi-transparent so 3D world peeks through)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radarRadius, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.fillStyle = 'rgba(10, 20, 29, 0.42)';
+    ctx.fillRect(0, 0, width, height);
+
+    // Range rings & crosshairs
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radarRadius * 0.52, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx - radarRadius, cy);
+    ctx.lineTo(cx + radarRadius, cy);
+    ctx.moveTo(cx, cy - radarRadius);
+    ctx.lineTo(cx, cy + radarRadius);
+    ctx.stroke();
+
+    // 2. Local track ribbon segments within radar range
+    const maxRange = viewRange * 1.35;
+    const segments: { sx: number; sy: number }[][] = [];
+    let currentSeg: { sx: number; sy: number }[] = [];
+
+    const sampleCount = track.samples.length;
+    for (let i = 0; i <= sampleCount; i += 1) {
+      const sample = track.samples[i % sampleCount];
+      const dx = sample.x - px;
+      const dy = sample.y - py;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist <= maxRange) {
+        const rx = dx * cosR - dy * sinR;
+        const ry = dx * sinR + dy * cosR;
+        currentSeg.push({ sx: cx + rx * scale, sy: cy + ry * scale });
+      } else {
+        if (currentSeg.length > 1) {
+          segments.push(currentSeg);
+        }
+        currentSeg = [];
       }
-      ctx.closePath();
-    };
+    }
+    if (currentSeg.length > 1) {
+      segments.push(currentSeg);
+    }
 
-    // Layer 1: Road shoulder / dark border
-    ctx.strokeStyle = '#121e27';
-    ctx.lineWidth = 7;
+    // Outer road shoulder / crisp dark outline for high contrast over terrain
+    ctx.strokeStyle = 'rgba(12, 22, 30, 0.88)';
+    ctx.lineWidth = 14;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    buildPath();
-    ctx.stroke();
+    for (const seg of segments) {
+      ctx.beginPath();
+      seg.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.sx, pt.sy) : ctx.lineTo(pt.sx, pt.sy)));
+      ctx.stroke();
+    }
 
-    // Layer 2: Asphalt surface
-    ctx.strokeStyle = '#2d3f4d';
-    ctx.lineWidth = 4.5;
-    buildPath();
-    ctx.stroke();
+    // Asphalt surface
+    ctx.strokeStyle = 'rgba(54, 78, 96, 0.92)';
+    ctx.lineWidth = 9.5;
+    for (const seg of segments) {
+      ctx.beginPath();
+      seg.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.sx, pt.sy) : ctx.lineTo(pt.sx, pt.sy)));
+      ctx.stroke();
+    }
 
-    // Layer 3: Crisp high-contrast centerline
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1.0;
-    buildPath();
-    ctx.stroke();
+    // High-visibility centerline
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 1.6;
+    for (const seg of segments) {
+      ctx.beginPath();
+      seg.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.sx, pt.sy) : ctx.lineTo(pt.sx, pt.sy)));
+      ctx.stroke();
+    }
 
-    // Start / finish gate tick mark
+    // Start / finish gate tick if nearby
     const s0 = track.samples[0];
-    const s0x = offsetX + s0.x * scale;
-    const s0y = offsetY + s0.y * scale;
-    ctx.strokeStyle = '#ffe44d';
+    const s0dx = s0.x - px;
+    const s0dy = s0.y - py;
+    if (Math.hypot(s0dx, s0dy) <= maxRange) {
+      const s0rx = s0dx * cosR - s0dy * sinR;
+      const s0ry = s0dx * sinR + s0dy * cosR;
+      const s0x = cx + s0rx * scale;
+      const s0y = cy + s0ry * scale;
+      const s0nx = -s0.ty * cosR - s0.tx * sinR;
+      const s0ny = -s0.ty * sinR + s0.tx * cosR;
+      ctx.strokeStyle = '#ffe44d';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(s0x - s0nx * 6, s0y - s0ny * 6);
+      ctx.lineTo(s0x + s0nx * 6, s0y + s0ny * 6);
+      ctx.stroke();
+    }
+
+    // 3. Nearby opponent cars
+    if (snapshot) {
+      for (const racer of snapshot.racers) {
+        if (racer.isPlayer) continue;
+        const rdx = racer.x - px;
+        const rdy = racer.y - py;
+        if (Math.hypot(rdx, rdy) > maxRange) continue;
+        const rrx = rdx * cosR - rdy * sinR;
+        const rry = rdx * sinR + rdy * cosR;
+        const rx = cx + rrx * scale;
+        const ry = cy + rry * scale;
+
+        ctx.fillStyle = '#081016';
+        ctx.fillRect(Math.round(rx) - 2.5, Math.round(ry) - 2.5, 5, 5);
+        ctx.fillStyle = '#f0f5fa';
+        ctx.fillRect(Math.round(rx) - 1.5, Math.round(ry) - 1.5, 3, 3);
+      }
+    }
+
+    // 4. Player car fixed at center, pointing straight UP
+    ctx.fillStyle = '#ff8f3d';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 7);
+    ctx.lineTo(cx + 4.5, cy + 4.5);
+    ctx.lineTo(cx, cy + 2);
+    ctx.lineTo(cx - 4.5, cy + 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 1, cy - 2, 2, 2);
+
+    ctx.restore();
+
+    // 5. Bezel and forward heading indicator
+    ctx.strokeStyle = 'rgba(255, 143, 61, 0.75)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(s0x - s0.ny * 4.5, s0y + s0.nx * 4.5);
-    ctx.lineTo(s0x + s0.ny * 4.5, s0y - s0.nx * 4.5);
+    ctx.arc(cx, cy, radarRadius, 0, Math.PI * 2);
     ctx.stroke();
 
-    if (!snapshot) return;
-
-    // AI Racers: crisp white dots with dark outline
-    for (const racer of snapshot.racers) {
-      if (racer.isPlayer) continue;
-      const x = Math.round(offsetX + racer.x * scale);
-      const y = Math.round(offsetY + racer.y * scale);
-      ctx.fillStyle = '#081016';
-      ctx.fillRect(x - 2, y - 2, 5, 5);
-      ctx.fillStyle = '#e8edf2';
-      ctx.fillRect(x - 1, y - 1, 3, 3);
-    }
-
-    // Player: prominent neon orange marker with bright center
-    const playerRacer = snapshot.racers.find((r) => r.isPlayer);
-    if (playerRacer) {
-      const px = Math.round(offsetX + playerRacer.x * scale);
-      const py = Math.round(offsetY + playerRacer.y * scale);
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(px - 4, py - 4, 8, 8);
-      ctx.fillStyle = '#ff8f3d';
-      ctx.fillRect(px - 3, py - 3, 6, 6);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - 1, py - 1, 2, 2);
-    }
+    ctx.fillStyle = '#ff8f3d';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - radarRadius - 2);
+    ctx.lineTo(cx - 4, cy - radarRadius + 5);
+    ctx.lineTo(cx + 4, cy - radarRadius + 5);
+    ctx.closePath();
+    ctx.fill();
   }, [snapshot, track]);
 
-  const player = snapshot?.racers.find((racer) => racer.isPlayer);
   return (
     <canvas
       ref={ref}
       className="minimap"
-      width={132}
-      height={78}
+      width={124}
+      height={124}
       role="img"
-      aria-label={player ? `Peta lintasan ${track.name}. Kamu di posisi ${player.position} dari ${snapshot?.totalRacers ?? 6}.` : `Peta lintasan ${track.name}.`}
+      aria-label={`Radar radar pelacak lintasan ${track.name}.`}
     />
   );
 }

@@ -1,9 +1,10 @@
-import type { CarId, SaveData, TrackId } from './types';
+import type { CarId, SaveData, SavedCameraMode, TrackId } from './types';
 import { CAR_ORDER } from './data/cars';
 import { TRACK_ORDER } from './track/tracks';
 
 export const SAVE_KEY = 'mobile-piston.save.v2';
 export const LEGACY_SAVE_KEY = 'mobile-piston.save.v1';
+const VALID_CAMERAS: SavedCameraMode[] = ['top', 'chase', 'cockpit'];
 
 export function defaultSave(): SaveData {
   return {
@@ -12,6 +13,8 @@ export function defaultSave(): SaveData {
     selectedTrackId: 'teluk-sore',
     bestLapMs: {},
     audioMuted: false,
+    cameraMode: 'top',
+    selectedColors: {},
   };
 }
 
@@ -33,12 +36,26 @@ export function normalizeSave(raw: unknown): SaveData {
       }
     }
   }
+  const cameraMode = VALID_CAMERAS.includes(data.cameraMode as SavedCameraMode)
+    ? (data.cameraMode as SavedCameraMode)
+    : fallback.cameraMode;
+  const selectedColors: Partial<Record<CarId, number>> = {};
+  if (data.selectedColors && typeof data.selectedColors === 'object') {
+    for (const carId of CAR_ORDER) {
+      const idx = (data.selectedColors as Record<string, unknown>)[carId];
+      if (typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < 4) {
+        selectedColors[carId] = idx;
+      }
+    }
+  }
   return {
     version: 2,
     selectedCarId,
     selectedTrackId,
     bestLapMs,
     audioMuted: typeof data.audioMuted === 'boolean' ? data.audioMuted : false,
+    cameraMode,
+    selectedColors,
   };
 }
 

@@ -1,25 +1,16 @@
 'use client';
 
-import type { CarSpec, Track } from '../../game/types';
-import { formatTime } from '../../game/utils';
-import CarThumb from '../CarThumb';
-import TrackPreview from '../TrackPreview';
+import type { Track } from '../../game/types';
 
 export default function TitleScreen({
-  selectedCar,
   track,
-  bestLapMs,
   onStart,
-  onGarage,
-  onTracks,
+  onMultiplayer,
   onControls,
 }: {
-  selectedCar: CarSpec;
   track: Track;
-  bestLapMs: number | null;
   onStart: () => void;
-  onGarage: () => void;
-  onTracks: () => void;
+  onMultiplayer: () => void;
   onControls: () => void;
 }) {
   return (
@@ -42,46 +33,12 @@ export default function TitleScreen({
           </p>
         </div>
 
-        <button
-          className="track-card"
-          type="button"
-          onClick={onTracks}
-          aria-label={`Pilih lintasan. Sekarang ${track.name}.`}
-          data-nav
-        >
-          <TrackPreview track={track} />
-          <span className="track-card-copy">
-            <span className="label">Lintasan</span>
-            <strong>{track.name}</strong>
-            <span className="track-meta">3 putaran / 6 mobil</span>
-            <span className="track-meta">Start P6</span>
-            <span className="track-change">Ganti lintasan</span>
-          </span>
-        </button>
-
-        <div className="selected-car-row">
-          <CarThumb car={selectedCar} scale={3} />
-          <div>
-            <span className="label">Mobil terpilih</span>
-            <strong>
-              {selectedCar.name} <span className="car-kind">/ {selectedCar.kind}</span>
-            </strong>
-          </div>
-          <span className="best-lap-inline">
-            <span className="label">Rekor</span>
-            {bestLapMs == null ? 'Belum ada' : formatTime(bestLapMs)}
-          </span>
-        </div>
-
         <div className="title-actions">
           <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
             Mulai balapan
           </button>
-          <button className="btn" type="button" onClick={onGarage} data-nav>
-            Pilih mobil
-          </button>
-          <button className="btn" type="button" onClick={onTracks} data-nav>
-            Lintasan
+          <button className="btn" type="button" onClick={onMultiplayer} data-nav>
+            Multiplayer Online
           </button>
           <button className="btn btn-quiet" type="button" onClick={onControls} data-nav>
             Kontrol
@@ -89,7 +46,7 @@ export default function TitleScreen({
         </div>
 
         <div className="title-notes">
-          <p>Gas otomatis. Kamu yang mengatur setir, rem, dan nitro.</p>
+          <p>Tekan Esc untuk mode Explore Map.</p>
           <p className="portrait-note">Putar ponsel ke lanskap untuk lintasan yang lebih lebar.</p>
         </div>
       </div>

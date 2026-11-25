@@ -38,8 +38,8 @@ describe('input manager', () => {
     input.setKey('KeyD', true);
     for (let i = 0; i < 45; i += 1) input.update(1 / 60);
     expect(input.getInput().steer).toBeGreaterThan(0.5);
+    input.setKey('ShiftLeft', true);
     input.setKey('Space', true);
-    input.setKey('KeyS', true);
     expect(input.getInput().nitro).toBe(true);
     expect(input.getInput().brake).toBe(true);
     input.clearKeys();

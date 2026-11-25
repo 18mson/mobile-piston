@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: mobile-piston-ws
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production

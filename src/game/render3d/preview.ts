@@ -71,7 +71,7 @@ function createPreviewRenderer(): boolean {
 
 export function getCarPreview(car: CarSpec, number = 1): string | null {
   if (typeof document === 'undefined') return null;
-  const key = `${car.id}-${number}`;
+  const key = `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}`;
   const cached = cache.get(key);
   if (cached) return cached;
   if (!createPreviewRenderer() || !renderer || !scene || !camera) return null;

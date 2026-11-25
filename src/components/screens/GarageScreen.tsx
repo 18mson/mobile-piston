@@ -1,22 +1,31 @@
 'use client';
 
 import type { CarId, CarSpec } from '../../game/types';
-import { CARS, CAR_ORDER } from '../../game/data/cars';
+import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import CarThumb from '../CarThumb';
 import StatBars from '../StatBars';
 
 export default function GarageScreen({
   selectedCarId,
+  selectedColors,
   onSelect,
+  onSelectColor,
   onBack,
   onStart,
 }: {
   selectedCarId: CarId;
+  selectedColors: Partial<Record<CarId, number>>;
   onSelect: (id: CarId) => void;
+  onSelectColor: (id: CarId, colorIndex: number) => void;
   onBack: () => void;
   onStart: () => void;
 }) {
-  const selected: CarSpec = CARS[selectedCarId];
+  const activeColorIndex = selectedColors[selectedCarId] ?? 0;
+  const selected: CarSpec = {
+    ...CARS[selectedCarId],
+    palette: getCarPalette(selectedCarId, activeColorIndex),
+  };
+  const colorOptions = CAR_COLORS[selectedCarId];
 
   return (
     <section className="screen garage-screen" data-menu-scope="active" aria-labelledby="garage-heading">
@@ -26,7 +35,7 @@ export default function GarageScreen({
             Kembali
           </button>
           <div>
-            <p className="eyebrow">Garasi Teluk Sore</p>
+            <p className="eyebrow">Langkah 1 / 2</p>
             <h2 id="garage-heading">Pilih mobil</h2>
           </div>
         </div>
@@ -34,7 +43,11 @@ export default function GarageScreen({
         <div className="garage-layout">
           <div className="car-grid" role="group" aria-label="Daftar mobil">
             {CAR_ORDER.map((id) => {
-              const car = CARS[id];
+              const colorIdx = selectedColors[id] ?? 0;
+              const car: CarSpec = {
+                ...CARS[id],
+                palette: getCarPalette(id, colorIdx),
+              };
               const selectedCard = id === selectedCarId;
               return (
                 <button
@@ -72,12 +85,33 @@ export default function GarageScreen({
             <div className="car-detail-visual">
               <CarThumb car={selected} scale={6} />
             </div>
+
+            <div className="color-picker" role="group" aria-label={`Variasi warna ${selected.name}`}>
+              <span className="label">Warna ({colorOptions[activeColorIndex]?.label ?? colorOptions[0].label})</span>
+              <div className="color-swatches">
+                {colorOptions.map((option, index) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className="color-swatch"
+                    data-active={index === activeColorIndex}
+                    aria-label={`Warna ${option.label}`}
+                    aria-pressed={index === activeColorIndex}
+                    onClick={() => onSelectColor(selectedCarId, index)}
+                    style={{
+                      background: `linear-gradient(135deg, ${option.palette.body} 62%, ${option.palette.stripe} 62%)`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
             <p className="car-blurb">{selected.blurb}</p>
             <StatBars car={selected} />
             <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
-              Balapan
+              Pilih lintasan
             </button>
-            <p className="detail-note">Gas otomatis. Drift mengisi meter nitro.</p>
+            <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
           </aside>
         </div>
       </div>

@@ -22,9 +22,14 @@ function gripLimitedSpeed(track: Track, s: number, spec: ReturnType<typeof getCa
 }
 
 function playerProgress(racers: RacerState[], track: Track): number {
-  const player = racers.find((racer) => racer.isPlayer);
-  if (!player) return 0;
-  return player.lap * track.length + player.s;
+  let maxProgress = -Infinity;
+  for (const racer of racers) {
+    if (racer.isHuman ?? racer.isPlayer) {
+      const p = racer.lap * track.length + racer.s;
+      if (p > maxProgress) maxProgress = p;
+    }
+  }
+  return maxProgress === -Infinity ? 0 : maxProgress;
 }
 
 export function computeAiInput(

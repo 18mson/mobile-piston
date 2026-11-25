@@ -1,5 +1,7 @@
 import type {
   CarId,
+  CarPalette,
+  NetRacerState,
   PlayerInput,
   RaceResult,
   RaceResults,
@@ -8,7 +10,7 @@ import type {
   RacerState,
   Track,
 } from './types';
-import { AI_LIVERIES, getCar } from './data/cars';
+import { AI_LIVERIES, getCar, getCarPalette } from './data/cars';
 import { nearestOnTrack, pointAtDistance, sampleAtDistance } from './track/geometry';
 import { computeAiInput } from './ai';
 import { resolveRacerCollisions, stepRacer } from './physics';
@@ -28,6 +30,7 @@ function createRacer(config: RacerConfig, track: Track, slotIndex: number): Race
     carId: config.carId,
     number: config.number,
     isPlayer: config.isPlayer,
+    isHuman: config.isHuman ?? config.isPlayer,
     palette: config.palette,
     skill: config.skill,
     x: point.x,
@@ -63,15 +66,69 @@ function createRacer(config: RacerConfig, track: Track, slotIndex: number): Race
   };
 }
 
+export interface RaceParticipant {
+  id: string;
+  label: string;
+  carId: CarId;
+  colorIndex?: number;
+  palette?: CarPalette;
+  number?: number;
+}
+
+export interface RaceOptions {
+  playerPalette?: CarPalette;
+  explore?: boolean;
+  initialPose?: { x: number; y: number; angle: number; vx: number; vy: number; s: number };
+  participants?: RaceParticipant[];
+  localPlayerId?: string;
+  fillWithAi?: boolean;
+}
+
 export class RaceSim {
   readonly track: Track;
   readonly racers: RacerState[];
   readonly player: RacerState;
   readonly totalLaps = TOTAL_LAPS;
+  readonly explore: boolean;
   elapsed = 0;
+  tick = 0;
 
-  constructor(track: Track, playerCarId: CarId) {
+  constructor(track: Track, playerCarId: CarId, paletteOrOptions?: CarPalette | RaceOptions) {
     this.track = track;
+    const opts: RaceOptions =
+      paletteOrOptions && 'body' in paletteOrOptions
+        ? { playerPalette: paletteOrOptions }
+        : (paletteOrOptions ?? {});
+    this.explore = Boolean(opts.explore);
+
+    if (opts.participants && opts.participants.length > 0) {
+      const localId = opts.localPlayerId ?? opts.participants[0].id;
+      const humanConfigs: RacerConfig[] = opts.participants.slice(0, 6).map((p, idx) => ({
+        id: p.id,
+        label: p.label,
+        carId: p.carId,
+        number: p.number ?? idx + 1,
+        isPlayer: p.id === localId,
+        isHuman: true,
+        palette: p.palette ?? getCarPalette(p.carId, p.colorIndex ?? 0),
+        skill: 1,
+      }));
+
+      const fillWithAi = opts.fillWithAi ?? true;
+      const aiNeeded = fillWithAi ? Math.max(0, 6 - humanConfigs.length) : 0;
+      const aiConfigs: RacerConfig[] = AI_LIVERIES.slice(0, aiNeeded).map((livery) => ({
+        ...livery,
+        isPlayer: false,
+        isHuman: false,
+      }));
+
+      // AI starts in front slots, human racers start together behind
+      const configurations: RacerConfig[] = [...aiConfigs, ...humanConfigs];
+      this.racers = configurations.map((config, index) => createRacer(config, track, index));
+      this.player = this.racers.find((r) => r.isPlayer) ?? this.racers[0];
+      return;
+    }
+
     const spec = getCar(playerCarId);
     const playerConfig: RacerConfig = {
       id: 'player',
@@ -79,10 +136,31 @@ export class RaceSim {
       carId: playerCarId,
       number: 1,
       isPlayer: true,
-      palette: spec.palette,
+      isHuman: true,
+      palette: opts.playerPalette ?? spec.palette,
       skill: 1,
     };
-    const aiConfigs = AI_LIVERIES.map((livery) => ({ ...livery, isPlayer: false }));
+
+    if (this.explore) {
+      const solo = createRacer(playerConfig, track, 0);
+      if (opts.initialPose) {
+        solo.x = opts.initialPose.x;
+        solo.y = opts.initialPose.y;
+        solo.angle = opts.initialPose.angle;
+        solo.vx = opts.initialPose.vx;
+        solo.vy = opts.initialPose.vy;
+        solo.s = opts.initialPose.s;
+        solo.prevX = opts.initialPose.x;
+        solo.prevY = opts.initialPose.y;
+        solo.prevAngle = opts.initialPose.angle;
+      }
+      solo.nitro = 100;
+      this.racers = [solo];
+      this.player = solo;
+      return;
+    }
+
+    const aiConfigs = AI_LIVERIES.map((livery) => ({ ...livery, isPlayer: false, isHuman: false }));
     const configurations: RacerConfig[] = [
       aiConfigs[0],
       aiConfigs[1],
@@ -104,8 +182,27 @@ export class RaceSim {
     return this.racers.every((racer) => racer.finished);
   }
 
-  update(dt: number, playerInput: PlayerInput): void {
+  update(dt: number, inputOrMap: PlayerInput | Map<string, PlayerInput>): void {
     this.elapsed += dt;
+    this.tick += 1;
+
+    if (this.explore) {
+      const racer = this.player;
+      racer.prevX = racer.x;
+      racer.prevY = racer.y;
+      racer.prevAngle = racer.angle;
+      const spec = getCar(racer.carId);
+      const exploreInput = inputOrMap instanceof Map ? (inputOrMap.get(racer.id) ?? NEUTRAL_INPUT) : inputOrMap;
+      stepRacer(racer, spec, this.track, exploreInput, dt);
+      racer.wrongWay = false;
+      racer.wrongWayTime = 0;
+      racer.stuckTime = 0;
+      if (!racer.nitroActive) {
+        racer.nitro = Math.min(100, racer.nitro + dt * 10);
+      }
+      return;
+    }
+
     const previous = new Map<string, number>();
     for (const racer of this.racers) {
       racer.prevX = racer.x;
@@ -114,7 +211,10 @@ export class RaceSim {
       previous.set(racer.id, racer.s);
       if (racer.finished) continue;
 
-      const input = racer.isPlayer ? playerInput : computeAiInput(racer, this.racers, this.track, this.elapsed);
+      const isHuman = racer.isHuman ?? racer.isPlayer;
+      const input = isHuman
+        ? (inputOrMap instanceof Map ? (inputOrMap.get(racer.id) ?? NEUTRAL_INPUT) : inputOrMap)
+        : computeAiInput(racer, this.racers, this.track, this.elapsed);
       const spec = getCar(racer.carId);
       stepRacer(racer, spec, this.track, input, dt);
 
@@ -244,6 +344,9 @@ export class RaceSim {
       lastLapMs: this.player.lastLapMs,
       playerFinished: this.player.finished,
       wrongWay: Boolean(this.player.wrongWay),
+      playerAngle: this.player.angle,
+      playerX: this.player.x,
+      playerY: this.player.y,
       racers: ranked.map((racer, index) => ({
         id: racer.id,
         number: racer.number,
@@ -255,6 +358,7 @@ export class RaceSim {
         x: racer.x,
         y: racer.y,
         s: racer.s,
+        angle: racer.angle,
       })),
     };
   }
@@ -283,5 +387,62 @@ export class RaceSim {
       isNewRecord,
       totalTimeMs: this.player.finishTime == null ? 0 : Math.round(this.player.finishTime * 1000),
     };
+  }
+
+  exportNetState(): NetRacerState[] {
+    return this.racers.map((racer) => ({
+      id: racer.id,
+      x: racer.x,
+      y: racer.y,
+      angle: racer.angle,
+      vx: racer.vx,
+      vy: racer.vy,
+      steer: racer.steer,
+      nitro: racer.nitro,
+      nitroActive: racer.nitroActive,
+      drifting: racer.drifting,
+      impact: racer.impact,
+      lap: racer.lap,
+      s: racer.s,
+      progress: racer.progress,
+      startedLap: racer.startedLap,
+      passedHalf: racer.passedHalf,
+      finished: racer.finished,
+      finishTime: racer.finishTime,
+      wrongWay: racer.wrongWay,
+      yawRate: racer.yawRate,
+      longAccel: racer.longAccel,
+    }));
+  }
+
+  applyNetState(states: NetRacerState[]): void {
+    const byId = new Map(states.map((state) => [state.id, state]));
+    for (const racer of this.racers) {
+      const next = byId.get(racer.id);
+      if (!next) continue;
+      racer.prevX = racer.x;
+      racer.prevY = racer.y;
+      racer.prevAngle = racer.angle;
+      racer.x = next.x;
+      racer.y = next.y;
+      racer.angle = next.angle;
+      racer.vx = next.vx;
+      racer.vy = next.vy;
+      racer.steer = next.steer;
+      racer.nitro = next.nitro;
+      racer.nitroActive = next.nitroActive;
+      racer.drifting = next.drifting;
+      racer.impact = next.impact;
+      racer.lap = next.lap;
+      racer.s = next.s;
+      racer.progress = next.progress;
+      racer.startedLap = next.startedLap;
+      racer.passedHalf = next.passedHalf;
+      racer.finished = next.finished;
+      racer.finishTime = next.finishTime;
+      racer.wrongWay = next.wrongWay;
+      racer.yawRate = next.yawRate;
+      racer.longAccel = next.longAccel;
+    }
   }
 }

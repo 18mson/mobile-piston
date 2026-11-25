@@ -28,7 +28,7 @@ export default function TrackSelectScreen({
             Kembali
           </button>
           <div>
-            <p className="eyebrow">Teluk Sore / dua rute</p>
+            <p className="eyebrow">Langkah 2 / 2</p>
             <h2 id="track-select-heading">Pilih lintasan</h2>
           </div>
         </div>

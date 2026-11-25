@@ -16,7 +16,7 @@ export interface CameraParams {
 }
 
 export const CAMERA_TRANSITION_DURATION = 0.65; // ~0.65s damped smooth fly-through
-export const TOP_DOWN_CAMERA_HEIGHT = 46.0;
+export const TOP_DOWN_CAMERA_HEIGHT = 65.0;
 
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
@@ -102,14 +102,20 @@ export class CameraRig {
     this.initialized = false;
   }
 
+  syncFromWorld(pos: THREE.Vector3, look: THREE.Vector3): void {
+    this.currentCamPos.copy(pos);
+    this.currentCamTarget.copy(look);
+    this.initialized = true;
+  }
+
   private getBaseParams(mode: CameraMode): CameraParams {
     switch (mode) {
       case 'top':
         return {
-          posOffset: new THREE.Vector3(0, TOP_DOWN_CAMERA_HEIGHT, 14.0),
+          posOffset: new THREE.Vector3(0, TOP_DOWN_CAMERA_HEIGHT, 18.0),
           targetOffset: new THREE.Vector3(0, 0, 0),
-          fov: 46,
-          followLag: 9.0,
+          fov: 48,
+          followLag: 8.0,
           isWorldRelative: true,
         };
       case 'cockpit':
@@ -168,9 +174,10 @@ export class CameraRig {
     if (params.isWorldRelative) {
       // North-up fixed orientation with smooth speed/heading look-ahead
       const forwardHeading = new THREE.Vector3(Math.cos(this.camHeading), 0, Math.sin(this.camHeading));
-      const lookAhead = forwardHeading.clone().multiplyScalar(THREE.MathUtils.lerp(4.0, 12.0, speedNorm));
-      pos.copy(carPos).add(params.posOffset).add(lookAhead.clone().multiplyScalar(0.4));
-      look.copy(carPos).add(lookAhead);
+      const lookAheadDist = THREE.MathUtils.lerp(8.0, 26.0, speedNorm);
+      const lookAhead = forwardHeading.clone().multiplyScalar(lookAheadDist);
+      pos.copy(carPos).add(params.posOffset).add(lookAhead.clone().multiplyScalar(0.65));
+      look.copy(carPos).add(lookAhead.clone().multiplyScalar(0.85));
     } else {
       // Car-relative orientation (chase & cockpit)
       const heading = mode === 'chase' ? this.camHeading : player.angle;

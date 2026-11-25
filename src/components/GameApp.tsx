@@ -1,23 +1,44 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CarId, RaceResults, RaceSnapshot, SaveData, TrackId } from '../game/types';
-import { CARS } from '../game/data/cars';
+import type {
+  CarId,
+  RaceResults,
+  RaceSnapshot,
+  RoomStatePacket,
+  SaveData,
+  SavedCameraMode,
+  TrackId,
+} from '../game/types';
+import { CARS, getCarPalette } from '../game/data/cars';
 import { getTrack } from '../game/track/tracks';
 import { defaultSave, loadSave, persistSave } from '../game/save';
 import { GameEngine } from '../game/engine';
+import { NetClient, type ConnectionStatus } from '../game/net/client';
 import { formatTime } from '../game/utils';
 import TitleScreen from './screens/TitleScreen';
 import GarageScreen from './screens/GarageScreen';
+import TrackSelectScreen from './screens/TrackSelectScreen';
+import MultiplayerLobbyScreen from './screens/MultiplayerLobbyScreen';
 import PauseDialog from './screens/PauseDialog';
 import ControlsDialog from './screens/ControlsDialog';
 import ResultsScreen from './screens/ResultsScreen';
-import TrackSelectScreen from './screens/TrackSelectScreen';
 import RaceHud from './hud/RaceHud';
 import TouchControls from './hud/TouchControls';
 import { useGamepadMenu } from './useGamepadMenu';
 
-type Screen = 'loading' | 'title' | 'garage' | 'tracks' | 'racing' | 'paused' | 'results' | 'error';
+type Screen =
+  | 'loading'
+  | 'title'
+  | 'garage'
+  | 'tracks'
+  | 'multiplayer'
+  | 'racing'
+  | 'explore'
+  | 'online-racing'
+  | 'paused'
+  | 'results'
+  | 'error';
 
 declare global {
   interface Window {
@@ -67,12 +88,26 @@ export default function GameApp() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const [isTouch, setIsTouch] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [cameraMode, setCameraMode] = useState<string>('top');
+  const [cameraMode, setCameraMode] = useState<SavedCameraMode>('top');
   const [announcement, setAnnouncement] = useState('');
   const hintTimer = useRef<number | null>(null);
   const lapRef = useRef(0);
 
-  const selectedCar = CARS[save.selectedCarId];
+  // Multiplayer online state
+  const netClientRef = useRef<NetClient | null>(null);
+  const [netStatus, setNetStatus] = useState<ConnectionStatus>('disconnected');
+  const [netPlayerId, setNetPlayerId] = useState<string | null>(null);
+  const [netPingMs, setNetPingMs] = useState<number | null>(null);
+  const [roomState, setRoomState] = useState<RoomStatePacket | null>(null);
+  const [mpError, setMpError] = useState('');
+  const [playerName, setPlayerName] = useState('Pembalap');
+  const [onlineTrackId, setOnlineTrackId] = useState<TrackId>('teluk-sore');
+
+  const selectedColorIndex = save.selectedColors?.[save.selectedCarId] ?? 0;
+  const selectedCar = {
+    ...CARS[save.selectedCarId],
+    palette: getCarPalette(save.selectedCarId, selectedColorIndex),
+  };
   const selectedTrack = getTrack(save.selectedTrackId);
   const bestLapMs = save.bestLapMs[selectedTrack.id] ?? null;
 
@@ -84,6 +119,9 @@ export default function GameApp() {
     const loaded = loadSave();
     setSave(loaded);
     saveRef.current = loaded;
+    if (loaded.cameraMode) {
+      setCameraMode(loaded.cameraMode);
+    }
     const touchCapable =
       window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
     setIsTouch(touchCapable);
@@ -132,12 +170,21 @@ export default function GameApp() {
         onPause: () => {
           setScreen((currentScreen) => (currentScreen === 'racing' ? 'paused' : currentScreen));
         },
+        onExitExplore: () => {
+          setScreen('title');
+          setSnapshot(null);
+          setShowHint(false);
+        },
         onError: (message) => {
           setErrorMessage(message);
           setScreen('error');
         },
         onCameraChange: (mode) => {
           setCameraMode(mode);
+          const nextSave: SaveData = { ...saveRef.current, cameraMode: mode };
+          setSave(nextSave);
+          saveRef.current = nextSave;
+          persistSave(nextSave);
         },
       }, getTrack(loaded.selectedTrackId));
     } catch (error) {
@@ -175,19 +222,51 @@ export default function GameApp() {
     if (!engine) return;
     const id = carId ?? saveRef.current.selectedCarId;
     const record = saveRef.current.bestLapMs[saveRef.current.selectedTrackId] ?? null;
+    const savedCam = saveRef.current.cameraMode ?? 'top';
+    const colorIdx = saveRef.current.selectedColors?.[id] ?? 0;
+    const palette = getCarPalette(id, colorIdx);
     setSnapshot(null);
     setResults(null);
     setControlsOpen(false);
-    setAnnouncement('Balapan dimulai. Gas otomatis.');
+    setAnnouncement('Balapan dimulai.');
     setShowHint(true);
-    setCameraMode('top');
+    setCameraMode(savedCam);
     lapRef.current = 0;
     if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => setShowHint(false), 8000);
     setScreen('racing');
-    engine.startRace(id, record);
+    engine.startRace(id, record, savedCam, palette);
     window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
   }, []);
+
+  const startExplore = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const savedCam = saveRef.current.cameraMode ?? 'top';
+    setSnapshot(null);
+    setResults(null);
+    setControlsOpen(false);
+    setAnnouncement('Mode Explore Map aktif. Kelilingi lintasan secara bebas.');
+    setShowHint(true);
+    setCameraMode(savedCam);
+    if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => setShowHint(false), 6000);
+    setScreen('explore');
+    engine.startExplore(savedCam);
+    window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
+  }, []);
+
+  useEffect(() => {
+    if (screen !== 'title' || controlsOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'Escape' && !event.repeat) {
+        event.preventDefault();
+        startExplore();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [screen, controlsOpen, startExplore]);
 
   const selectTrack = (id: TrackId) => {
     if (id === saveRef.current.selectedTrackId) return;
@@ -201,6 +280,19 @@ export default function GameApp() {
 
   const selectCar = (id: CarId) => {
     const nextSave: SaveData = { ...saveRef.current, selectedCarId: id };
+    setSave(nextSave);
+    saveRef.current = nextSave;
+    persistSave(nextSave);
+  };
+
+  const selectCarColor = (id: CarId, colorIndex: number) => {
+    const nextSave: SaveData = {
+      ...saveRef.current,
+      selectedColors: {
+        ...(saveRef.current.selectedColors ?? {}),
+        [id]: colorIndex,
+      },
+    };
     setSave(nextSave);
     saveRef.current = nextSave;
     persistSave(nextSave);
@@ -236,6 +328,9 @@ export default function GameApp() {
   };
 
   const goToTitle = () => {
+    netClientRef.current?.disconnect();
+    setRoomState(null);
+    setMpError('');
     engineRef.current?.quitToTitle();
     setScreen('title');
     setSnapshot(null);
@@ -243,12 +338,79 @@ export default function GameApp() {
     setShowHint(false);
   };
 
-  useGamepadMenu(screen !== 'racing' && screen !== 'loading');
+  const openMultiplayer = () => {
+    setMpError('');
+    setRoomState(null);
+    setScreen('multiplayer');
+    if (!netClientRef.current) {
+      netClientRef.current = new NetClient();
+    }
+    const client = netClientRef.current;
+    client.setCallbacks({
+      onStatusChange: (status) => setNetStatus(status),
+      onWelcome: (id) => setNetPlayerId(id),
+      onPing: (ping) => setNetPingMs(ping),
+      onRoomState: (room) => {
+        setRoomState(room);
+        setOnlineTrackId(room.trackId);
+        setMpError('');
+      },
+      onError: (message) => setMpError(message),
+      onRaceStarted: (payload) => {
+        const engine = engineRef.current;
+        if (!engine) return;
+        const savedCam = saveRef.current.cameraMode ?? 'top';
+        const track = getTrack(payload.trackId);
+        setOnlineTrackId(payload.trackId);
+        setSnapshot(null);
+        setResults(null);
+        setControlsOpen(false);
+        setShowHint(true);
+        setCameraMode(savedCam);
+        if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
+        hintTimer.current = window.setTimeout(() => setShowHint(false), 6000);
+        setScreen('online-racing');
+        engine.startOnlineRace(
+          track,
+          payload.participants.map((p) => ({
+            id: p.id,
+            label: p.name,
+            carId: p.carId,
+            colorIndex: p.colorIndex,
+            number: p.number,
+          })),
+          client.playerId ?? payload.participants[0]?.id ?? 'player',
+          client,
+          savedCam,
+        );
+        window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
+      },
+      onSnapshot: (worldSnap) => {
+        engineRef.current?.applyOnlineSnapshot(worldSnap);
+      },
+      onRaceFinished: (raceResults) => {
+        engineRef.current?.finishOnlineRace(raceResults);
+      },
+    });
+    client.connect();
+  };
+
+  useEffect(() => {
+    return () => {
+      netClientRef.current?.disconnect();
+    };
+  }, []);
+
+  useGamepadMenu(
+    screen !== 'racing' && screen !== 'explore' && screen !== 'online-racing' && screen !== 'loading',
+  );
 
   const paused = screen === 'paused';
-  const racingScreen = screen === 'racing';
-  const showTopBar = screen === 'title' || screen === 'garage' || screen === 'tracks';
-  const showFooter = screen === 'title' || screen === 'garage' || screen === 'tracks';
+  const exploreScreen = screen === 'explore';
+  const onlineScreen = screen === 'online-racing';
+  const racingScreen = screen === 'racing' || exploreScreen || onlineScreen;
+  const showTopBar = screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
+  const showFooter = screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
 
   return (
     <div className="app-shell" data-screen={screen}>
@@ -290,21 +452,69 @@ export default function GameApp() {
           )}
           {screen === 'title' && (
             <TitleScreen
-              selectedCar={selectedCar}
               track={selectedTrack}
-              bestLapMs={bestLapMs}
-              onStart={() => startRace()}
-              onGarage={() => setScreen('garage')}
-              onTracks={() => setScreen('tracks')}
+              onStart={() => setScreen('garage')}
+              onMultiplayer={openMultiplayer}
               onControls={openControls}
+            />
+          )}
+          {screen === 'multiplayer' && (
+            <MultiplayerLobbyScreen
+              status={netStatus}
+              playerId={netPlayerId}
+              pingMs={netPingMs}
+              room={roomState}
+              error={mpError}
+              playerName={playerName}
+              selectedCarId={save.selectedCarId}
+              selectedColorIndex={selectedColorIndex}
+              selectedTrackId={save.selectedTrackId}
+              onChangeName={setPlayerName}
+              onSelectCar={(id) => {
+                selectCar(id);
+                const cIdx = saveRef.current.selectedColors?.[id] ?? 0;
+                netClientRef.current?.updateLoadout(id, cIdx);
+              }}
+              onSelectColor={(colorIdx) => {
+                selectCarColor(save.selectedCarId, colorIdx);
+                netClientRef.current?.updateLoadout(save.selectedCarId, colorIdx);
+              }}
+              onSelectTrack={(tid) => {
+                selectTrack(tid);
+                netClientRef.current?.setTrack(tid);
+              }}
+              onCreateRoom={() => {
+                setMpError('');
+                netClientRef.current?.createRoom(
+                  playerName,
+                  save.selectedCarId,
+                  selectedColorIndex,
+                  save.selectedTrackId,
+                );
+              }}
+              onJoinRoom={(code) => {
+                setMpError('');
+                netClientRef.current?.joinRoom(code, playerName, save.selectedCarId, selectedColorIndex);
+              }}
+              onToggleReady={() => {
+                const me = roomState?.players.find((p) => p.id === netPlayerId);
+                netClientRef.current?.setReady(!me?.ready);
+              }}
+              onStartRace={() => {
+                netClientRef.current?.startRace();
+              }}
+              onLeaveRoom={goToTitle}
+              onBack={goToTitle}
             />
           )}
           {screen === 'garage' && (
             <GarageScreen
               selectedCarId={save.selectedCarId}
+              selectedColors={save.selectedColors ?? {}}
               onSelect={selectCar}
+              onSelectColor={selectCarColor}
               onBack={() => setScreen('title')}
-              onStart={() => startRace()}
+              onStart={() => setScreen('tracks')}
             />
           )}
           {screen === 'tracks' && (
@@ -312,7 +522,7 @@ export default function GameApp() {
               selectedTrackId={save.selectedTrackId}
               bestLapMs={save.bestLapMs}
               onSelect={selectTrack}
-              onBack={() => setScreen('title')}
+              onBack={() => setScreen('garage')}
               onStart={() => startRace()}
             />
           )}
@@ -320,15 +530,17 @@ export default function GameApp() {
             <>
               <RaceHud
                 snapshot={snapshot}
-                track={selectedTrack}
-                onPause={() => engineRef.current?.pause()}
+                track={onlineScreen ? getTrack(onlineTrackId) : selectedTrack}
+                onPause={exploreScreen || onlineScreen ? goToTitle : () => engineRef.current?.pause()}
                 onCycleCamera={() => {
                   const next = engineRef.current?.cycleCamera();
                   if (next) setCameraMode(next);
                 }}
-                onResetCar={() => engineRef.current?.resetCar()}
+                onResetCar={exploreScreen || onlineScreen ? undefined : () => engineRef.current?.resetCar()}
                 cameraMode={cameraMode}
                 showHint={showHint}
+                isOnline={onlineScreen}
+                pingMs={netPingMs}
               />
               {isTouch && (
                 <TouchControls
