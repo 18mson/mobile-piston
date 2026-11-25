@@ -12,7 +12,7 @@ import { shortestAngle } from '../utils';
 
 const INTERP_DELAY_MS = 85;
 const MAX_PENDING_INPUTS = 180;
-const RECONCILE_THRESHOLD = 0.001;
+const RECONCILE_THRESHOLD = 3.5;
 
 interface PendingInput {
   seq: number;
@@ -103,6 +103,18 @@ export class NetRaceSync {
     if (!serverLocal) return;
 
     const player = this.sim.player;
+    const oldX = player.x;
+    const oldY = player.y;
+    const oldVx = player.vx;
+    const oldVy = player.vy;
+    const oldAngle = player.angle;
+    const oldYawRate = player.yawRate;
+    const oldLongAccel = player.longAccel;
+    const oldSteer = player.steer;
+    const oldDrifting = player.drifting;
+    const oldPrevX = player.prevX;
+    const oldPrevY = player.prevY;
+    const oldPrevAngle = player.prevAngle;
     const oldVisualX = player.x + this.errorOffsetX;
     const oldVisualY = player.y + this.errorOffsetY;
     const oldVisualAngle = player.angle + this.errorOffsetAngle;
@@ -118,20 +130,40 @@ export class NetRaceSync {
       }
     }
 
+    const dx = oldVisualX - player.x;
+    const dy = oldVisualY - player.y;
+    const err = Math.hypot(dx, dy);
+
+    if (err <= RECONCILE_THRESHOLD) {
+      // Within normal clock-phase tolerance: keep smooth local physics and gently nudge position
+      const nudgeX = (player.x - oldX) * 0.04;
+      const nudgeY = (player.y - oldY) * 0.04;
+      player.x = oldX + nudgeX;
+      player.y = oldY + nudgeY;
+      player.vx = oldVx;
+      player.vy = oldVy;
+      player.angle = oldAngle;
+      player.yawRate = oldYawRate;
+      player.longAccel = oldLongAccel;
+      player.steer = oldSteer;
+      player.drifting = oldDrifting;
+      player.prevX = (oldPrevX ?? oldX) + nudgeX;
+      player.prevY = (oldPrevY ?? oldY) + nudgeY;
+      player.prevAngle = oldPrevAngle ?? oldAngle;
+      return;
+    }
+
     // Maintain continuous prevX/prevY/prevAngle for sub-frame alpha interpolation
     player.prevX = player.x - player.vx * (1 / 120);
     player.prevY = player.y - player.vy * (1 / 120);
     player.prevAngle = player.angle - (player.yawRate ?? 0) * (1 / 120);
 
-    // Absorb any position/heading difference into visual offset so the car never pops/jitters
-    const dx = oldVisualX - player.x;
-    const dy = oldVisualY - player.y;
-    const err = Math.hypot(dx, dy);
-    if (err > RECONCILE_THRESHOLD && err < 60) {
+    // Absorb larger position/heading difference into visual offset so the car never pops
+    if (err < 60) {
       this.errorOffsetX = dx;
       this.errorOffsetY = dy;
       this.errorOffsetAngle = shortestAngle(player.angle, oldVisualAngle);
-    } else if (err >= 60) {
+    } else {
       this.errorOffsetX = 0;
       this.errorOffsetY = 0;
       this.errorOffsetAngle = 0;

@@ -166,6 +166,37 @@ export class CarView {
     return mesh;
   }
 
+  private addProfile(
+    points: [number, number][],
+    width: number,
+    material: THREE.Material,
+    bevel = 0.08,
+    cast = true,
+  ): THREE.Mesh {
+    const shape = new THREE.Shape();
+    shape.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i += 1) {
+      shape.lineTo(points[i][0], points[i][1]);
+    }
+    shape.closePath();
+
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: width,
+      bevelEnabled: bevel > 0,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 2,
+      curveSegments: 4,
+    });
+    geo.translate(0, 0, -width / 2);
+
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.castShadow = cast;
+    mesh.receiveShadow = true;
+    this.body.add(mesh);
+    return mesh;
+  }
+
   private addWheel(
     radius: number,
     width: number,
@@ -337,57 +368,137 @@ export class CarView {
       this.addFlames(-length / 2 - 0.15, 0);
 
     } else if (carId === 'go') {
-      // GO: upright little city hatchback inspired by the Datsun GO - short nose, tall greenhouse,
-      // chrome grille bar, wrap-around headlights, hubcap wheels and a tiny roof spoiler
-      const length = 4.9;
-      const width = 3.2;
-      const wheelRadius = 0.7;
-      const wheelWidth = 0.48;
+      // GO: sculpted compact hatchback (Datsun GO) with sloped hood & windshield,
+      // arched roofline, angled C-pillars, and signature hexagonal chrome grille
+      const length = 4.95;
+      const width = 3.16;
+      const wheelRadius = 0.68;
+      const wheelWidth = 0.46;
 
-      // Layer 1: slim undercarriage + plain bumpers
-      this.addBox([length * 0.98, 0.34, width * 0.92], [0, 0.52, 0], darkTrimMat, true, true);
-      this.addBox([0.3, 0.3, width * 0.9], [length / 2 + 0.04, 0.62, 0], darkTrimMat); // Front bumper
-      this.addBox([0.3, 0.3, width * 0.88], [-length / 2 - 0.04, 0.62, 0], darkTrimMat); // Rear bumper
+      // Undercarriage floorpan
+      this.addBox([4.4, 0.24, 2.66], [0, 0.42, 0], darkTrimMat, true, false);
 
-      // Layer 2: boxy lower body with a thin side accent line
-      this.addBox([length * 0.96, 0.58, width], [0, 0.92, 0], bodyMat, true, true);
-      this.addBox([length * 0.62, 0.1, width + 0.06], [-length * 0.02, 0.8, 0], stripeMat);
+      // Sculpted lower body (sloped front bumper, sloped hood, gentle beltline, rounded rear bumper)
+      this.addProfile(
+        [
+          [2.22, 0.46],
+          [2.44, 0.58],
+          [2.48, 0.94],
+          [2.28, 1.14],
+          [1.12, 1.32],
+          [-1.95, 1.38],
+          [-2.34, 1.24],
+          [-2.42, 0.94],
+          [-2.38, 0.58],
+          [-2.16, 0.46],
+        ],
+        2.86,
+        bodyMat,
+        0.14,
+      );
 
-      // Layer 3: short, steep hood and front fascia
-      this.addBox([length * 0.26, 0.2, width * 0.86], [length * 0.35, 1.22, 0], bodyMat, true, true);
-      this.addBox([0.14, 0.14, width * 0.5], [length / 2 + 0.02, 1.02, 0], chromeMat); // Chrome grille bar
-      this.addBox([0.12, 0.2, width * 0.5], [length / 2 + 0.01, 0.84, 0], darkTrimMat); // Lower grille
+      // Sculpted greenhouse glass with raked windshield and sloped rear hatch window
+      this.addProfile(
+        [
+          [1.14, 1.29],
+          [0.2, 2.04],
+          [-1.38, 2.04],
+          [-2.08, 1.34],
+          [-2.08, 1.26],
+          [1.14, 1.26],
+        ],
+        2.44,
+        glassMat,
+        0.05,
+      );
 
-      // Layer 4: tall, upright greenhouse (the Go's most recognisable trait) + hatch rear
-      this.addBox([length * 0.5, 0.86, width * 0.78], [-length * 0.07, 1.66, 0], glassMat, true, true);
-      this.addBox([0.36, 0.8, width * 0.74], [-length * 0.33, 1.62, 0], bodyMat, true, true); // Hatch / C-pillars
-      this.addBox([length * 0.54, 0.12, width * 0.76], [-length * 0.1, 2.14, 0], bodyMat, true, true); // Roof
+      // Arched roof cap
+      this.addProfile(
+        [
+          [0.24, 2.03],
+          [-0.55, 2.13],
+          [-1.44, 2.03],
+          [-1.44, 1.97],
+          [0.24, 1.97],
+        ],
+        2.38,
+        bodyMat,
+        0.08,
+      );
+
+      // Angled A-pillars, slim dark B-pillars, sculpted C-pillars, side mirrors, and subtle side crease
+      const aPillarLen = Math.hypot(1.14 - 0.2, 2.04 - 1.3);
+      const aPillarTilt = Math.atan2(2.04 - 1.3, 1.14 - 0.2);
+      const cPillarLen = Math.hypot(2.08 - 1.38, 2.04 - 1.34);
+      const cPillarTilt = Math.atan2(2.04 - 1.34, 2.08 - 1.38);
+
       for (const side of [-1, 1]) {
-        this.addBox([length * 0.4, 0.06, 0.1], [-length * 0.08, 2.23, side * width * 0.34], darkTrimMat); // Roof rails
-        this.addBox([0.22, 0.18, 0.28], [length * 0.13, 1.5, side * (width / 2 + 0.1)], bodyMat); // Door mirrors
+        const aPillar = this.addBox([aPillarLen, 0.12, 0.14], [0.67, 1.67, side * 1.2], bodyMat, true, false);
+        aPillar.rotation.z = -aPillarTilt;
+
+        this.addBox([0.14, 0.72, 0.08], [-0.36, 1.66, side * 1.25], darkTrimMat, false, false);
+
+        const cPillar = this.addBox([cPillarLen, 0.2, 0.18], [-1.73, 1.68, side * 1.17], bodyMat, true, false);
+        cPillar.rotation.z = cPillarTilt;
+
+        // Black door mirrors at base of A-pillar
+        const mirror = this.addBox([0.24, 0.18, 0.3], [0.92, 1.42, side * 1.44], darkTrimMat);
+        mirror.rotation.y = side * 0.22;
+
+        // Subtle lower door crease
+        this.addBox([2.1, 0.08, 0.06], [-0.15, 0.76, side * 1.56], shadeMat, false, false);
       }
 
-      // Tiny roof spoiler over the hatch
-      this.addBox([0.42, 0.1, width * 0.62], [-length * 0.34, 2.24, 0], stripeMat);
+      // Integrated rear hatch roof spoiler
+      const spoiler = this.addBox([0.36, 0.09, 2.1], [-1.52, 2.04, 0], bodyMat);
+      spoiler.rotation.z = -0.14;
 
-      // Driver sits upright inside the tall cabin
-      this.addDriver(-length * 0.04, 1.66, 0, '#e0452f', '#1a2228', 0.95);
+      // Signature Datsun hexagonal front grille (chrome surround + dark mesh + emblem bar)
+      const grilleFrame = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 6), chromeMat);
+      grilleFrame.rotation.z = Math.PI / 2;
+      grilleFrame.scale.set(1, 1, 1.32);
+      grilleFrame.position.set(2.49, 0.9, 0);
+      this.body.add(grilleFrame);
 
-      // Hubcap wheels, small and tall like a city car
+      const grilleInner = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.13, 6), darkTrimMat);
+      grilleInner.rotation.z = Math.PI / 2;
+      grilleInner.scale.set(1, 1, 1.28);
+      grilleInner.position.set(2.51, 0.9, 0);
+      this.body.add(grilleInner);
+
+      this.addBox([0.08, 0.1, 0.34], [2.56, 0.92, 0], chromeMat, false);
+
+      // Lower bumper intake + license plate + angled corner fog pockets
+      this.addBox([0.1, 0.18, 1.15], [2.49, 0.58, 0], darkTrimMat, false);
+      this.addBox([0.08, 0.16, 0.62], [2.52, 0.68, 0], chromeMat, false);
       for (const side of [-1, 1]) {
-        this.addWheel(wheelRadius, wheelWidth, length * 0.3, side * (width / 2 + 0.06), true, palette.wheel, '#c9d1d7');
-        this.addWheel(wheelRadius, wheelWidth, -length * 0.3, side * (width / 2 + 0.06), false, palette.wheel, '#c9d1d7');
+        const fog = this.addBox([0.14, 0.22, 0.44], [2.37, 0.64, side * 1.1], darkTrimMat, false);
+        fog.rotation.y = -side * 0.34;
       }
 
-      // Wrap-around headlights and vertical-ish tail lights
+      // Swept-back wrap-around headlights & vertical-ish rear tail lights
       for (const side of [-1, 1]) {
-        this.addBox([0.16, 0.26, 0.56], [length / 2 - 0.02, 1.0, side * width * 0.36], lightMat, false);
-        const tail = this.addBox([0.16, 0.5, 0.26], [-length / 2 + 0.02, 1.08, side * width * 0.4], tailMat, false);
+        const head = this.addBox([0.42, 0.24, 0.48], [2.25, 1.04, side * 1.08], lightMat, false);
+        head.rotation.y = -side * 0.32;
+        head.rotation.z = -0.22;
+
+        const tail = this.addBox([0.22, 0.44, 0.3], [-2.3, 1.08, side * 1.14], tailMat, false);
+        tail.rotation.y = side * 0.25;
+        tail.rotation.z = 0.2;
         this.brakeLights.push(tail);
       }
 
-      this.addNumber(number, -length * 0.1, 2.22, 0, '#15222a', width);
-      this.addFlames(-length / 2 - 0.15, 0);
+      // Driver visible through the sloped windshield
+      this.addDriver(-0.18, 1.56, 0, '#e0452f', '#1a2228', 0.92);
+
+      // Hubcap wheels
+      for (const side of [-1, 1]) {
+        this.addWheel(wheelRadius, wheelWidth, length * 0.3, side * (width / 2 - 0.02), true, palette.wheel, '#d6dde2');
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.3, side * (width / 2 - 0.02), false, palette.wheel, '#d6dde2');
+      }
+
+      this.addNumber(number, -0.58, 2.15, 0, '#15222a', width * 0.85);
+      this.addFlames(-length / 2 - 0.1, 0);
 
     } else if (carId === 'bagas') {
       // BAGAS: Low-slung, powerful muscle car with long vented hood, supercharger blower, fastback cabin, dual quad exhausts
