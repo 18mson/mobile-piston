@@ -1,5 +1,5 @@
 export type CarId = 'sirip' | 'go' | 'bagas' | 'okra' | 'kepik';
-export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi';
+export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan';
 export type TrackTheme = 'coast' | 'highland';
 
 export type ScreenName = 'loading' | 'title' | 'garage' | 'racing' | 'paused' | 'results' | 'error';
