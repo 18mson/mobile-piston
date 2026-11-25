@@ -34,6 +34,7 @@ export class NetRaceSync {
   private nextSeq = 1;
   private errorOffsetX = 0;
   private errorOffsetY = 0;
+  private errorOffsetAngle = 0;
 
   constructor(track: Track, participants: RaceParticipant[], localPlayerId: string) {
     this.localPlayerId = localPlayerId;
@@ -104,6 +105,7 @@ export class NetRaceSync {
     const player = this.sim.player;
     const oldVisualX = player.x + this.errorOffsetX;
     const oldVisualY = player.y + this.errorOffsetY;
+    const oldVisualAngle = player.angle + this.errorOffsetAngle;
 
     // Reset local player to authoritative server state
     this.copyNetToRacer(serverLocal, player);
@@ -116,21 +118,23 @@ export class NetRaceSync {
       }
     }
 
-    // Maintain continuous prevX/prevY for sub-frame alpha interpolation
+    // Maintain continuous prevX/prevY/prevAngle for sub-frame alpha interpolation
     player.prevX = player.x - player.vx * (1 / 120);
     player.prevY = player.y - player.vy * (1 / 120);
-    player.prevAngle = player.angle;
+    player.prevAngle = player.angle - (player.yawRate ?? 0) * (1 / 120);
 
-    // Absorb any position difference into visual offset so the car never pops/jitters
+    // Absorb any position/heading difference into visual offset so the car never pops/jitters
     const dx = oldVisualX - player.x;
     const dy = oldVisualY - player.y;
     const err = Math.hypot(dx, dy);
     if (err > RECONCILE_THRESHOLD && err < 60) {
       this.errorOffsetX = dx;
       this.errorOffsetY = dy;
+      this.errorOffsetAngle = shortestAngle(player.angle, oldVisualAngle);
     } else if (err >= 60) {
       this.errorOffsetX = 0;
       this.errorOffsetY = 0;
+      this.errorOffsetAngle = 0;
     }
   }
 
@@ -138,11 +142,13 @@ export class NetRaceSync {
    * Updates remote racers via snapshot interpolation and decays local visual error offset.
    */
   updateVisuals(dt: number, nowMs = Date.now()): void {
-    const decay = Math.exp(-dt * 14);
+    const decay = Math.exp(-dt * 10);
     this.errorOffsetX *= decay;
     this.errorOffsetY *= decay;
+    this.errorOffsetAngle *= decay;
     if (Math.abs(this.errorOffsetX) < 0.01) this.errorOffsetX = 0;
     if (Math.abs(this.errorOffsetY) < 0.01) this.errorOffsetY = 0;
+    if (Math.abs(this.errorOffsetAngle) < 0.001) this.errorOffsetAngle = 0;
 
     if (this.snapshotBuffer.length === 0) return;
 
@@ -198,13 +204,15 @@ export class NetRaceSync {
 
   getRenderPlayer(): typeof this.sim.player {
     const p = this.sim.player;
-    if (this.errorOffsetX === 0 && this.errorOffsetY === 0) return p;
+    if (this.errorOffsetX === 0 && this.errorOffsetY === 0 && this.errorOffsetAngle === 0) return p;
     return {
       ...p,
       x: p.x + this.errorOffsetX,
       y: p.y + this.errorOffsetY,
+      angle: p.angle + this.errorOffsetAngle,
       prevX: (p.prevX ?? p.x) + this.errorOffsetX,
       prevY: (p.prevY ?? p.y) + this.errorOffsetY,
+      prevAngle: (p.prevAngle ?? p.angle) + this.errorOffsetAngle,
     };
   }
 

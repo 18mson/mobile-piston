@@ -445,18 +445,19 @@ export class Renderer3D {
     const effectiveDt = isPaused ? 0 : dt;
 
     for (const racer of racers) {
-      const prevX = racer.prevX ?? racer.x;
-      const prevY = racer.prevY ?? racer.y;
-      const prevAngle = racer.prevAngle ?? racer.angle;
-      const diffAngle = Math.atan2(Math.sin(racer.angle - prevAngle), Math.cos(racer.angle - prevAngle));
+      const src = racer.id === player.id ? player : racer;
+      const prevX = src.prevX ?? src.x;
+      const prevY = src.prevY ?? src.y;
+      const prevAngle = src.prevAngle ?? src.angle;
+      const diffAngle = Math.atan2(Math.sin(src.angle - prevAngle), Math.cos(src.angle - prevAngle));
       const interpAngle = prevAngle + diffAngle * alpha;
-      const interpX = THREE.MathUtils.lerp(prevX, racer.x, alpha);
-      const interpY = THREE.MathUtils.lerp(prevY, racer.y, alpha);
-      this.cars.get(racer.id)?.update(racer, effectiveDt, interpX, interpY, interpAngle);
+      const interpX = THREE.MathUtils.lerp(prevX, src.x, alpha);
+      const interpY = THREE.MathUtils.lerp(prevY, src.y, alpha);
+      this.cars.get(racer.id)?.update(src, effectiveDt, interpX, interpY, interpAngle);
 
       // Deposit tire skid marks on road surface when drifting or slipping
-      const speed = Math.hypot(racer.vx, racer.vy);
-      if (racer.drifting && speed > 32 && !isPaused) {
+      const speed = Math.hypot(src.vx, src.vy);
+      if (src.drifting && speed > 32 && !isPaused) {
         const last = this.lastSkidPos.get(racer.id);
         const dist = last ? Math.hypot(interpX - last.x, interpY - last.y) : 999;
         if (dist >= 0.58) {
