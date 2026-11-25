@@ -200,6 +200,12 @@ export default function GameApp() {
     engineRef.current = engine;
     engine.setMuted(loaded.audioMuted);
 
+    const unlockOnce = () => {
+      void engine.audioController.unlock();
+    };
+    window.addEventListener('pointerdown', unlockOnce, { once: true });
+    window.addEventListener('keydown', unlockOnce, { once: true });
+
     if (process.env.NODE_ENV !== 'production') {
       window.__MOBILE_PISTON__ = {
         finishRace: () => engine.debugFinishRace(),
@@ -209,11 +215,19 @@ export default function GameApp() {
     }
 
     return () => {
+      window.removeEventListener('pointerdown', unlockOnce);
+      window.removeEventListener('keydown', unlockOnce);
       if (process.env.NODE_ENV !== 'production') delete window.__MOBILE_PISTON__;
       engine.destroy();
       engineRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const inMenu =
+      screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
+    engineRef.current?.audioController.setMenuMusic(inMenu);
+  }, [screen]);
 
   useEffect(() => {
     return () => {

@@ -524,7 +524,7 @@ p {
 
 .title-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin-top: 18px;
 }
@@ -568,9 +568,14 @@ p {
 
 .screen-heading-row {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
   margin-bottom: 20px;
+}
+
+.screen-heading-cta {
+  margin-left: auto;
 }
 
 .screen-heading-row h2 {
@@ -581,13 +586,21 @@ p {
 .garage-layout {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: calc(100dvh - 210px);
 }
 
 .car-grid {
+  position: sticky;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 4;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: rgba(10, 20, 28, 0.94);
 }
 
 .car-card {
@@ -634,6 +647,17 @@ p {
   height: auto;
   max-width: 100%;
   image-rendering: pixelated;
+}
+
+.car-thumb-3d {
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.car-thumb-3d[data-dragging="true"] {
+  cursor: grabbing;
 }
 
 .car-card-visual .car-thumb {
@@ -918,7 +942,7 @@ p {
 
 .stat-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -952,7 +976,7 @@ p {
 }
 
 .stat-bars.is-compact .stat-row {
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 78px minmax(0, 1fr);
   gap: 6px;
 }
 

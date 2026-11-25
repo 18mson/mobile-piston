@@ -1,4 +1,4 @@
-export type CarId = 'sirip' | 'go' | 'bagas' | 'okra' | 'kepik';
+export type CarId = 'sirip' | 'go' | 'bagas' | 'okra' | 'kepik' | 'hachi' | 'kart';
 export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan';
 export type TrackTheme = 'coast' | 'highland';
 
@@ -12,6 +12,9 @@ export interface CarStats {
   nitroBoost: number;
   nitroAcceleration: number;
   mass: number;
+  rearGrip?: number;
+  driftBoost?: number;
+  slideAssist?: number;
 }
 
 export interface CarPalette {

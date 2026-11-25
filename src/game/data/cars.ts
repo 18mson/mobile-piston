@@ -97,11 +97,11 @@ export const CARS: Record<CarId, CarSpec> = {
     id: 'kepik',
     name: 'KEPIK',
     kind: 'Buggy',
-    blurb: 'Lincah dan ringan. Akselerasi tajam dan setir paling responsif, tapi lurusan panjang bukan rumahnya.',
+    blurb: 'Lincah dan ringan. Akselerasi tajam dan tenang di tikungan, tapi bukan raja lurusan.',
     stats: {
-      topSpeed: 218,
-      acceleration: 252,
-      grip: 9.4,
+      topSpeed: 226,
+      acceleration: 244,
+      grip: 9.1,
       steerRate: 2.9,
       nitroBoost: 56,
       nitroAcceleration: 205,
@@ -116,9 +116,58 @@ export const CARS: Record<CarId, CarSpec> = {
       wheel: '#191b1f',
     },
   },
+  hachi: {
+    id: 'hachi',
+    name: 'HACHI',
+    kind: 'Drift Coupe',
+    blurb: 'Coupe ringan bergaya tahu-panda. Ekornya gampang melebar, dan drift panjang mengisi nitro jauh lebih banyak.',
+    stats: {
+      topSpeed: 236,
+      acceleration: 228,
+      grip: 8.7,
+      steerRate: 2.85,
+      nitroBoost: 66,
+      nitroAcceleration: 185,
+      mass: 0.94,
+      rearGrip: 0.94,
+      driftBoost: 1.8,
+      slideAssist: 1,
+    },
+    palette: {
+      body: '#f1f3f4',
+      shade: '#aab3b9',
+      highlight: '#ffffff',
+      stripe: '#16181d',
+      glass: '#1f2f3a',
+      wheel: '#16181d',
+    },
+  },
+  kart: {
+    id: 'kart',
+    name: 'KART',
+    kind: 'Go-Kart',
+    blurb: 'Sangat kecil, sangat tajam. Grip dan setir paling tinggi, tapi napasnya habis di lurusan panjang dan nitronya kecil.',
+    stats: {
+      topSpeed: 210,
+      acceleration: 270,
+      grip: 10.4,
+      steerRate: 3.15,
+      nitroBoost: 38,
+      nitroAcceleration: 170,
+      mass: 0.55,
+    },
+    palette: {
+      body: '#e8392f',
+      shade: '#9c211d',
+      highlight: '#ff8f7d',
+      stripe: '#f6f1e4',
+      glass: '#1f2a33',
+      wheel: '#15181d',
+    },
+  },
 };
 
-export const CAR_ORDER: CarId[] = ['sirip', 'go', 'bagas', 'okra', 'kepik'];
+export const CAR_ORDER: CarId[] = ['sirip', 'go', 'hachi', 'kart', 'bagas', 'okra', 'kepik'];
 
 export const AI_LIVERIES: {
   id: string;
@@ -167,6 +216,22 @@ export const AI_LIVERIES: {
     number: 4,
     palette: { body: '#e8742f', shade: '#a3471b', highlight: '#ffc08a', stripe: '#f4ece0', glass: '#233746', wheel: '#181b22' },
     skill: 0.92,
+  },
+  {
+    id: 'ai-hachi',
+    label: 'HACHI #86',
+    carId: 'hachi',
+    number: 86,
+    palette: { body: '#f1f3f4', shade: '#aab3b9', highlight: '#ffffff', stripe: '#16181d', glass: '#1f2f3a', wheel: '#16181d' },
+    skill: 0.96,
+  },
+  {
+    id: 'ai-kart',
+    label: 'KART #1',
+    carId: 'kart',
+    number: 1,
+    palette: { body: '#3a7bd5', shade: '#214b8f', highlight: '#9cc4ff', stripe: '#f6f1e4', glass: '#1f2a33', wheel: '#15181d' },
+    skill: 0.95,
   },
 ];
 
@@ -261,6 +326,42 @@ export const CAR_COLORS: Record<CarId, CarColorOption[]> = {
       palette: { body: '#f07829', shade: '#a64514', highlight: '#ffb87a', stripe: '#fff3cc', glass: '#23343b', wheel: '#191b1f' },
     },
   ],
+  hachi: [
+    { id: 'panda', label: 'Putih Tahu', palette: CARS.hachi.palette },
+    {
+      id: 'midnight',
+      label: 'Hitam Tengah Malam',
+      palette: { body: '#23272e', shade: '#12151a', highlight: '#6a7684', stripe: '#f1f3f4', glass: '#1f2f3a', wheel: '#16181d' },
+    },
+    {
+      id: 'redtop',
+      label: 'Merah Puncak',
+      palette: { body: '#d8362b', shade: '#8a1d17', highlight: '#ff8c7c', stripe: '#16181d', glass: '#1f2f3a', wheel: '#16181d' },
+    },
+    {
+      id: 'blueline',
+      label: 'Biru Garis',
+      palette: { body: '#2f6fd1', shade: '#1b418a', highlight: '#8dbaff', stripe: '#f1f3f4', glass: '#1f2f3a', wheel: '#16181d' },
+    },
+  ],
+  kart: [
+    { id: 'redline', label: 'Merah Sirkuit', palette: CARS.kart.palette },
+    {
+      id: 'azure',
+      label: 'Biru Pit',
+      palette: { body: '#3a7bd5', shade: '#214b8f', highlight: '#9cc4ff', stripe: '#f6f1e4', glass: '#1f2a33', wheel: '#15181d' },
+    },
+    {
+      id: 'lime',
+      label: 'Hijau Neon',
+      palette: { body: '#7ed321', shade: '#4a8a0f', highlight: '#c5f77a', stripe: '#1b252e', glass: '#1f2a33', wheel: '#15181d' },
+    },
+    {
+      id: 'amberkart',
+      label: 'Oranye Paddock',
+      palette: { body: '#f28c1c', shade: '#a85a0b', highlight: '#ffc27a', stripe: '#1b252e', glass: '#1f2a33', wheel: '#15181d' },
+    },
+  ],
 };
 
 export function getCar(id: CarId): CarSpec {
@@ -274,9 +375,9 @@ export function getCarPalette(id: CarId, colorIndex = 0): CarPalette {
 
 export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip'): number {
   const values = {
-    topSpeed: [210, 264],
-    acceleration: [210, 262],
-    grip: [7.6, 9.8],
+    topSpeed: [200, 264],
+    acceleration: [210, 272],
+    grip: [7.6, 10.4],
   } as const;
   const [min, max] = values[key];
   return Math.max(0, Math.min(1, (car.stats[key] - min) / (max - min)));

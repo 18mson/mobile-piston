@@ -38,6 +38,9 @@ export default function GarageScreen({
             <p className="eyebrow">Langkah 1 / 2</p>
             <h2 id="garage-heading">Pilih mobil</h2>
           </div>
+          <button className="btn btn-primary screen-heading-cta" type="button" onClick={onStart} data-nav>
+            Pilih lintasan
+          </button>
         </div>
 
         <div className="garage-layout">
@@ -78,12 +81,7 @@ export default function GarageScreen({
 
               <p className="car-blurb">{selected.blurb}</p>
               <StatBars car={selected} />
-              <div className="car-detail-actions">
-                <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
-                  Pilih lintasan
-                </button>
-                <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
-              </div>
+              <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
             </div>
           </aside>
 

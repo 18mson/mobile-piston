@@ -6,6 +6,8 @@ let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene | null = null;
 let camera: THREE.PerspectiveCamera | null = null;
 const cache = new Map<string, string>();
+let activeKey = '';
+let activeView: CarView | null = null;
 
 function createPreviewRenderer(): boolean {
   if (renderer) return true;
@@ -69,18 +71,7 @@ function createPreviewRenderer(): boolean {
   }
 }
 
-export function getCarPreview(car: CarSpec, number = 1): string | null {
-  if (typeof document === 'undefined') return null;
-  const key = `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}`;
-  const cached = cache.get(key);
-  if (cached) return cached;
-  if (!createPreviewRenderer() || !renderer || !scene || !camera) return null;
-
-  const view = new CarView(car.id, car.palette, number, false);
-  scene.add(view.group);
-  renderer.render(scene, camera);
-  const data = (renderer.domElement as HTMLCanvasElement).toDataURL('image/png');
-  scene.remove(view.group);
+function disposeCarView(view: CarView): void {
   view.group.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (mesh.geometry) mesh.geometry.dispose();
@@ -88,6 +79,64 @@ export function getCarPreview(car: CarSpec, number = 1): string | null {
     if (Array.isArray(material)) material.forEach((item) => item.dispose());
     else if (material) material.dispose();
   });
+}
+
+function ensurePreviewView(car: CarSpec, number: number): CarView | null {
+  if (!createPreviewRenderer() || !renderer || !scene || !camera) return null;
+  const key = `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}`;
+  if (activeView && activeKey === key) return activeView;
+  if (activeView) {
+    scene.remove(activeView.group);
+    disposeCarView(activeView);
+  }
+  activeKey = key;
+  activeView = new CarView(car.id, car.palette, number, false);
+  scene.add(activeView.group);
+  return activeView;
+}
+
+export function renderCarPreview3D(
+  targetCanvas: HTMLCanvasElement,
+  car: CarSpec,
+  number = 1,
+  yaw = 0.72,
+  pitch = 0.4,
+): boolean {
+  if (typeof document === 'undefined') return false;
+  const view = ensurePreviewView(car, number);
+  if (!view || !renderer || !scene || !camera) return false;
+
+  const radius = 11.2;
+  const clampedPitch = Math.max(0.15, Math.min(0.88, pitch));
+  camera.position.set(
+    Math.cos(clampedPitch) * Math.sin(0.75) * radius,
+    1.15 + Math.sin(clampedPitch) * radius,
+    Math.cos(clampedPitch) * Math.cos(0.75) * radius,
+  );
+  camera.lookAt(0, 1.15, 0);
+  view.group.rotation.y = yaw;
+  renderer.render(scene, camera);
+
+  const ctx = targetCanvas.getContext('2d');
+  if (!ctx) return false;
+  ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+  ctx.drawImage(renderer.domElement, 0, 0, targetCanvas.width, targetCanvas.height);
+  return true;
+}
+
+export function getCarPreview(car: CarSpec, number = 1): string | null {
+  if (typeof document === 'undefined') return null;
+  const key = `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}`;
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const view = ensurePreviewView(car, number);
+  if (!view || !renderer || !scene || !camera) return null;
+
+  camera.position.set(7.4, 4.4, 7.8);
+  camera.lookAt(0, 1.15, 0);
+  view.group.rotation.y = 0;
+  renderer.render(scene, camera);
+  const data = (renderer.domElement as HTMLCanvasElement).toDataURL('image/png');
   cache.set(key, data);
   return data;
 }

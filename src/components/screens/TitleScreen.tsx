@@ -6,12 +6,11 @@ export default function TitleScreen({
   track,
   onStart,
   onMultiplayer,
-  onControls,
 }: {
   track: Track;
   onStart: () => void;
   onMultiplayer: () => void;
-  onControls: () => void;
+  onControls?: () => void;
 }) {
   return (
     <section className="screen title-screen" data-menu-scope="active" aria-labelledby="main-menu-heading">
@@ -43,9 +42,6 @@ export default function TitleScreen({
           </button>
           <button className="btn" type="button" onClick={onMultiplayer} data-nav>
             Multiplayer (WiFi / Online)
-          </button>
-          <button className="btn btn-quiet" type="button" onClick={onControls} data-nav>
-            Kontrol
           </button>
         </div>
 

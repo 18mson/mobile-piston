@@ -30,25 +30,25 @@ export default function RaceHud({
   if (!snapshot) return null;
   const countdown = snapshot.countdown;
   const nitro = Math.round(snapshot.nitro);
-  const speedRatio = Math.min(1, snapshot.speed / 260);
-  const speedKmh = Math.round(snapshot.speed);
+  const speedKmh = Math.round(snapshot.speed * 0.65);
+  const speedRatio = Math.min(1, speedKmh / 220);
 
   const gear =
-    speedKmh < 5
+    speedKmh < 4
       ? 'N'
-      : speedKmh < 55
+      : speedKmh < 40
         ? '1'
-        : speedKmh < 105
+        : speedKmh < 75
           ? '2'
-          : speedKmh < 155
+          : speedKmh < 115
             ? '3'
-            : speedKmh < 205
+            : speedKmh < 150
               ? '4'
               : '5';
   const rpmRatio =
-    speedKmh < 5
+    speedKmh < 4
       ? 0.15
-      : Math.min(1, 0.30 + ((speedKmh % 52) / 52) * 0.68);
+      : Math.min(1, 0.3 + ((speedKmh % 38) / 38) * 0.68);
   const arcCircumference = 2 * Math.PI * 42;
   const maxArc = arcCircumference * 0.72;
   const speedArcLen = maxArc * speedRatio;

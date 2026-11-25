@@ -160,7 +160,13 @@ export class RaceSim {
       return;
     }
 
-    const aiConfigs = AI_LIVERIES.map((livery) => ({ ...livery, isPlayer: false, isHuman: false }));
+    const aiPool = AI_LIVERIES.filter((livery) => livery.carId !== playerConfig.carId);
+    let trackHash = 0;
+    for (const ch of track.id) trackHash = (trackHash * 31 + ch.charCodeAt(0)) >>> 0;
+    const aiConfigs = Array.from({ length: 5 }, (_, i) => {
+      const livery = aiPool[(trackHash + i) % aiPool.length];
+      return { ...livery, isPlayer: false, isHuman: false };
+    });
     const configurations: RacerConfig[] = [
       aiConfigs[0],
       aiConfigs[1],

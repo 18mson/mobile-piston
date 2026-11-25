@@ -9,7 +9,8 @@ const AI_BRAKE_DECEL = 300;
 
 /** Fastest speed the AI will carry through the next stretch of road, given the car's real grip limit. */
 function gripLimitedSpeed(track: Track, s: number, spec: ReturnType<typeof getCar>, skill: number, speed: number): number {
-  const grip = lateralGripAt(spec, spec.stats.topSpeed * 0.8) * (0.78 + 0.16 * skill);
+  const axleFactor = 0.5 + 0.5 * (spec.stats.rearGrip ?? 1);
+  const grip = lateralGripAt(spec, spec.stats.topSpeed * 0.8) * axleFactor * (0.78 + 0.16 * skill);
   let limit = Infinity;
   for (let d = 0; d <= 240; d += 20) {
     const curve = Math.abs(curvatureAt(track, s + d, 56));

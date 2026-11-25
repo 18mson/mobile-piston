@@ -11,6 +11,9 @@ export class GameAudio {
   private nitroGain: GainNode | null = null;
   private muted = false;
   private unlocked = false;
+  private menuMusicTimer: number | null = null;
+  private menuMusicDesired = false;
+  private menuStep = 0;
 
   setMuted(muted: boolean): void {
     this.muted = muted;
@@ -88,6 +91,9 @@ export class GameAudio {
 
       await this.context.resume();
       this.unlocked = true;
+      if (this.menuMusicDesired) {
+        this.startMenuLoop();
+      }
     } catch {
       this.context = null;
     }
@@ -124,19 +130,52 @@ export class GameAudio {
     if (!this.context || !this.master) return;
     const ctx = this.context;
     const now = ctx.currentTime;
+    const force = clamp(strength, 0.15, 1);
+
+    // Heavy body thud
     const source = ctx.createBufferSource();
-    source.buffer = this.createNoiseBuffer(0.12);
+    source.buffer = this.createNoiseBuffer(0.14);
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 420;
+    filter.frequency.value = 460;
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.22 * clamp(strength, 0, 1), now);
+    gain.gain.setValueAtTime(0.22 * force, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
     source.connect(filter);
     filter.connect(gain);
     gain.connect(this.master);
     source.start(now);
     source.stop(now + 0.18);
+
+    // Metallic clang partials (iron hitting iron)
+    for (const freq of [1380, 2190]) {
+      const osc = ctx.createOscillator();
+      const clangGain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq + (Math.random() - 0.5) * 90, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.72, now + 0.12);
+      clangGain.gain.setValueAtTime(0.11 * force, now);
+      clangGain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(clangGain);
+      clangGain.connect(this.master);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    // Bright spark sizzle crackle
+    const sparkSrc = ctx.createBufferSource();
+    sparkSrc.buffer = this.createNoiseBuffer(0.1);
+    const sparkFilter = ctx.createBiquadFilter();
+    sparkFilter.type = 'highpass';
+    sparkFilter.frequency.value = 2100;
+    const sparkGain = ctx.createGain();
+    sparkGain.gain.setValueAtTime(0.12 * force, now);
+    sparkGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+    sparkSrc.connect(sparkFilter);
+    sparkFilter.connect(sparkGain);
+    sparkGain.connect(this.master);
+    sparkSrc.start(now);
+    sparkSrc.stop(now + 0.12);
   }
 
   beep(frequency = 640, duration = 0.11, volume = 0.16): void {
@@ -159,7 +198,68 @@ export class GameAudio {
     this.beep(430, 0.055, 0.09);
   }
 
+  setMenuMusic(active: boolean): void {
+    this.menuMusicDesired = active;
+    if (active) {
+      if (this.unlocked && this.context) {
+        this.startMenuLoop();
+      }
+    } else {
+      this.stopMenuLoop();
+    }
+  }
+
+  private startMenuLoop(): void {
+    if (this.menuMusicTimer != null || typeof window === 'undefined') return;
+    // Upbeat 120 BPM retro arcade groove (bass + soft synth arpeggio)
+    const bassNotes = [130.81, 130.81, 196.0, 196.0, 110.0, 110.0, 87.31, 98.0];
+    const leadNotes = [523.25, 659.25, 783.99, 659.25, 587.33, 659.25, 523.25, 392.0];
+    this.menuMusicTimer = window.setInterval(() => {
+      if (!this.menuMusicDesired || !this.context || !this.master || this.muted) return;
+      if (this.context.state !== 'running') return;
+      const now = this.context.currentTime;
+      const idx = this.menuStep % bassNotes.length;
+      this.menuStep += 1;
+
+      const bass = this.context.createOscillator();
+      const bassGain = this.context.createGain();
+      bass.type = 'triangle';
+      bass.frequency.value = bassNotes[idx];
+      bassGain.gain.setValueAtTime(0.065, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.21);
+      bass.connect(bassGain);
+      bassGain.connect(this.master);
+      bass.start(now);
+      bass.stop(now + 0.22);
+
+      if (this.menuStep % 2 === 1) {
+        const lead = this.context.createOscillator();
+        const leadFilter = this.context.createBiquadFilter();
+        const leadGain = this.context.createGain();
+        lead.type = 'sine';
+        lead.frequency.value = leadNotes[idx];
+        leadFilter.type = 'lowpass';
+        leadFilter.frequency.value = 1400;
+        leadGain.gain.setValueAtTime(0.04, now);
+        leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        lead.connect(leadFilter);
+        leadFilter.connect(leadGain);
+        leadGain.connect(this.master);
+        lead.start(now);
+        lead.stop(now + 0.23);
+      }
+    }, 250);
+  }
+
+  private stopMenuLoop(): void {
+    if (this.menuMusicTimer != null && typeof window !== 'undefined') {
+      window.clearInterval(this.menuMusicTimer);
+      this.menuMusicTimer = null;
+    }
+  }
+
   dispose(): void {
+    this.stopMenuLoop();
     try {
       this.engineOsc?.stop();
       this.engineOsc2?.stop();

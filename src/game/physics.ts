@@ -85,7 +85,7 @@ export function stepRacer(
   const speedRatio = clamp(speed / spec.stats.topSpeed, 0, 1.2);
 
   const hitBefore = nearestOnTrack(track, racer.x, racer.y);
-  const offroad = hitBefore.distance > track.width / 2 - CAR_RADIUS * 0.5;
+  const offroadRatio = clamp((hitBefore.distance - (track.width / 2 - 2)) / (CAR_RADIUS * 2.2), 0, 1);
   const wantNitro = input.nitro && racer.nitro > 0.5 && !racer.finished;
 
   racer.nitroActive = wantNitro;
@@ -109,8 +109,8 @@ export function stepRacer(
   let yaw = racer.yawRate ?? 0;
   const forwardBefore = forward;
 
-  // 2. Longitudinal: engine / brake / coast / drag
-  const engineFactor = offroad ? 0.6 : 1;
+  // 2. Longitudinal: engine / brake / coast / drag (progressive slowdown as more tires touch dirt)
+  const engineFactor = 1 - offroadRatio * 0.22;
   const speedFraction = clamp(forward / topSpeed, 0, 1);
   const powerCurve = Math.max(0.18, 1.0 - Math.pow(speedFraction, 1.3));
   const effectiveAcceleration = acceleration * powerCurve * engineFactor;
@@ -134,7 +134,7 @@ export function stepRacer(
       forward *= 1 - 0.75 * dt;
     }
   }
-  const drag = offroad ? 3.0 : 0.05;
+  const drag = 0.05 + offroadRatio * 0.95;
   forward *= 1 - drag * dt;
 
   // 3. Weight transfer (smoothed longitudinal acceleration). Braking / lift-off -> front is loaded.
@@ -145,11 +145,11 @@ export function stepRacer(
   const loadShift = clamp(-smoothedAccel / 2800, -0.06, 0.1) + liftOff; // + = more on the front
 
   // 4. Per-axle lateral grip budget
-  const gripBudget = lateralGripAt(spec, speed) * (offroad ? 0.55 : 1);
+  const gripBudget = lateralGripAt(spec, speed) * (1 - offroadRatio * 0.32);
   const throttleLoss = onThrottle ? (0.07 + 0.11 * clamp(speedRatio, 0, 1)) * (wantNitro ? 1.25 : 1) : 0;
   const brakeLoss = isBraking ? 0.04 : 0;
   const frontCap = gripBudget * (0.5 + loadShift);
-  const rearCap = gripBudget * (0.5 - loadShift) * (1 - throttleLoss - brakeLoss);
+  const rearCap = gripBudget * (0.5 - loadShift) * (1 - throttleLoss - brakeLoss) * (spec.stats.rearGrip ?? 1);
 
   // 5. Steering angle (+ automatic counter-steer so a slide is catchable on a keyboard)
   const steerInput = clamp(input.steer, -1, 1);
@@ -162,7 +162,8 @@ export function stepRacer(
   if (!spinning && speed > 40 && !racer.finished) {
     const dead = 0.10;
     const excess = Math.abs(bodySlip) - dead;
-    if (excess > 0) assist = Math.sign(bodySlip) * Math.min(0.42, excess * 1.4);
+    const assistGain = spec.stats.slideAssist ?? 1;
+    if (excess > 0) assist = Math.sign(bodySlip) * Math.min(0.42 * assistGain, excess * 1.4 * assistGain);
   }
   delta = clamp(delta + assist, -0.7, 0.7);
   racer.steer = clamp(steerInput * 0.55 + assist / 0.4, -1, 1);
@@ -197,7 +198,7 @@ export function stepRacer(
   if (speed < 50) {
     yaw *= Math.exp(-3.2 * (1 - speed / 50) * dt);
   }
-  if (offroad) lateral *= Math.exp(-1.4 * dt);
+  if (offroadRatio > 0) lateral *= Math.exp(-0.9 * offroadRatio * dt);
 
   // 7. Sliding scrubs speed (tires pushing sideways instead of gripping)
   const frontSat = Math.max(0, Math.abs(frontSlip) / SLIP_PEAK - 1);
@@ -211,7 +212,7 @@ export function stepRacer(
   const sliding = Math.max(Math.abs(frontSlip), Math.abs(rearSlip)) > SLIP_PEAK * 1.12;
   racer.drifting = Boolean(sliding && speed > 40 && !racer.finished);
   if (racer.drifting && !spinning && speed > 48) {
-    racer.nitro = Math.min(100, racer.nitro + 9.5 * dt);
+    racer.nitro = Math.min(100, racer.nitro + 9.5 * (spec.stats.driftBoost ?? 1) * dt);
   }
 
   const maxSpeed = topSpeed + 12;

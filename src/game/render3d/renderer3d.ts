@@ -33,7 +33,16 @@ export class Renderer3D {
   private steeringWheel: THREE.Group | null = null;
   private cockpitHoodMat = new THREE.MeshLambertMaterial({ color: '#ff8f3d', flatShading: true });
   private cockpitShadeMat = new THREE.MeshLambertMaterial({ color: '#d93b2b', flatShading: true });
+  private cockpitStripeMat = new THREE.MeshLambertMaterial({ color: '#16181d', flatShading: true });
   private cockpitRevLeds: THREE.Mesh[] = [];
+  private cockpitClosedFrame = new THREE.Group();
+  private cockpitHoodGroup = new THREE.Group();
+  private cockpitHoodScoop: THREE.Mesh | null = null;
+  private cockpitBlowerGroup = new THREE.Group();
+  private cockpitRollCageGroup = new THREE.Group();
+  private cockpitOpenWheelsGroup = new THREE.Group();
+  private cockpitPopUpsGroup = new THREE.Group();
+  private cockpitCenterHood: THREE.Mesh | null = null;
 
   // Skid marks on road surface when drifting or slipping
   private skidMesh: THREE.InstancedMesh;
@@ -149,20 +158,20 @@ export class Renderer3D {
     const gloveDarkMat = new THREE.MeshLambertMaterial({ color: '#1b2128', flatShading: true });
     const gloveYellowMat = new THREE.MeshLambertMaterial({ color: '#f5c518', flatShading: true });
 
-    // 1. Windshield frame: roof header bar and left/right A-pillars
+    // 1. Windshield frame: roof header bar and left/right A-pillars (hidden on open-cockpit cars)
     const roofBar = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.14, 0.22), interiorDarkMat);
     roofBar.position.set(0, 0.46, -0.65);
-    this.cockpitRoot.add(roofBar);
+    this.cockpitClosedFrame.add(roofBar);
 
     const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.78, 0.18), interiorDarkMat);
     leftPillar.position.set(-0.76, 0.10, -0.66);
     leftPillar.rotation.z = -0.34;
-    this.cockpitRoot.add(leftPillar);
+    this.cockpitClosedFrame.add(leftPillar);
 
     const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.78, 0.18), interiorDarkMat);
     rightPillar.position.set(0.76, 0.10, -0.66);
     rightPillar.rotation.z = 0.34;
-    this.cockpitRoot.add(rightPillar);
+    this.cockpitClosedFrame.add(rightPillar);
 
     // 2. Left side mirror (outside left A-pillar, matching car body color)
     const sideMirrorArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.04), interiorDarkMat);
@@ -171,7 +180,7 @@ export class Renderer3D {
     sideMirrorHousing.position.set(-0.78, -0.07, -0.73);
     const sideMirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.105, 0.055), mirrorGlassMat);
     sideMirrorGlass.position.set(-0.78, -0.07, -0.703);
-    this.cockpitRoot.add(sideMirrorArm, sideMirrorHousing, sideMirrorGlass);
+    this.cockpitClosedFrame.add(sideMirrorArm, sideMirrorHousing, sideMirrorGlass);
 
     // 3. Rearview mirror (tucked in upper-right windshield, angled toward driver)
     const mirrorGroup = new THREE.Group();
@@ -188,25 +197,70 @@ export class Renderer3D {
     const mirrorTrailingCar = new THREE.Mesh(new THREE.PlaneGeometry(0.032, 0.018), mirrorCarMat);
     mirrorTrailingCar.position.set(0.03, -0.008, 0.015);
     mirrorGroup.add(mirrorStem, mirrorFrame, mirrorSky, mirrorRoad, mirrorTrailingCar);
-    this.cockpitRoot.add(mirrorGroup);
+    this.cockpitClosedFrame.add(mirrorGroup);
+    this.cockpitRoot.add(this.cockpitClosedFrame);
 
-    // 4. Visible Hood & Front Fenders (color matches player's selected car)
+    // 4. Visible Hood & Front Fenders (color & attachments match player's selected car)
     const centerHood = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.06, 0.68), this.cockpitHoodMat);
     centerHood.position.set(0, -0.35, -1.06);
     centerHood.rotation.x = 0.05;
-    this.cockpitRoot.add(centerHood);
+    this.cockpitCenterHood = centerHood;
+    this.cockpitHoodGroup.add(centerHood);
 
     const hoodScoop = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.035, 0.36), this.cockpitShadeMat);
     hoodScoop.position.set(0, -0.315, -1.08);
     hoodScoop.rotation.x = 0.05;
-    this.cockpitRoot.add(hoodScoop);
+    this.cockpitHoodScoop = hoodScoop;
+    this.cockpitHoodGroup.add(hoodScoop);
 
     for (const side of [-1, 1]) {
       const fender = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.10, 0.70), this.cockpitShadeMat);
       fender.position.set(side * 0.58, -0.31, -1.05);
       fender.rotation.x = 0.04;
-      this.cockpitRoot.add(fender);
+      this.cockpitHoodGroup.add(fender);
     }
+    this.cockpitRoot.add(this.cockpitHoodGroup);
+
+    // Car-specific cockpit features:
+    // (a) Bagas supercharger blower
+    const chromeBlowerMat = new THREE.MeshLambertMaterial({ color: '#e6ebf0', flatShading: true });
+    const blowerBlock = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.18, 0.42), chromeBlowerMat);
+    blowerBlock.position.set(0, -0.24, -1.06);
+    const blowerIntake = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.12), interiorDarkMat);
+    blowerIntake.position.set(0, -0.22, -0.84);
+    this.cockpitBlowerGroup.add(blowerBlock, blowerIntake);
+    this.cockpitRoot.add(this.cockpitBlowerGroup);
+
+    // (b) Hachi open pop-up headlight housings at front corners
+    for (const side of [-1, 1]) {
+      const popUp = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 0.18), this.cockpitHoodMat);
+      popUp.position.set(side * 0.48, -0.28, -1.32);
+      this.cockpitPopUpsGroup.add(popUp);
+    }
+    this.cockpitRoot.add(this.cockpitPopUpsGroup);
+
+    // (c) Kepik tubular roll-cage bars
+    const cageTop = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 1.8, 8), this.cockpitStripeMat);
+    cageTop.rotation.z = Math.PI / 2;
+    cageTop.position.set(0, 0.45, -0.62);
+    this.cockpitRollCageGroup.add(cageTop);
+    for (const side of [-1, 1]) {
+      const cageBar = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.85, 8), this.cockpitStripeMat);
+      cageBar.position.set(side * 0.72, 0.08, -0.64);
+      cageBar.rotation.z = side * 0.25;
+      this.cockpitRollCageGroup.add(cageBar);
+    }
+    this.cockpitRoot.add(this.cockpitRollCageGroup);
+
+    // (d) Kart & Kepik exposed front wheels
+    const tireMat = new THREE.MeshLambertMaterial({ color: '#181b22', flatShading: true });
+    for (const side of [-1, 1]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 10), tireMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(side * 0.74, -0.34, -1.06);
+      this.cockpitOpenWheelsGroup.add(wheel);
+    }
+    this.cockpitRoot.add(this.cockpitOpenWheelsGroup);
 
     // 5. Sculpted Dashboard & Center Console
     const dashDeck = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.18, 0.42), dashMat);
@@ -574,6 +628,22 @@ export class Renderer3D {
       }
       this.cockpitHoodMat.color.set(player.palette.body);
       this.cockpitShadeMat.color.set(player.palette.shade);
+      this.cockpitStripeMat.color.set(player.palette.stripe);
+
+      const cid = player.carId;
+      const isOpen = cid === 'kart' || cid === 'kepik';
+      this.cockpitClosedFrame.visible = !isOpen;
+      this.cockpitHoodGroup.visible = cid !== 'kart';
+      if (this.cockpitCenterHood) {
+        this.cockpitCenterHood.material = cid === 'hachi' ? this.cockpitStripeMat : this.cockpitHoodMat;
+      }
+      if (this.cockpitHoodScoop) {
+        this.cockpitHoodScoop.visible = cid === 'sirip' || cid === 'okra';
+      }
+      this.cockpitBlowerGroup.visible = cid === 'bagas';
+      this.cockpitPopUpsGroup.visible = cid === 'hachi';
+      this.cockpitRollCageGroup.visible = cid === 'kepik';
+      this.cockpitOpenWheelsGroup.visible = isOpen;
 
       const speed = Math.hypot(player.vx, player.vy);
       const revRatio = Math.min(1, speed / 220);
