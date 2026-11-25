@@ -31,7 +31,10 @@ export class PeerNetClient {
   private peer: Peer | null = null;
   private hostRoom: GameRoom | null = null;
   private guestConns = new Map<string, DataConnection>();
+  private guestFastConns = new Map<string, DataConnection>();
   private connToHost: DataConnection | null = null;
+  private fastConnToHost: DataConnection | null = null;
+  private hostPeerId: string | null = null;
   private callbacks: NetClientCallbacks;
   private pingTimer: number | null = null;
 
@@ -62,10 +65,19 @@ export class PeerNetClient {
       conn.close();
     }
     this.guestConns.clear();
+    for (const conn of this.guestFastConns.values()) {
+      conn.close();
+    }
+    this.guestFastConns.clear();
+    if (this.fastConnToHost) {
+      this.fastConnToHost.close();
+      this.fastConnToHost = null;
+    }
     if (this.connToHost) {
       this.connToHost.close();
       this.connToHost = null;
     }
+    this.hostPeerId = null;
     if (this.peer) {
       this.peer.destroy();
       this.peer = null;
@@ -97,6 +109,24 @@ export class PeerNetClient {
     });
 
     peer.on('connection', (conn) => {
+      const meta = conn.metadata as { fastFor?: string } | undefined;
+      if (meta?.fastFor) {
+        const fastId = meta.fastFor;
+        conn.on('open', () => {
+          this.guestFastConns.set(fastId, conn);
+        });
+        conn.on('data', (raw) => {
+          const msg = raw as ClientMessage;
+          if (msg && typeof msg === 'object' && msg.type === 'input') {
+            this.hostRoom?.handleInput(fastId, msg.seq, msg.input);
+          }
+        });
+        conn.on('close', () => {
+          this.guestFastConns.delete(fastId);
+        });
+        return;
+      }
+
       const guestId = `p-${Math.random().toString(36).slice(2, 7)}`;
       this.guestConns.set(guestId, conn);
 
@@ -117,6 +147,13 @@ export class PeerNetClient {
               conn.send({ type: 'welcome', playerId: guestId } satisfies ServerMessage);
             }
             const ok = room.addMember(guestId, msg.name, msg.carId, msg.colorIndex, (sMsg) => {
+              if (sMsg.type === 'snapshot') {
+                const fast = this.guestFastConns.get(guestId);
+                if (fast && fast.open) {
+                  fast.send(sMsg);
+                  return;
+                }
+              }
               if (conn.open) conn.send(sMsg);
             });
             if (!ok && conn.open) {
@@ -128,7 +165,7 @@ export class PeerNetClient {
             break;
           }
           case 'update_loadout':
-            room.updateLoadout(guestId, msg.carId, msg.colorIndex);
+            room.updateLoadout(guestId, msg.carId, msg.colorIndex, msg.name);
             break;
           case 'set_ready':
             room.setReady(guestId, msg.ready);
@@ -160,6 +197,7 @@ export class PeerNetClient {
 
     this.disconnect();
     this.setStatus('connecting');
+    this.hostPeerId = `${ROOM_PREFIX}${cleanCode}`;
 
     const peer = new Peer();
     this.peer = peer;
@@ -201,11 +239,11 @@ export class PeerNetClient {
     });
   }
 
-  updateLoadout(carId: CarId, colorIndex: number): void {
+  updateLoadout(carId: CarId, colorIndex: number, name?: string): void {
     if (this.hostRoom) {
-      this.hostRoom.updateLoadout('host', carId, colorIndex);
+      this.hostRoom.updateLoadout('host', carId, colorIndex, name);
     } else {
-      this.sendToHost({ type: 'update_loadout', carId, colorIndex });
+      this.sendToHost({ type: 'update_loadout', carId, colorIndex, name });
     }
   }
 
@@ -232,6 +270,8 @@ export class PeerNetClient {
   sendInput(seq: number, input: PlayerInput): void {
     if (this.hostRoom) {
       this.hostRoom.handleInput('host', seq, input);
+    } else if (this.fastConnToHost && this.fastConnToHost.open) {
+      this.fastConnToHost.send({ type: 'input', seq, input } satisfies ClientMessage);
     } else {
       this.sendToHost({ type: 'input', seq, input });
     }
@@ -269,6 +309,19 @@ export class PeerNetClient {
     switch (msg.type) {
       case 'welcome':
         this.playerId = msg.playerId;
+        if (!this.hostRoom && this.peer && this.hostPeerId && !this.fastConnToHost) {
+          const fast = this.peer.connect(this.hostPeerId, {
+            reliable: false,
+            metadata: { fastFor: msg.playerId },
+          });
+          this.fastConnToHost = fast;
+          fast.on('data', (raw) => {
+            this.handleServerMessage(raw as ServerMessage);
+          });
+          fast.on('close', () => {
+            if (this.fastConnToHost === fast) this.fastConnToHost = null;
+          });
+        }
         this.callbacks.onWelcome?.(msg.playerId);
         break;
       case 'room_state':

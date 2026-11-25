@@ -87,6 +87,9 @@ export class NetRaceSync {
    * - Reconciles the local player's predicted state against server truth
    */
   applyServerSnapshot(snapshot: WorldSnapshot, receivedAt = Date.now()): void {
+    if (this.latestSnapshot && snapshot.tick < this.latestSnapshot.tick) {
+      return;
+    }
     this.latestSnapshot = snapshot;
     this.sim.elapsed = snapshot.elapsed;
     this.sim.tick = snapshot.tick;

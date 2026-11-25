@@ -90,7 +90,7 @@ wss.on('connection', (socket) => {
         break;
       }
       case 'update_loadout':
-        rooms.getRoomForPlayer(activePlayerId)?.updateLoadout(activePlayerId, msg.carId, msg.colorIndex);
+        rooms.getRoomForPlayer(activePlayerId)?.updateLoadout(activePlayerId, msg.carId, msg.colorIndex, msg.name);
         break;
       case 'set_track':
         rooms.getRoomForPlayer(activePlayerId)?.setTrack(activePlayerId, msg.trackId);

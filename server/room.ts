@@ -162,11 +162,15 @@ export class GameRoom {
     this.broadcastRoomState();
   }
 
-  updateLoadout(id: string, carId: CarId, colorIndex: number): void {
+  updateLoadout(id: string, carId: CarId, colorIndex: number, name?: string): void {
     const member = this.members.get(id);
     if (!member || this.status !== 'lobby') return;
     member.carId = carId;
     member.colorIndex = colorIndex;
+    if (name !== undefined) {
+      const cleaned = name.trim().slice(0, 16);
+      if (cleaned) member.name = cleaned;
+    }
     this.broadcastRoomState();
   }
 
@@ -335,11 +339,24 @@ export class GameRoom {
     }
     return {
       tick: this.sim.tick,
-      elapsed: this.sim.elapsed,
+      elapsed: Math.round(this.sim.elapsed * 1000) / 1000,
       mode: this.status === 'countdown' ? 'countdown' : this.status === 'finished' ? 'finished' : 'racing',
       countdown: this.status === 'countdown' ? Math.max(1, Math.ceil(this.countdownRemaining)) : null,
       lastProcessedSeq,
-      racers: this.sim.exportNetState(),
+      racers: this.sim.exportNetState().map((r) => ({
+        ...r,
+        x: Math.round(r.x * 100) / 100,
+        y: Math.round(r.y * 100) / 100,
+        angle: Math.round(r.angle * 1000) / 1000,
+        vx: Math.round(r.vx * 100) / 100,
+        vy: Math.round(r.vy * 100) / 100,
+        steer: Math.round(r.steer * 1000) / 1000,
+        nitro: Math.round(r.nitro * 10) / 10,
+        s: Math.round(r.s * 100) / 100,
+        progress: Math.round(r.progress * 100) / 100,
+        yawRate: Math.round(r.yawRate * 1000) / 1000,
+        longAccel: Math.round(r.longAccel * 100) / 100,
+      })),
     };
   }
 

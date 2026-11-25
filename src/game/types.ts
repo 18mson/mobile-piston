@@ -262,7 +262,7 @@ export type ClientMessage =
   | { type: 'create_room'; name: string; carId: CarId; colorIndex: number; trackId: TrackId }
   | { type: 'join_room'; roomCode: string; name: string; carId: CarId; colorIndex: number }
   | { type: 'rejoin_room'; roomCode: string; playerId: string }
-  | { type: 'update_loadout'; carId: CarId; colorIndex: number }
+  | { type: 'update_loadout'; carId: CarId; colorIndex: number; name?: string }
   | { type: 'set_track'; trackId: TrackId }
   | { type: 'set_ready'; ready: boolean }
   | { type: 'start_race' }

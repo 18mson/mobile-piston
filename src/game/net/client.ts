@@ -136,8 +136,8 @@ export class NetClient {
     this.send({ type: 'join_room', roomCode, name, carId, colorIndex });
   }
 
-  updateLoadout(carId: CarId, colorIndex: number): void {
-    this.send({ type: 'update_loadout', carId, colorIndex });
+  updateLoadout(carId: CarId, colorIndex: number, name?: string): void {
+    this.send({ type: 'update_loadout', carId, colorIndex, name });
   }
 
   setTrack(trackId: TrackId): void {

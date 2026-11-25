@@ -52,6 +52,7 @@ export class GameEngine {
   private onlineSync: NetRaceSync | null = null;
   private netClient: NetTransport | null = null;
   private netInputTimer = 0;
+  private lastSentInput: PlayerInput | null = null;
 
   constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks, track: Track) {
     this.callbacks = callbacks;
@@ -472,8 +473,15 @@ export class GameEngine {
     }
 
     this.netInputTimer += dt;
-    if (lastSeq > 0 && this.netInputTimer >= 0.014) {
+    const inputChanged =
+      !this.lastSentInput ||
+      this.lastSentInput.steer !== playerInput.steer ||
+      this.lastSentInput.brake !== playerInput.brake ||
+      this.lastSentInput.nitro !== playerInput.nitro ||
+      this.lastSentInput.gas !== playerInput.gas;
+    if (lastSeq > 0 && (inputChanged || this.netInputTimer >= 0.05)) {
       this.netInputTimer = 0;
+      this.lastSentInput = { ...playerInput };
       this.netClient.sendInput(lastSeq, playerInput);
     }
 

@@ -7,6 +7,7 @@ import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import type { ConnectionStatus } from '../../game/net/client';
 import type { CarId, RoomStatePacket, TrackId } from '../../game/types';
 import CarThumb from '../CarThumb';
+import TrackPreview from '../TrackPreview';
 
 export default function MultiplayerLobbyScreen({
   status,
@@ -225,7 +226,19 @@ export default function MultiplayerLobbyScreen({
                   type="text"
                   maxLength={6}
                   value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    const nextCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    setJoinCode(nextCode);
+                    if (typeof window !== 'undefined') {
+                      const url = new URL(window.location.href);
+                      if (nextCode.length >= 4) {
+                        url.searchParams.set('join', nextCode);
+                      } else {
+                        url.searchParams.delete('join');
+                      }
+                      window.history.replaceState({}, '', url.toString());
+                    }
+                  }}
                   placeholder="KODE (mis. A7K2P)"
                 />
                 <button
@@ -304,49 +317,67 @@ export default function MultiplayerLobbyScreen({
 
             <div className="panel mp-card">
               <span className="label">Pengaturan Mobil & Lintasan</span>
-              <div className="mp-car-pills">
-                {CAR_ORDER.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className="btn btn-small"
-                    data-active={id === selectedCarId}
-                    onClick={() => onSelectCar(id)}
-                  >
-                    {CARS[id].name}
-                  </button>
-                ))}
-              </div>
-              <div className="color-swatches">
-                {activeColorOptions.map((opt, idx) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className="color-swatch"
-                    data-active={idx === selectedColorIndex}
-                    aria-label={`Warna ${opt.label}`}
-                    onClick={() => onSelectColor(idx)}
-                    style={{
-                      background: `linear-gradient(135deg, ${opt.palette.body} 62%, ${opt.palette.stripe} 62%)`,
-                    }}
-                  />
-                ))}
+              <label className="mp-field">
+                <span>Nama pembalap</span>
+                <input
+                  type="text"
+                  maxLength={16}
+                  value={playerName}
+                  onChange={(e) => onChangeName(e.target.value)}
+                  placeholder="Pembalap"
+                />
+              </label>
+              <div className="mp-car-mini">
+                <CarThumb car={previewCar} scale={3} />
+                <div className="mp-car-pickers">
+                  <div className="mp-car-pills">
+                    {CAR_ORDER.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="btn btn-small"
+                        data-active={id === selectedCarId}
+                        onClick={() => onSelectCar(id)}
+                      >
+                        {CARS[id].name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="color-swatches">
+                    {activeColorOptions.map((opt, idx) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className="color-swatch"
+                        data-active={idx === selectedColorIndex}
+                        aria-label={`Warna ${opt.label}`}
+                        onClick={() => onSelectColor(idx)}
+                        style={{
+                          background: `linear-gradient(135deg, ${opt.palette.body} 62%, ${opt.palette.stripe} 62%)`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <span className="label">Lintasan {isHost ? '(Host)' : '(Dipilih Host)'}</span>
-              <div className="mp-car-pills">
-                {TRACK_ORDER.map((tid) => (
-                  <button
-                    key={tid}
-                    type="button"
-                    className="btn btn-small"
-                    disabled={!isHost}
-                    data-active={room.trackId === tid}
-                    onClick={() => onSelectTrack(tid)}
-                  >
-                    {getTrack(tid).name}
-                  </button>
-                ))}
+              <div className="mp-car-mini">
+                <TrackPreview track={getTrack(room.trackId)} />
+                <div className="mp-car-pills">
+                  {TRACK_ORDER.map((tid) => (
+                    <button
+                      key={tid}
+                      type="button"
+                      className="btn btn-small"
+                      disabled={!isHost}
+                      data-active={room.trackId === tid}
+                      onClick={() => onSelectTrack(tid)}
+                    >
+                      {getTrack(tid).name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="mp-room-actions">

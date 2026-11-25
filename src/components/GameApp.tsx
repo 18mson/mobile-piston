@@ -369,6 +369,14 @@ export default function GameApp() {
     netClientRef.current?.disconnect();
     setRoomState(null);
     setMpError('');
+    setInitialJoinCode('');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('join')) {
+        url.searchParams.delete('join');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
     engineRef.current?.quitToTitle();
     setScreen('title');
     setSnapshot(null);
@@ -434,9 +442,11 @@ export default function GameApp() {
     client.connect();
   }, []);
 
-  // Auto-open Multiplayer Lobby when opened via ?join=ROOMCODE invite link or QR code
+  // Auto-open Multiplayer Lobby once on mount when opened via ?join=ROOMCODE invite link or QR code
+  const didInitJoinRef = useRef(false);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (didInitJoinRef.current || typeof window === 'undefined') return;
+    didInitJoinRef.current = true;
     const params = new URLSearchParams(window.location.search);
     const code = params.get('join')?.trim().toUpperCase();
     if (code && code.length >= 4) {
@@ -520,7 +530,12 @@ export default function GameApp() {
               selectedColorIndex={selectedColorIndex}
               selectedTrackId={save.selectedTrackId}
               initialJoinCode={initialJoinCode}
-              onChangeName={setPlayerName}
+              onChangeName={(nextName) => {
+                setPlayerName(nextName);
+                if (roomState) {
+                  netClientRef.current?.updateLoadout(save.selectedCarId, selectedColorIndex, nextName);
+                }
+              }}
               onSelectCar={(id) => {
                 selectCar(id);
                 const cIdx = saveRef.current.selectedColors?.[id] ?? 0;
@@ -544,8 +559,19 @@ export default function GameApp() {
                 );
               }}
               onJoinRoom={(code) => {
+                const cleanCode = code.trim().toUpperCase();
                 setMpError('');
-                netClientRef.current?.joinRoom(code, playerName, save.selectedCarId, selectedColorIndex);
+                setInitialJoinCode(cleanCode);
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  if (cleanCode.length >= 4) {
+                    url.searchParams.set('join', cleanCode);
+                  } else {
+                    url.searchParams.delete('join');
+                  }
+                  window.history.replaceState({}, '', url.toString());
+                }
+                netClientRef.current?.joinRoom(cleanCode, playerName, save.selectedCarId, selectedColorIndex);
               }}
               onToggleReady={() => {
                 const me = roomState?.players.find((p) => p.id === netPlayerId);
