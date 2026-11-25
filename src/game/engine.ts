@@ -1,4 +1,4 @@
-import type { CarId, CarPalette, RaceResults, RaceSnapshot, Track, WorldSnapshot } from './types';
+import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, Track, WorldSnapshot } from './types';
 import { RaceSim, type RaceParticipant } from './race';
 import { Renderer3D, type CameraMode } from './render3d/renderer3d';
 import { InputManager } from './input';
@@ -6,7 +6,10 @@ import { GameAudio } from './audio';
 import { clamp } from './utils';
 import { computeAiInput } from './ai';
 import { NetRaceSync } from './net/sync';
-import type { NetClient } from './net/client';
+
+export interface NetTransport {
+  sendInput(seq: number, input: PlayerInput): void;
+}
 
 type EngineMode = 'attract' | 'countdown' | 'racing' | 'explore' | 'online' | 'paused' | 'finished' | 'error';
 
@@ -47,7 +50,7 @@ export class GameEngine {
   private impactSoundCooldown = 0;
   private motionQuery: MediaQueryList | null = null;
   private onlineSync: NetRaceSync | null = null;
-  private netClient: NetClient | null = null;
+  private netClient: NetTransport | null = null;
   private netInputTimer = 0;
 
   constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks, track: Track) {
@@ -168,7 +171,7 @@ export class GameEngine {
     track: Track,
     participants: RaceParticipant[],
     localPlayerId: string,
-    client: NetClient,
+    client: NetTransport,
     cameraMode?: CameraMode,
   ): void {
     if (this.destroyed) return;

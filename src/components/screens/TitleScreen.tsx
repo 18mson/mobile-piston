@@ -38,7 +38,7 @@ export default function TitleScreen({
             Mulai balapan
           </button>
           <button className="btn" type="button" onClick={onMultiplayer} data-nav>
-            Multiplayer Online
+            Multiplayer (WiFi / Online)
           </button>
           <button className="btn btn-quiet" type="button" onClick={onControls} data-nav>
             Kontrol

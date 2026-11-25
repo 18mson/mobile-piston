@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import type { ConnectionStatus } from '../../game/net/client';
@@ -17,6 +18,7 @@ export default function MultiplayerLobbyScreen({
   selectedCarId,
   selectedColorIndex,
   selectedTrackId,
+  initialJoinCode = '',
   onChangeName,
   onSelectCar,
   onSelectColor,
@@ -37,6 +39,7 @@ export default function MultiplayerLobbyScreen({
   selectedCarId: CarId;
   selectedColorIndex: number;
   selectedTrackId: TrackId;
+  initialJoinCode?: string;
   onChangeName: (name: string) => void;
   onSelectCar: (carId: CarId) => void;
   onSelectColor: (colorIndex: number) => void;
@@ -48,8 +51,43 @@ export default function MultiplayerLobbyScreen({
   onLeaveRoom: () => void;
   onBack: () => void;
 }) {
-  const [joinCode, setJoinCode] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [joinCode, setJoinCode] = useState(initialJoinCode);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialJoinCode) {
+      setJoinCode(initialJoinCode.toUpperCase());
+    }
+  }, [initialJoinCode]);
+
+  const inviteLink =
+    room && typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}?join=${room.roomCode}`
+      : '';
+
+  useEffect(() => {
+    if (!inviteLink) {
+      setQrUrl(null);
+      return;
+    }
+    let active = true;
+    QRCode.toDataURL(inviteLink, {
+      width: 120,
+      margin: 1,
+      color: { dark: '#0c1820', light: '#f5ebd2' },
+    })
+      .then((url) => {
+        if (active) setQrUrl(url);
+      })
+      .catch(() => {
+        if (active) setQrUrl(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [inviteLink]);
 
   const isConnected = status === 'connected';
   const me = room?.players.find((p) => p.id === playerId) ?? null;
@@ -60,20 +98,36 @@ export default function MultiplayerLobbyScreen({
     palette: getCarPalette(selectedCarId, selectedColorIndex),
   };
 
-  const handleCopy = () => {
+  const handleCopyCode = () => {
     if (!room) return;
-    navigator.clipboard?.writeText(room.roomCode).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    }).catch(() => {});
+    navigator.clipboard
+      ?.writeText(room.roomCode)
+      .then(() => {
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 1800);
+      })
+      .catch(() => {});
+  };
+
+  const handleCopyLink = () => {
+    if (!inviteLink) return;
+    navigator.clipboard
+      ?.writeText(inviteLink)
+      .then(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 1800);
+      })
+      .catch(() => {});
   };
 
   const statusText =
     status === 'connected'
-      ? `Terhubung${pingMs != null ? ` (${pingMs} ms)` : ''}`
+      ? isHost
+        ? 'Host P2P Aktif'
+        : `Terhubung${pingMs != null ? ` (${pingMs} ms)` : ''}`
       : status === 'connecting'
-        ? 'Menghubungkan ke server (server gratis mungkin butuh ~20 dtk untuk bangun)...'
-        : 'Terputus dari server';
+        ? 'Menghubungkan P2P...'
+        : 'Siap terhubung';
 
   return (
     <section className="screen garage-screen" data-menu-scope="active" aria-labelledby="mp-heading">
@@ -193,10 +247,27 @@ export default function MultiplayerLobbyScreen({
                 <div>
                   <span className="label">Kode Room</span>
                   <strong className="mp-room-code">{room.roomCode}</strong>
+                  <div className="mp-copy-actions">
+                    <button className="btn btn-small" type="button" onClick={handleCopyCode}>
+                      {copiedCode ? 'Kode Tersalin!' : 'Salin Kode'}
+                    </button>
+                    <button className="btn btn-small" type="button" onClick={handleCopyLink}>
+                      {copiedLink ? 'Link Tersalin!' : 'Salin Link'}
+                    </button>
+                  </div>
                 </div>
-                <button className="btn btn-small" type="button" onClick={handleCopy}>
-                  {copied ? 'Tersalin!' : 'Salin Kode'}
-                </button>
+                {qrUrl && (
+                  <div className="mp-qr-box">
+                    <img
+                      className="mp-qr"
+                      src={qrUrl}
+                      width={96}
+                      height={96}
+                      alt={`QR Code undangan room ${room.roomCode}`}
+                    />
+                    <small>Scan untuk gabung</small>
+                  </div>
+                )}
               </div>
 
               <span className="label">Pembalap ({room.players.length}/6 Manusia)</span>

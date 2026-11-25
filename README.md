@@ -67,10 +67,13 @@ Menjalankan server multiplayer secara lokal:
 npm run server
 ```
 
-Deploy gratis di **Render.com** (Blueprint [render.yaml](render.yaml), region Singapore):
-1. Hubungkan repository ke Render sebagai **Web Service** (`npm install` build command, `npm run server` start command, health check `/health`).
-2. Salin URL WebSocket dari Render (mis. `wss://mobile-piston-ws.onrender.com`).
-3. Set environment variable `NEXT_PUBLIC_WS_URL=wss://mobile-piston-ws.onrender.com` di project frontend (Vercel / Next.js).
+Deploy gratis tanpa kartu kredit di **Hugging Face Spaces (Docker SDK)**:
+1. Buat Space baru di `https://huggingface.co/new-space` dengan SDK **Docker** (Free CPU Basic, 2 vCPU, 16 GB RAM).
+2. Push atau upload `Dockerfile`, `package.json`, `package-lock.json`, `tsconfig.json`, `server/`, dan `src/game/` ke repository Space tersebut (port default `7860` sudah dikonfigurasi di [Dockerfile](Dockerfile)).
+3. Setelah status Space menjadi **Running**, salin URL WebSocket-nya: `wss://<username>-<nama-space>.hf.space`.
+4. Set environment variable `NEXT_PUBLIC_WS_URL=wss://<username>-<nama-space>.hf.space` di project frontend (Vercel / `.env.local`).
+
+*(Jika menggunakan Render atau VPS pribadi, file [render.yaml](render.yaml) juga tetap tersedia.)*
 
 ## Skrip
 

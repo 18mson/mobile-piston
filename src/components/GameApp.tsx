@@ -14,7 +14,8 @@ import { CARS, getCarPalette } from '../game/data/cars';
 import { getTrack } from '../game/track/tracks';
 import { defaultSave, loadSave, persistSave } from '../game/save';
 import { GameEngine } from '../game/engine';
-import { NetClient, type ConnectionStatus } from '../game/net/client';
+import type { ConnectionStatus } from '../game/net/client';
+import { PeerNetClient } from '../game/net/peerClient';
 import { formatTime } from '../game/utils';
 import TitleScreen from './screens/TitleScreen';
 import GarageScreen from './screens/GarageScreen';
@@ -94,7 +95,7 @@ export default function GameApp() {
   const lapRef = useRef(0);
 
   // Multiplayer online state
-  const netClientRef = useRef<NetClient | null>(null);
+  const netClientRef = useRef<PeerNetClient | null>(null);
   const [netStatus, setNetStatus] = useState<ConnectionStatus>('disconnected');
   const [netPlayerId, setNetPlayerId] = useState<string | null>(null);
   const [netPingMs, setNetPingMs] = useState<number | null>(null);
@@ -102,6 +103,7 @@ export default function GameApp() {
   const [mpError, setMpError] = useState('');
   const [playerName, setPlayerName] = useState('Pembalap');
   const [onlineTrackId, setOnlineTrackId] = useState<TrackId>('teluk-sore');
+  const [initialJoinCode, setInitialJoinCode] = useState('');
 
   const selectedColorIndex = save.selectedColors?.[save.selectedCarId] ?? 0;
   const selectedCar = {
@@ -338,12 +340,12 @@ export default function GameApp() {
     setShowHint(false);
   };
 
-  const openMultiplayer = () => {
+  const openMultiplayer = useCallback(() => {
     setMpError('');
     setRoomState(null);
     setScreen('multiplayer');
     if (!netClientRef.current) {
-      netClientRef.current = new NetClient();
+      netClientRef.current = new PeerNetClient();
     }
     const client = netClientRef.current;
     client.setCallbacks({
@@ -393,7 +395,18 @@ export default function GameApp() {
       },
     });
     client.connect();
-  };
+  }, []);
+
+  // Auto-open Multiplayer Lobby when opened via ?join=ROOMCODE invite link or QR code
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('join')?.trim().toUpperCase();
+    if (code && code.length >= 4) {
+      setInitialJoinCode(code);
+      openMultiplayer();
+    }
+  }, [openMultiplayer]);
 
   useEffect(() => {
     return () => {
@@ -469,6 +482,7 @@ export default function GameApp() {
               selectedCarId={save.selectedCarId}
               selectedColorIndex={selectedColorIndex}
               selectedTrackId={save.selectedTrackId}
+              initialJoinCode={initialJoinCode}
               onChangeName={setPlayerName}
               onSelectCar={(id) => {
                 selectCar(id);

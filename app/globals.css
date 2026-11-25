@@ -2586,8 +2586,38 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
+}
+
+.mp-copy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mp-qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.mp-qr {
+  display: block;
+  width: 88px;
+  height: 88px;
+  padding: 4px;
+  background: #f5ebd2;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+
+.mp-qr-box small {
+  font-size: 9px;
+  color: var(--bone-dim);
 }
 
 .mp-room-code {
@@ -2667,4 +2697,24 @@ kbd {
   .mp-room-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.btn-coming-soon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-soon-badge {
+  padding: 2px 6px;
+  background: rgba(255, 143, 61, 0.2);
+  border: 1px solid rgba(255, 143, 61, 0.55);
+  color: var(--orange);
+  font-family: var(--font-pixel-stack);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
