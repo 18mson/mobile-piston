@@ -113,6 +113,9 @@ export default function GameApp() {
       onStorageError: () => {
         setStorageWarning('Penyimpanan lokal browser penuh atau diblokir. Progres lokal mungkin tidak tersimpan.');
       },
+      onSyncError: (msg) => {
+        setStorageWarning(msg);
+      },
     });
   }
   const [isTouch, setIsTouch] = useState(false);
@@ -602,7 +605,18 @@ export default function GameApp() {
       },
       onRaceFinished: (raceResults) => {
         setIsOnlineResult(true);
-        engineRef.current?.finishOnlineRace(raceResults);
+        const myId = client.playerId;
+        const myRow = myId ? raceResults.results.find((r) => r.id === myId) : undefined;
+        const personalizedResults: RaceResults = myRow
+          ? {
+              ...raceResults,
+              results: raceResults.results.map((r) => ({ ...r, isPlayer: r.id === myId })),
+              playerPosition: myRow.position,
+              playerBestLapMs: myRow.bestLapMs,
+              totalTimeMs: myRow.timeMs ?? raceResults.totalTimeMs,
+            }
+          : raceResults;
+        engineRef.current?.finishOnlineRace(personalizedResults);
       },
     });
     client.connect();

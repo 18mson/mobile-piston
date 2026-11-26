@@ -132,10 +132,16 @@ export class CloudSaveSync {
   private activeUserId: string | null = null;
   private clientOverride: SupabaseClient | null;
   private onStorageError?: () => void;
+  private onSyncError?: (message: string) => void;
 
-  constructor(options?: { client?: SupabaseClient | null; onStorageError?: () => void }) {
+  constructor(options?: {
+    client?: SupabaseClient | null;
+    onStorageError?: () => void;
+    onSyncError?: (message: string) => void;
+  }) {
     this.clientOverride = options?.client ?? null;
     this.onStorageError = options?.onStorageError;
+    this.onSyncError = options?.onSyncError;
   }
 
   private getClient(): SupabaseClient | null {
@@ -204,6 +210,7 @@ export class CloudSaveSync {
 
       if (error) {
         writePendingSync({ userId, data: localSave, updatedAt: meta.updatedAt || Date.now() });
+        this.onSyncError?.('Gagal mengambil progres akun dari cloud. Memakai data lokal.');
         return localSave;
       }
 
@@ -251,6 +258,7 @@ export class CloudSaveSync {
       );
       if (error) {
         writePendingSync({ userId, data: save, updatedAt });
+        this.onSyncError?.('Gagal menyimpan progres ke cloud. Akan dicoba ulang saat online.');
         return false;
       }
       writePendingSync(null);

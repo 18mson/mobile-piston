@@ -5,3 +5,4 @@ out/
 artifacts/
 *.tsbuildinfo
 .DS_Store
+.env.local
