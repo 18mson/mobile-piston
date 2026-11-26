@@ -107,6 +107,7 @@ export default function GameApp() {
     });
   }
   const [isTouch, setIsTouch] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [cameraMode, setCameraMode] = useState<SavedCameraMode>('top');
   const [announcement, setAnnouncement] = useState('');
@@ -567,7 +568,12 @@ export default function GameApp() {
   }, [netDebugEnabled, screen]);
 
   useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
     return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
       netClientRef.current?.disconnect();
     };
   }, []);
@@ -584,50 +590,91 @@ export default function GameApp() {
   const showFooter = screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
 
   return (
-    <div className="app-shell" data-screen={screen} data-touch={isTouch ? 'true' : 'false'}>
+    <div
+      className="app-shell"
+      data-screen={screen}
+      data-touch={isTouch ? 'true' : 'false'}
+      data-fullscreen={isFullscreen ? 'true' : 'false'}
+    >
       <h1 className="sr-only">Mobile Piston, balapan mobil mini di Teluk Sore</h1>
 
       <header className="topbar" hidden={!showTopBar}>
-        <div className="brand-lockup" aria-hidden="true">
-          <span className="brand-mark">MP</span>
-          <span className="brand-copy">
-            <strong>Mobile Piston</strong>
-            <small>Teluk Sore</small>
-          </span>
-        </div>
-        <div className="topbar-actions">
+        <div className="topbar-left">
+          <div className="brand-lockup" aria-hidden="true">
+            <span className="brand-mark">MP</span>
+            <span className="brand-copy">
+              <strong>Mobile Piston</strong>
+              <small>Teluk Sore</small>
+            </span>
+          </div>
           {authUsername ? (
-            <>
+            <div className="topbar-auth-group">
               <span className="account-pill" aria-label={`Masuk sebagai ${authUsername}`}>
                 @{authUsername}
               </span>
-              <button className="btn btn-quiet btn-small" type="button" onClick={handleLogout}>
+              <button className="btn btn-quiet btn-small topbar-auth-btn" type="button" onClick={handleLogout}>
                 Keluar
               </button>
-            </>
+            </div>
           ) : (
-            <>
-              <span className="account-pill account-pill-guest" title="Mode Tamu: progres disimpan di browser ini">
-                Tamu (Lokal)
-              </span>
-              <button className="btn btn-small" type="button" onClick={() => setAuthOpen(true)}>
-                Masuk / Daftar
-              </button>
-            </>
+            <button
+              className="btn btn-small topbar-auth-btn"
+              type="button"
+              onClick={() => setAuthOpen(true)}
+              title="Mode Tamu: progres disimpan di browser ini. Ketuk untuk Masuk atau Daftar."
+            >
+              Tamu · Masuk
+            </button>
           )}
-          <button className="btn btn-quiet btn-small" type="button" onClick={toggleMute}>
-            Suara: {save.audioMuted ? 'mati' : 'nyala'}
+        </div>
+        <div className="topbar-actions">
+          <button
+            className="btn btn-quiet btn-small btn-icon-only"
+            type="button"
+            onClick={toggleMute}
+            aria-label={save.audioMuted ? 'Nyalakan suara' : 'Matikan suara'}
+            title={save.audioMuted ? 'Suara mati' : 'Suara nyala'}
+          >
+            {save.audioMuted ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5L6 9H2V15H6L11 19V5Z" fill="currentColor" />
+                <path d="M22 9L16 15M16 9L22 15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5L6 9H2V15H6L11 19V5Z" fill="currentColor" />
+                <path d="M15.5 8.5C16.8 9.8 16.8 14.2 15.5 15.5M18.5 6C21 8.5 21 15.5 18.5 18" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="square" />
+              </svg>
+            )}
           </button>
           <button
-            className="btn btn-quiet btn-small"
+            className="btn btn-quiet btn-small btn-icon-only"
             type="button"
             onClick={toggleFullscreen}
-            aria-label="Layar penuh"
+            aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+            title={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
           >
-            Full
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              {isFullscreen ? (
+                <path d="M9 4V9H4M15 4V9H20M9 20V15H4M15 20V15H20" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="square" />
+              ) : (
+                <path d="M4 9V4H9M20 9V4H15M4 15V20H9M20 15V20H15" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="square" />
+              )}
+            </svg>
           </button>
-          <button className="btn btn-quiet btn-small" type="button" onClick={openControls}>
-            Kontrol
+          <button
+            className="btn btn-quiet btn-small btn-icon-only"
+            type="button"
+            onClick={openControls}
+            aria-label="Pengaturan kontrol"
+            title="Kontrol"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
+              <path d="M7 10V14M5 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="square" />
+              <circle cx="15.5" cy="11" r="1.3" fill="currentColor" />
+              <circle cx="18" cy="13" r="1.3" fill="currentColor" />
+            </svg>
           </button>
         </div>
       </header>

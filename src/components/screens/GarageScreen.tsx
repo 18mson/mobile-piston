@@ -59,28 +59,31 @@ export default function GarageScreen({
                 <span className="car-number">#{1}</span>
               </div>
 
-              <div className="color-picker" role="group" aria-label={`Variasi warna ${selected.name}`}>
-                <span className="label">Warna ({colorOptions[activeColorIndex]?.label ?? colorOptions[0].label})</span>
-                <div className="color-swatches">
-                  {colorOptions.map((option, index) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      className="color-swatch"
-                      data-active={index === activeColorIndex}
-                      aria-label={`Warna ${option.label}`}
-                      aria-pressed={index === activeColorIndex}
-                      onClick={() => onSelectColor(selectedCarId, index)}
-                      style={{
-                        background: `linear-gradient(135deg, ${option.palette.body} 62%, ${option.palette.stripe} 62%)`,
-                      }}
-                    />
-                  ))}
+              <div className="car-detail-specs">
+                <div className="color-picker" role="group" aria-label={`Variasi warna ${selected.name}`}>
+                  <span className="label">Warna ({colorOptions[activeColorIndex]?.label ?? colorOptions[0].label})</span>
+                  <div className="color-swatches">
+                    {colorOptions.map((option, index) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className="color-swatch"
+                        data-active={index === activeColorIndex}
+                        aria-label={`Warna ${option.label}`}
+                        aria-pressed={index === activeColorIndex}
+                        onClick={() => onSelectColor(selectedCarId, index)}
+                        style={{
+                          background: `linear-gradient(135deg, ${option.palette.body} 62%, ${option.palette.stripe} 62%)`,
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
+
+                <StatBars car={selected} />
               </div>
 
               <p className="car-blurb">{selected.blurb}</p>
-              <StatBars car={selected} />
               <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
             </div>
           </aside>
