@@ -75,7 +75,10 @@ export interface UnlockDef {
 
 export const UNLOCKS: UnlockDef[] = [
   { id: 'car:kepik', kind: 'car', refId: 'kepik', level: 3, label: 'Kepik' },
+  { id: 'car:tanduk', kind: 'car', refId: 'tanduk', level: 5, label: 'Tanduk' },
   { id: 'car:hachi', kind: 'car', refId: 'hachi', level: 7, label: 'Hachi' },
+  { id: 'car:bima', kind: 'car', refId: 'bima', level: 10, label: 'Bima' },
+  { id: 'car:rota', kind: 'car', refId: 'rota', level: 12, label: 'Rota' },
 ];
 
 export function carUnlockDef(carId: CarId): UnlockDef | null {

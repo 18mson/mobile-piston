@@ -35,9 +35,11 @@ export default function TrackMinimap({
     const rot = -pAngle - Math.PI / 2;
     const cosR = Math.cos(rot);
     const sinR = Math.sin(rot);
-    // Zoomed radius: ~220 world units around player
-    const viewRange = 220;
+    // Zoomed radius: ~195 world units around player
+    const viewRange = 195;
     const scale = radarRadius / viewRange;
+    const roadWidthPx = Math.max(12, track.width * scale);
+    const shoulderWidthPx = Math.max(roadWidthPx + 4, (track.width + track.shoulder * 1.4) * scale);
 
     // 1. Radar background with circular clipping (semi-transparent so 3D world peeks through)
     ctx.save();
@@ -89,9 +91,9 @@ export default function TrackMinimap({
       segments.push(currentSeg);
     }
 
-    // Outer road shoulder / crisp dark outline for high contrast over terrain
+    // Outer road shoulder / crisp dark outline scaled to actual track width
     ctx.strokeStyle = 'rgba(12, 22, 30, 0.88)';
-    ctx.lineWidth = 14;
+    ctx.lineWidth = shoulderWidthPx;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     for (const seg of segments) {
@@ -100,9 +102,9 @@ export default function TrackMinimap({
       ctx.stroke();
     }
 
-    // Asphalt surface
+    // Asphalt surface scaled to actual track.width
     ctx.strokeStyle = 'rgba(54, 78, 96, 0.92)';
-    ctx.lineWidth = 9.5;
+    ctx.lineWidth = roadWidthPx;
     for (const seg of segments) {
       ctx.beginPath();
       seg.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.sx, pt.sy) : ctx.lineTo(pt.sx, pt.sy)));
@@ -132,8 +134,9 @@ export default function TrackMinimap({
       ctx.strokeStyle = '#ffe44d';
       ctx.lineWidth = 2.8;
       ctx.beginPath();
-      ctx.moveTo(s0x - s0nx * 6, s0y - s0ny * 6);
-      ctx.lineTo(s0x + s0nx * 6, s0y + s0ny * 6);
+      const gateHalf = roadWidthPx * 0.5;
+      ctx.moveTo(s0x - s0nx * gateHalf, s0y - s0ny * gateHalf);
+      ctx.lineTo(s0x + s0nx * gateHalf, s0y + s0ny * gateHalf);
       ctx.stroke();
     }
 
@@ -190,8 +193,8 @@ export default function TrackMinimap({
     <canvas
       ref={ref}
       className="minimap"
-      width={124}
-      height={124}
+      width={148}
+      height={148}
       role="img"
       aria-label={`Radar radar pelacak lintasan ${track.name}.`}
     />

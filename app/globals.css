@@ -1507,8 +1507,8 @@ p {
 
 .minimap {
   display: block;
-  width: 124px;
-  height: 124px;
+  width: 148px;
+  height: 148px;
   image-rendering: pixelated;
 }
 
@@ -2079,8 +2079,8 @@ kbd {
   }
 
   .hud-map-radar .minimap {
-    width: 84px;
-    height: 84px;
+    width: 98px;
+    height: 98px;
   }
 
   .hud-speed-dial {
@@ -2148,8 +2148,8 @@ kbd {
   }
 
   .app-shell[data-touch='true'] .hud-map-radar .minimap {
-    width: 84px;
-    height: 84px;
+    width: 98px;
+    height: 98px;
   }
 
   .app-shell[data-touch='true'] .hud-speed-dial {

@@ -130,8 +130,30 @@ export class CarView {
   }
 
   private addDropShadow(carId: CarId): void {
-    const l = carId === 'bagas' ? 6.2 : carId === 'okra' ? 5.6 : carId === 'kepik' ? 5.0 : carId === 'go' ? 5.0 : carId === 'hachi' ? 5.4 : carId === 'kart' ? 3.8 : 5.4;
-    const w = carId === 'bagas' ? 4.0 : carId === 'okra' ? 3.9 : carId === 'kepik' ? 3.8 : carId === 'go' ? 3.5 : carId === 'hachi' ? 3.6 : carId === 'kart' ? 3.2 : 3.7;
+    const l =
+      carId === 'bagas'
+        ? 6.2
+        : carId === 'okra'
+          ? 5.6
+          : carId === 'bima'
+            ? 5.8
+            : carId === 'kepik' || carId === 'go'
+              ? 5.0
+              : carId === 'kart'
+                ? 3.8
+                : 5.4;
+    const w =
+      carId === 'bagas'
+        ? 4.0
+        : carId === 'okra'
+          ? 3.9
+          : carId === 'kepik'
+            ? 3.8
+            : carId === 'go'
+              ? 3.5
+              : carId === 'kart'
+                ? 3.2
+                : 3.7;
     const geo = new THREE.PlaneGeometry(l, w);
     const mat = new THREE.MeshBasicMaterial({
       color: '#081217',
@@ -230,29 +252,28 @@ export class CarView {
     const pivot = new THREE.Group();
     pivot.position.set(x, radius * 0.95, z);
     
-    // Chunky 12-sided tire
-    const tireGeo = new THREE.CylinderGeometry(radius, radius, width, 10);
+    // Smooth round tire (24 radial segments so wheels read round rather than boxy)
+    const tireGeo = new THREE.CylinderGeometry(radius, radius, width, 24);
     tireGeo.rotateX(Math.PI / 2);
     const tireMat = this.material(tireColor);
     const tire = new THREE.Mesh(tireGeo, tireMat);
     tire.castShadow = true;
     pivot.add(tire);
 
-    // Chunky prominent rim that stands out from above & behind
+    // Prominent round rim that stands out from above & behind
     const rimRadius = radius * 0.62;
     const rimWidth = width + 0.06;
-    const rimGeo = new THREE.CylinderGeometry(rimRadius, rimRadius, rimWidth, 8);
+    const rimGeo = new THREE.CylinderGeometry(rimRadius, rimRadius, rimWidth, 16);
     rimGeo.rotateX(Math.PI / 2);
     const rimMat = this.material(rimColor);
     const rim = new THREE.Mesh(rimGeo, rimMat);
     rim.castShadow = true;
     tire.add(rim);
 
-    // Deep central nut / bolt block
-    const nut = new THREE.Mesh(
-      new THREE.BoxGeometry(rimRadius * 0.6, rimRadius * 0.6, rimWidth + 0.04),
-      this.material('#10151a'),
-    );
+    // Central hub nut in charcoal (never pure black)
+    const nutGeo = new THREE.CylinderGeometry(rimRadius * 0.34, rimRadius * 0.34, rimWidth + 0.04, 12);
+    nutGeo.rotateX(Math.PI / 2);
+    const nut = new THREE.Mesh(nutGeo, this.material('#3a4350'));
     tire.add(nut);
 
     this.group.add(pivot);
@@ -328,7 +349,7 @@ export class CarView {
     const glassMat = this.material(palette.glass);
     const stripeMat = this.material(palette.stripe);
     const chromeMat = this.material('#e8ecf0');
-    const darkTrimMat = this.material('#12171c');
+    const darkTrimMat = this.material('#2e3742');
     const lightMat = new THREE.MeshBasicMaterial({ color: '#fff5b8' });
     const tailMat = new THREE.MeshBasicMaterial({ color: '#ff3a2b' });
 
@@ -1003,7 +1024,7 @@ export class CarView {
       this.addNumber(number, -0.08, 2.22, 0, '#ffffff', width * 0.85);
       this.addFlames(-length / 2 - 0.15, 0);
 
-    } else {
+    } else if (carId === 'kepik') {
       // KEPIK: Proper open-wheel off-road dune buggy with tapered sculpted tub,
       // exposed tubular suspension A-arms & coilovers, full exoskeleton roll-cage,
       // roof light bar, and exposed rear engine with swept megaphone exhausts
@@ -1166,6 +1187,167 @@ export class CarView {
       }
 
       this.addNumber(number, -0.08, 2.26, 0, '#15222a', 2.0);
+      this.addFlames(-length / 2 - 0.16, 0);
+    } else if (carId === 'tanduk') {
+      // TANDUK: 4WD Turbo Rally Sedan with flared box arches, 4 front fog lamps, roof scoop, & tall rear wing
+      const length = 5.2;
+      const width = 3.32;
+      const wheelRadius = 0.74;
+      const wheelWidth = 0.54;
+
+      // Undercarriage & rally skid plate
+      this.addBox([4.85, 0.24, 2.86], [0, 0.44, 0], darkTrimMat, true, false);
+      this.addBox([0.5, 0.14, 2.2], [2.42, 0.46, 0], chromeMat);
+
+      // Wide rally sedan body & flared fenders
+      this.addBox([length, 0.68, 2.9], [0, 0.84, 0], bodyMat);
+      this.addBox([2.15, 0.16, 2.46], [1.42, 1.18, 0], bodyMat);
+      this.addBox([2.05, 0.04, 0.56], [1.4, 1.27, 0], stripeMat);
+      // Hood turbo intercooler scoop
+      this.addBox([0.78, 0.16, 0.92], [1.45, 1.32, 0], highlightMat);
+      this.addBox([0.12, 0.12, 0.78], [1.85, 1.32, 0], darkTrimMat);
+
+      // Flared box wheel arches + mudflaps
+      for (const side of [-1, 1]) {
+        this.addBox([1.46, 0.56, 0.28], [length * 0.29, 0.86, side * 1.56], shadeMat);
+        this.addBox([1.46, 0.56, 0.28], [-length * 0.29, 0.86, side * 1.56], shadeMat);
+        this.addBox([0.08, 0.46, 0.52], [-length * 0.44, 0.48, side * 1.48], stripeMat);
+      }
+
+      // Cabin & roof air scoop
+      this.addBox([2.1, 0.68, 2.34], [-0.22, 1.54, 0], bodyMat);
+      this.addBox([2.06, 0.58, 2.4], [-0.22, 1.5, 0], glassMat);
+      this.addBox([1.56, 0.08, 2.18], [-0.24, 1.92, 0], highlightMat);
+      this.addBox([0.52, 0.14, 0.46], [0.22, 2.0, 0], stripeMat);
+
+      // Tall twin-pillar rally rear wing
+      this.addBox([0.52, 0.12, 2.92], [-2.28, 1.88, 0], bodyMat);
+      for (const side of [-1, 1]) {
+        this.addBox([0.28, 0.66, 0.12], [-2.24, 1.52, side * 0.92], shadeMat);
+        this.addBox([0.62, 0.26, 0.08], [-2.28, 1.88, side * 1.46], stripeMat);
+      }
+
+      // 4 rally fog lights on the front pod + 2 main headlights
+      for (const z of [-0.62, -0.22, 0.22, 0.62]) {
+        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.18, 12), lightMat);
+        pod.rotation.z = Math.PI / 2;
+        pod.position.set(length / 2 + 0.08, 0.92, z);
+        this.body.add(pod);
+      }
+      for (const side of [-1, 1]) {
+        this.addBox([0.14, 0.22, 0.46], [length / 2 + 0.02, 0.96, side * 1.08], lightMat);
+        const tail = this.addBox([0.12, 0.2, 0.52], [-length / 2 - 0.02, 0.98, side * 1.02], tailMat);
+        this.brakeLights.push(tail);
+      }
+
+      // Large single rally exhaust
+      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.45, 10), chromeMat);
+      exhaust.rotation.z = Math.PI / 2;
+      exhaust.position.set(-length / 2 - 0.1, 0.48, -0.78);
+      this.body.add(exhaust);
+
+      for (const side of [-1, 1]) {
+        this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.04), true, palette.wheel, palette.stripe);
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.04), false, palette.wheel, palette.stripe);
+      }
+      this.addNumber(number, -0.24, 1.98, 0, '#15222a', 2.4);
+      this.addFlames(-length / 2 - 0.18, 0);
+    } else if (carId === 'bima') {
+      // BIMA: Classic Open-Wheel Formula V8 with tapered nose cone, front/rear wings, sidepods, & high airbox
+      const length = 5.4;
+      const width = 3.55;
+
+      // Narrow monocoque tub & tapered bullet nose
+      this.addBox([3.8, 0.44, 1.18], [-0.15, 0.58, 0], bodyMat);
+      this.addBox([1.45, 0.34, 0.88], [2.15, 0.54, 0], bodyMat);
+      this.addBox([0.85, 0.24, 0.54], [2.78, 0.5, 0], highlightMat);
+      this.addBox([4.4, 0.04, 0.38], [0.5, 0.82, 0], stripeMat);
+
+      // Front wing with endplates
+      this.addBox([0.52, 0.1, 3.05], [2.72, 0.36, 0], shadeMat);
+      for (const side of [-1, 1]) {
+        this.addBox([0.56, 0.32, 0.08], [2.72, 0.44, side * 1.52], stripeMat);
+        // Sculpted radiator sidepods
+        this.addBox([2.15, 0.48, 0.62], [-0.45, 0.66, side * 0.82], shadeMat);
+        this.addBox([0.1, 0.36, 0.46], [0.62, 0.68, side * 0.82], darkTrimMat);
+        // Exposed suspension A-arms
+        this.addBox([0.16, 0.08, 1.1], [1.75, 0.58, side * 1.0], darkTrimMat);
+        this.addBox([0.16, 0.08, 1.1], [-1.55, 0.62, side * 1.0], darkTrimMat);
+      }
+
+      // Cockpit surround, driver helmet, & tall V8 airbox intake
+      this.addBox([0.85, 0.24, 1.02], [-0.35, 0.9, 0], darkTrimMat);
+      this.addBox([0.36, 0.22, 0.92], [0.22, 0.88, 0], glassMat);
+      this.addDriver(-0.28, 0.92, 0, palette.stripe, '#263a4d', 0.92);
+      this.addBox([0.92, 0.58, 0.58], [-1.05, 1.18, 0], bodyMat);
+      this.addBox([0.12, 0.36, 0.44], [-0.56, 1.24, 0], darkTrimMat);
+
+      // Tall rear formula wing + rain tail light
+      this.addBox([0.58, 0.12, 2.7], [-2.42, 1.56, 0], bodyMat);
+      for (const side of [-1, 1]) {
+        this.addBox([0.32, 0.72, 0.1], [-2.36, 1.16, side * 0.72], darkTrimMat);
+        this.addBox([0.66, 0.34, 0.08], [-2.42, 1.54, side * 1.35], stripeMat);
+      }
+      const tail = this.addBox([0.14, 0.2, 0.24], [-2.28, 0.72, 0], tailMat);
+      this.brakeLights.push(tail);
+
+      // Wide open-wheel formula slicks
+      for (const side of [-1, 1]) {
+        this.addWheel(0.62, 0.52, 1.75, side * (width / 2 - 0.18), true, palette.wheel, '#d6dde4');
+        this.addWheel(0.76, 0.72, -1.55, side * (width / 2 - 0.12), false, palette.wheel, '#d6dde4');
+      }
+      this.addNumber(number, 1.15, 0.84, 0, '#15222a', 1.4);
+      this.addFlames(-length / 2 + 0.1, 0);
+    } else if (carId === 'rota') {
+      // ROTA: Low Sleek Rotary Sports Coupe with fastback glass roof, vented hood, & curved GT wing
+      const length = 5.25;
+      const width = 3.3;
+      const wheelRadius = 0.7;
+      const wheelWidth = 0.52;
+
+      // Low ground-effect splitter & side skirts
+      this.addBox([5.0, 0.2, 2.9], [0, 0.38, 0], darkTrimMat, true, false);
+      this.addBox([0.42, 0.1, width * 0.92], [2.56, 0.4, 0], shadeMat);
+
+      // Low sleek rotary coupe body
+      this.addBox([length, 0.56, 2.95], [0, 0.74, 0], bodyMat);
+      this.addBox([2.15, 0.16, 2.66], [1.45, 1.04, 0], bodyMat);
+      // Hood rotary heat-extractor vents
+      for (const side of [-1, 1]) {
+        this.addBox([0.54, 0.06, 0.42], [1.45, 1.13, side * 0.54], darkTrimMat);
+        this.addBox([1.42, 0.46, 0.24], [length * 0.3, 0.78, side * 1.54], bodyMat);
+        this.addBox([1.56, 0.52, 0.28], [-length * 0.28, 0.82, side * 1.56], bodyMat);
+      }
+
+      // Fastback cabin & rear louvers
+      this.addBox([2.35, 0.54, 2.26], [-0.36, 1.32, 0], glassMat);
+      this.addBox([1.48, 0.08, 2.12], [-0.26, 1.62, 0], bodyMat);
+      this.addBox([0.75, 0.04, 1.8], [-1.3, 1.4, 0], darkTrimMat);
+      this.addBox([4.8, 0.04, 0.44], [0, 1.67, 0], stripeMat);
+
+      // Curved GT rear wing
+      this.addBox([0.46, 0.1, 2.96], [-2.34, 1.52, 0], shadeMat);
+      for (const side of [-1, 1]) {
+        this.addBox([0.24, 0.48, 0.1], [-2.3, 1.24, side * 0.88], darkTrimMat);
+        this.addBox([0.52, 0.22, 0.08], [-2.34, 1.52, side * 1.48], stripeMat);
+      }
+
+      // Sleek front headlamps & wide rear bar tail lights
+      for (const side of [-1, 1]) {
+        this.addBox([0.14, 0.16, 0.58], [length / 2 + 0.02, 0.82, side * 1.02], lightMat);
+        const tail = this.addBox([0.12, 0.18, 0.68], [-length / 2 - 0.02, 0.86, side * 0.96], tailMat);
+        this.brakeLights.push(tail);
+        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.42, 10), chromeMat);
+        pipe.rotation.z = Math.PI / 2;
+        pipe.position.set(-length / 2 - 0.08, 0.44, side * 0.72);
+        this.body.add(pipe);
+      }
+
+      for (const side of [-1, 1]) {
+        this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.04), true, palette.wheel, '#d6dde4');
+        this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.04), false, palette.wheel, '#d6dde4');
+      }
+      this.addNumber(number, -0.26, 1.72, 0, '#15222a', 2.2);
       this.addFlames(-length / 2 - 0.16, 0);
     }
   }

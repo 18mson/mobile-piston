@@ -1,4 +1,14 @@
-export type CarId = 'sirip' | 'go' | 'bagas' | 'okra' | 'kepik' | 'hachi' | 'kart';
+export type CarId =
+  | 'sirip'
+  | 'go'
+  | 'bagas'
+  | 'okra'
+  | 'kepik'
+  | 'hachi'
+  | 'kart'
+  | 'tanduk'
+  | 'bima'
+  | 'rota';
 export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan';
 export type TrackTheme = 'coast' | 'highland';
 
