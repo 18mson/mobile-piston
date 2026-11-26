@@ -1,4 +1,5 @@
-import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, Track, WorldSnapshot } from './types';
+import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, RacerState, Track, WorldSnapshot } from './types';
+import { getCar } from './data/cars';
 import { RaceSim, type RaceParticipant } from './race';
 import { Renderer3D, type CameraMode } from './render3d/renderer3d';
 import { InputManager } from './input';
@@ -53,6 +54,24 @@ export class GameEngine {
   private netClient: NetTransport | null = null;
   private netInputTimer = 0;
   private lastSentInput: PlayerInput | null = null;
+
+  /** Engine, tyre squeal, dirt crunch and boost-pad sounds for the car the player drives. */
+  private updateRaceAudio(racer: RacerState, racing: boolean): void {
+    const speed = Math.hypot(racer.vx, racer.vy);
+    const topSpeed = getCar(racer.carId).stats.topSpeed;
+    this.audio.updateEngine(speed, topSpeed, racer.drifting, racer.nitroActive, racing);
+    const lateral = -racer.vx * Math.sin(racer.angle) + racer.vy * Math.cos(racer.angle);
+    const slip = speed > 30 ? clamp(Math.abs(lateral) / speed / 0.45, 0, 1) : 0;
+    this.audio.updateDriving({
+      speed,
+      maxSpeed: topSpeed,
+      slip,
+      drifting: racer.drifting,
+      offroad: Boolean(racer.offroad),
+      padHit: racer.padCooldown > 0.6,
+      racing,
+    });
+  }
 
   constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks, track: Track) {
     this.callbacks = callbacks;
@@ -434,16 +453,10 @@ export class GameEngine {
 
     this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
     if (this.race.player.impact > 0.34 && this.impactSoundCooldown <= 0) {
-      this.audio.impact(this.race.player.impact);
+      this.audio.impact(this.race.player.impact, this.race.player.impactKind);
       this.impactSoundCooldown = 0.16;
     }
-    this.audio.updateEngine(
-      Math.hypot(this.race.player.vx, this.race.player.vy),
-      this.race.player.carId === 'bagas' ? 207 : 186,
-      this.race.player.drifting,
-      this.race.player.nitroActive,
-      true,
-    );
+    this.updateRaceAudio(this.race.player, true);
 
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
     this.renderCurrentFrame(dt, alpha);
@@ -490,16 +503,10 @@ export class GameEngine {
 
     this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
     if (renderPlayer.impact > 0.34 && this.impactSoundCooldown <= 0) {
-      this.audio.impact(renderPlayer.impact);
+      this.audio.impact(renderPlayer.impact, renderPlayer.impactKind);
       this.impactSoundCooldown = 0.16;
     }
-    this.audio.updateEngine(
-      Math.hypot(renderPlayer.vx, renderPlayer.vy),
-      renderPlayer.carId === 'bagas' ? 207 : 186,
-      renderPlayer.drifting,
-      renderPlayer.nitroActive,
-      this.onlineSync.currentMode === 'racing',
-    );
+    this.updateRaceAudio(renderPlayer, this.onlineSync.currentMode === 'racing');
 
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
     const snapshotMode = this.onlineSync.currentMode === 'countdown' ? 'countdown' : 'racing';

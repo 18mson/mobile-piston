@@ -120,6 +120,10 @@ export interface RacerState {
   lapTimes: number[];
   stuckTime: number;
   impact: number;
+  /** What caused the latest impact (for sound/particles). Optional, local-only. */
+  impactKind?: 'wall' | 'car';
+  /** True while the tyres are off the asphalt (dirt/grass). Optional, local-only. */
+  offroad?: boolean;
   padCooldown: number;
   prevX: number;
   prevY: number;
@@ -198,6 +202,7 @@ export interface SaveData {
   audioMuted: boolean;
   cameraMode?: SavedCameraMode;
   selectedColors?: Partial<Record<CarId, number>>;
+  unlocks?: string[];
 }
 
 export interface HudUpdate {

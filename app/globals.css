@@ -1736,6 +1736,90 @@ p {
   background: rgba(4, 10, 14, 0.78);
 }
 
+.auth-dialog {
+  width: min(480px, calc(100vw - 24px));
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.auth-tab {
+  min-height: 46px;
+}
+
+.auth-tab[data-active="true"] {
+  border-color: var(--orange);
+  background: rgba(255, 143, 61, 0.16);
+  color: var(--orange);
+}
+
+.auth-warning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 143, 61, 0.55);
+  background: rgba(91, 46, 22, 0.42);
+  color: var(--bone);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.auth-field input {
+  min-height: 46px;
+  font-size: 15px;
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-submit,
+.auth-guest {
+  min-height: 48px;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 143, 61, 0.55);
+  background: rgba(12, 24, 32, 0.88);
+  color: var(--bone);
+  font-size: 11px;
+}
+
+.account-pill-guest {
+  border-color: var(--line);
+  color: var(--bone-dim);
+}
+
+.storage-warning {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 8px 14px;
+  border: 2px solid var(--orange);
+  background: var(--ink);
+  color: var(--bone);
+  font-size: 12px;
+}
+
 .dialog h2 {
   margin-top: 4px;
   font-size: clamp(28px, 5vw, 44px);

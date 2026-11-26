@@ -23,6 +23,7 @@ function applyTrackPenalty(racer: RacerState, track: Track, spec: CarSpec, dt: n
       racer.vx *= 0.68;
       racer.vy *= 0.68;
       racer.impact = Math.max(racer.impact, Math.min(1, outwardSpeed / 90));
+      racer.impactKind = 'wall';
     }
   } else if (hit.distance > softLimit) {
     const slowdown = clamp((hit.distance - softLimit) / Math.max(1, track.shoulder), 0, 1);
@@ -86,6 +87,7 @@ export function stepRacer(
 
   const hitBefore = nearestOnTrack(track, racer.x, racer.y);
   const offroadRatio = clamp((hitBefore.distance - (track.width / 2 - 2)) / (CAR_RADIUS * 2.2), 0, 1);
+  racer.offroad = offroadRatio > 0.15;
   const wantNitro = input.nitro && racer.nitro > 0.5 && !racer.finished;
 
   racer.nitroActive = wantNitro;
@@ -366,6 +368,8 @@ export function resolveRacerCollisions(racers: RacerState[]): void {
         b.vy *= slowdown;
         a.impact = Math.max(a.impact, strength);
         b.impact = Math.max(b.impact, strength);
+        a.impactKind = 'car';
+        b.impactKind = 'car';
       }
     }
   }

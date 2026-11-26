@@ -12,7 +12,13 @@ import type {
 } from '../game/types';
 import { CARS, getCarPalette } from '../game/data/cars';
 import { getTrack } from '../game/track/tracks';
-import { defaultSave, loadSave, persistSave } from '../game/save';
+import { defaultSave, loadSave } from '../game/save';
+import {
+  extractUsernameFromUser,
+  getSupabaseClient,
+  signOutAccount,
+} from '../game/auth/supabaseClient';
+import { CloudSaveSync } from '../game/auth/sync';
 import { GameEngine } from '../game/engine';
 import type { ConnectionStatus } from '../game/net/client';
 import { PeerNetClient } from '../game/net/peerClient';
@@ -23,6 +29,7 @@ import TrackSelectScreen from './screens/TrackSelectScreen';
 import MultiplayerLobbyScreen from './screens/MultiplayerLobbyScreen';
 import PauseDialog from './screens/PauseDialog';
 import ControlsDialog from './screens/ControlsDialog';
+import AuthDialog from './screens/AuthDialog';
 import ResultsScreen from './screens/ResultsScreen';
 import RaceHud from './hud/RaceHud';
 import TouchControls from './hud/TouchControls';
@@ -87,6 +94,18 @@ export default function GameApp() {
   const [results, setResults] = useState<RaceResults | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authUsername, setAuthUsername] = useState<string | null>(null);
+  const authUserIdRef = useRef<string | null>(null);
+  const [storageWarning, setStorageWarning] = useState('');
+  const cloudSyncRef = useRef<CloudSaveSync | null>(null);
+  if (!cloudSyncRef.current) {
+    cloudSyncRef.current = new CloudSaveSync({
+      onStorageError: () => {
+        setStorageWarning('Penyimpanan lokal browser penuh atau diblokir. Progres lokal mungkin tidak tersimpan.');
+      },
+    });
+  }
   const [isTouch, setIsTouch] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [cameraMode, setCameraMode] = useState<SavedCameraMode>('top');
@@ -112,6 +131,66 @@ export default function GameApp() {
   };
   const selectedTrack = getTrack(save.selectedTrackId);
   const bestLapMs = save.bestLapMs[selectedTrack.id] ?? null;
+
+  const commitSave = useCallback((nextSave: SaveData) => {
+    setSave(nextSave);
+    saveRef.current = nextSave;
+    const ok = cloudSyncRef.current?.saveLocalAndSchedule(nextSave, authUserIdRef.current) ?? true;
+    if (ok) {
+      setStorageWarning('');
+    }
+  }, []);
+
+  useEffect(() => {
+    const client = getSupabaseClient();
+    const sync = cloudSyncRef.current;
+
+    const applyAccountSession = async (user: Parameters<typeof extractUsernameFromUser>[0]) => {
+      if (!user) return;
+      const username = extractUsernameFromUser(user);
+      authUserIdRef.current = user.id;
+      setAuthUsername(username);
+      if (username) {
+        setPlayerName((prev) => (prev === 'Pembalap' || !prev.trim() ? username : prev));
+      }
+      if (sync) {
+        const merged = await sync.syncOnLogin(user.id);
+        setSave(merged);
+        saveRef.current = merged;
+        if (merged.cameraMode) setCameraMode(merged.cameraMode);
+        engineRef.current?.setMuted(merged.audioMuted);
+        engineRef.current?.setTrack(getTrack(merged.selectedTrackId));
+      }
+    };
+
+    let sub: { unsubscribe: () => void } | null = null;
+    if (client) {
+      void client.auth.getSession().then(({ data }) => {
+        if (data.session?.user) {
+          void applyAccountSession(data.session.user);
+        }
+      });
+      const { data } = client.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          void applyAccountSession(session.user);
+        } else if (authUserIdRef.current !== null) {
+          authUserIdRef.current = null;
+          setAuthUsername(null);
+        }
+      });
+      sub = data.subscription;
+    }
+
+    const onOnline = () => {
+      void sync?.flushPending();
+    };
+    window.addEventListener('online', onOnline);
+    return () => {
+      sub?.unsubscribe();
+      window.removeEventListener('online', onOnline);
+      sync?.dispose();
+    };
+  }, []);
 
   useEffect(() => {
     saveRef.current = save;
@@ -164,9 +243,7 @@ export default function GameApp() {
               nextSave.bestLapMs[trackId] = nextResults.playerBestLapMs;
             }
           }
-          setSave(nextSave);
-          saveRef.current = nextSave;
-          persistSave(nextSave);
+          commitSave(nextSave);
           setAnnouncement(
             `Finis di posisi ${nextResults.playerPosition}. Waktu total ${formatTime(nextResults.totalTimeMs)}.`,
           );
@@ -186,9 +263,7 @@ export default function GameApp() {
         onCameraChange: (mode) => {
           setCameraMode(mode);
           const nextSave: SaveData = { ...saveRef.current, cameraMode: mode };
-          setSave(nextSave);
-          saveRef.current = nextSave;
-          persistSave(nextSave);
+          commitSave(nextSave);
         },
       }, getTrack(loaded.selectedTrackId));
     } catch (error) {
@@ -323,18 +398,14 @@ export default function GameApp() {
   const selectTrack = (id: TrackId) => {
     if (id === saveRef.current.selectedTrackId) return;
     const nextSave: SaveData = { ...saveRef.current, selectedTrackId: id };
-    setSave(nextSave);
-    saveRef.current = nextSave;
-    persistSave(nextSave);
+    commitSave(nextSave);
     engineRef.current?.setTrack(getTrack(id));
     setAnnouncement(`Lintasan ${getTrack(id).name} dipilih.`);
   };
 
   const selectCar = (id: CarId) => {
     const nextSave: SaveData = { ...saveRef.current, selectedCarId: id };
-    setSave(nextSave);
-    saveRef.current = nextSave;
-    persistSave(nextSave);
+    commitSave(nextSave);
   };
 
   const selectCarColor = (id: CarId, colorIndex: number) => {
@@ -345,18 +416,28 @@ export default function GameApp() {
         [id]: colorIndex,
       },
     };
-    setSave(nextSave);
-    saveRef.current = nextSave;
-    persistSave(nextSave);
+    commitSave(nextSave);
   };
 
   const toggleMute = () => {
     const nextSave: SaveData = { ...saveRef.current, audioMuted: !saveRef.current.audioMuted };
-    setSave(nextSave);
-    saveRef.current = nextSave;
-    persistSave(nextSave);
+    commitSave(nextSave);
     engineRef.current?.setMuted(nextSave.audioMuted);
     engineRef.current?.audioController.click();
+  };
+
+  const handleLogout = async () => {
+    await signOutAccount();
+    authUserIdRef.current = null;
+    setAuthUsername(null);
+    setPlayerName('Pembalap');
+    const guestSave = cloudSyncRef.current?.handleLogout() ?? defaultSave();
+    setSave(guestSave);
+    saveRef.current = guestSave;
+    if (guestSave.cameraMode) setCameraMode(guestSave.cameraMode);
+    engineRef.current?.setMuted(guestSave.audioMuted);
+    engineRef.current?.setTrack(getTrack(guestSave.selectedTrackId));
+    setAnnouncement('Keluar dari akun. Bermain sebagai tamu.');
   };
 
   const openControls = () => setControlsOpen(true);
@@ -499,6 +580,25 @@ export default function GameApp() {
           </span>
         </div>
         <div className="topbar-actions">
+          {authUsername ? (
+            <>
+              <span className="account-pill" aria-label={`Masuk sebagai ${authUsername}`}>
+                @{authUsername}
+              </span>
+              <button className="btn btn-quiet btn-small" type="button" onClick={handleLogout}>
+                Keluar
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="account-pill account-pill-guest" title="Mode Tamu: progres disimpan di browser ini">
+                Tamu (Lokal)
+              </span>
+              <button className="btn btn-small" type="button" onClick={() => setAuthOpen(true)}>
+                Masuk / Daftar
+              </button>
+            </>
+          )}
           <button className="btn btn-quiet btn-small" type="button" onClick={toggleMute}>
             Suara: {save.audioMuted ? 'mati' : 'nyala'}
           </button>
@@ -676,11 +776,32 @@ export default function GameApp() {
       </main>
 
       <footer className="app-footer" hidden={!showFooter}>
-        <span>Mobile Piston / Teluk Sore</span>
-        <span>Keyboard, sentuh, dan gamepad. Tidak ada data yang dikirim.</span>
+        <span>Mobile Piston / {selectedTrack.name}</span>
+        <span>
+          {authUsername
+            ? `Akun @${authUsername}: progres tersinkron ke cloud.`
+            : 'Mode Tamu: progres disimpan lokal di browser ini (localStorage).'}
+        </span>
       </footer>
 
       {controlsOpen && <ControlsDialog open={controlsOpen} onClose={() => setControlsOpen(false)} />}
+      {authOpen && (
+        <AuthDialog
+          open={authOpen}
+          onClose={() => {
+            setAuthOpen(false);
+            if (!authUsername) {
+              setAnnouncement('Bermain sebagai tamu. Progres disimpan di browser ini.');
+            }
+          }}
+          onSuccess={() => setAnnouncement('Berhasil masuk akun. Progres disinkronkan.')}
+        />
+      )}
+      {storageWarning && (
+        <div className="storage-warning" role="alert">
+          {storageWarning}
+        </div>
+      )}
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}

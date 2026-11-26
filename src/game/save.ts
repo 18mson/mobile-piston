@@ -48,7 +48,15 @@ export function normalizeSave(raw: unknown): SaveData {
       }
     }
   }
-  return {
+  const unlocks = Array.isArray(data.unlocks)
+    ? Array.from(
+        new Set(
+          data.unlocks.filter((item): item is string => typeof item === 'string' && item.trim().length > 0),
+        ),
+      )
+    : undefined;
+
+  const normalized: SaveData = {
     version: 2,
     selectedCarId,
     selectedTrackId,
@@ -57,6 +65,10 @@ export function normalizeSave(raw: unknown): SaveData {
     cameraMode,
     selectedColors,
   };
+  if (unlocks && unlocks.length > 0) {
+    normalized.unlocks = unlocks;
+  }
+  return normalized;
 }
 
 export function loadSave(): SaveData {
@@ -72,11 +84,13 @@ export function loadSave(): SaveData {
   }
 }
 
-export function persistSave(save: SaveData): void {
-  if (typeof window === 'undefined') return;
+export function persistSave(save: SaveData): boolean {
+  if (typeof window === 'undefined') return true;
   try {
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    return true;
   } catch {
-    // Storage can be unavailable in private or restricted contexts.
+    // Caller can inspect boolean return value and show a UI warning when storage is blocked/full.
+    return false;
   }
 }

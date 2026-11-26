@@ -6,6 +6,7 @@ import { CameraRig, type CameraMode } from './cameraRig';
 import { AI_LIVERIES } from '../data/cars';
 import { nearestOnTrack, sampleAtDistance } from '../track/geometry';
 import { RENDER_HEIGHT, RENDER_WIDTH, ROAD_Y, toSceneX, toSceneZ } from './constants';
+import { ParticleFx } from './particles';
 
 export { type CameraMode } from './cameraRig';
 
@@ -50,6 +51,8 @@ export class Renderer3D {
   private skidIndex = 0;
   private maxSkids = 800;
   private lastSkidPos = new Map<string, { x: number; y: number }>();
+  // Dirt, tyre smoke and collision sparks
+  private fx = new ParticleFx();
 
   // Dirt tire tracks left when cars drive offroad on soil/grass
   private dirtMesh: THREE.InstancedMesh;
@@ -143,6 +146,7 @@ export class Renderer3D {
     }
     this.dirtMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(this.dirtMesh);
+    this.scene.add(this.fx.mesh);
   }
 
   private buildCockpitView(): void {
@@ -431,6 +435,7 @@ export class Renderer3D {
       this.dirtMesh.setMatrixAt(i, this.dirtDummy.matrix);
     }
     this.dirtMesh.instanceMatrix.needsUpdate = true;
+    this.fx.clear();
   }
 
   renderAttract(time: number, dt: number): void {
@@ -607,7 +612,13 @@ export class Renderer3D {
       } else {
         this.lastSkidPos.delete(racer.id);
       }
+
+      // Dirt thrown up by the tyres, drift smoke and collision sparks
+      if (!isPaused && !this.reducedMotion) {
+        this.fx.emitForRacer(src, interpX, interpY, interpAngle, effectiveDt);
+      }
     }
+    this.fx.update(this.reducedMotion ? 0 : effectiveDt);
 
     const playerView = this.cars.get(player.id);
     this.playerCar = playerView ?? null;
