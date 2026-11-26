@@ -57,6 +57,7 @@ export class GameRoom {
   hostId: string;
   status: 'lobby' | 'countdown' | 'racing' | 'finished' = 'lobby';
   private members = new Map<string, RoomMember>();
+  private spectators = new Map<string, { id: string; name: string; send: SendMessageFn }>();
   private sim: RaceSim | null = null;
   private countdownRemaining = 0;
   private accumulator = 0;
@@ -103,7 +104,41 @@ export class GameRoom {
     return true;
   }
 
+  addSpectator(id: string, name: string, send: SendMessageFn): boolean {
+    if (!this.sim || (this.status !== 'countdown' && this.status !== 'racing')) {
+      return false;
+    }
+    const cleanName = name.trim().slice(0, 16) || 'Penonton';
+    this.spectators.set(id, { id, name: cleanName, send });
+    const participants = this.sim.racers.map((r) => {
+      const m = this.members.get(r.id);
+      return {
+        id: r.id,
+        name: r.label,
+        carId: r.carId,
+        colorIndex: m?.colorIndex ?? 0,
+        isHuman: Boolean(r.isHuman),
+        number: r.number,
+      };
+    });
+    send({
+      type: 'race_started',
+      trackId: this.trackId,
+      totalLaps: this.totalLaps,
+      isSpectator: true,
+      participants,
+    });
+    const snap = this.getSnapshot();
+    if (snap) send({ type: 'snapshot', snapshot: snap });
+    return true;
+  }
+
+  removeSpectator(id: string): void {
+    this.spectators.delete(id);
+  }
+
   markDisconnected(id: string, nowMs = Date.now()): boolean {
+    this.spectators.delete(id);
     const member = this.members.get(id);
     if (!member) return false;
     if (this.status === 'lobby' || this.status === 'finished') {
@@ -467,6 +502,9 @@ export class GameRoom {
       if (member.connected) {
         member.send(msg);
       }
+    }
+    for (const spec of this.spectators.values()) {
+      spec.send(msg);
     }
   }
 }

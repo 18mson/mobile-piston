@@ -24,6 +24,12 @@ import { CloudSaveSync } from '../game/auth/sync';
 import { GameEngine } from '../game/engine';
 import type { ConnectionStatus } from '../game/net/client';
 import { PeerNetClient } from '../game/net/peerClient';
+import {
+  listPublicRooms,
+  publishPublicRoom,
+  removePublicRoom,
+  type PublicRoomInfo,
+} from '../game/net/roomDirectory';
 import { formatTime } from '../game/utils';
 import TitleScreen from './screens/TitleScreen';
 import GarageScreen from './screens/GarageScreen';
@@ -100,6 +106,9 @@ export default function GameApp() {
   const [snapshot, setSnapshot] = useState<RaceSnapshot | null>(null);
   const [results, setResults] = useState<RaceResults | null>(null);
   const [isOnlineResult, setIsOnlineResult] = useState(false);
+  const [isSpectating, setIsSpectating] = useState(false);
+  const [spectateLabel, setSpectateLabel] = useState('');
+  const isSpectatingRef = useRef(false);
   const [xpReport, setXpReport] = useState<XpReport | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [controlsOpen, setControlsOpen] = useState(false);
@@ -132,6 +141,9 @@ export default function GameApp() {
   const [netPlayerId, setNetPlayerId] = useState<string | null>(null);
   const [netPingMs, setNetPingMs] = useState<number | null>(null);
   const [roomState, setRoomState] = useState<RoomStatePacket | null>(null);
+  const [publicRooms, setPublicRooms] = useState<PublicRoomInfo[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const hostedRoomCodeRef = useRef<string | null>(null);
   const [mpError, setMpError] = useState('');
   const [playerName, setPlayerName] = useState('Tamu');
   const hasCustomNameRef = useRef(false);
@@ -204,6 +216,9 @@ export default function GameApp() {
     };
     const onPageHide = () => {
       void sync?.flushPending();
+      if (hostedRoomCodeRef.current) {
+        void removePublicRoom(hostedRoomCodeRef.current);
+      }
     };
     window.addEventListener('online', onOnline);
     window.addEventListener('pagehide', onPageHide);
@@ -211,6 +226,10 @@ export default function GameApp() {
       sub?.unsubscribe();
       window.removeEventListener('online', onOnline);
       window.removeEventListener('pagehide', onPageHide);
+      if (hostedRoomCodeRef.current) {
+        void removePublicRoom(hostedRoomCodeRef.current);
+        hostedRoomCodeRef.current = null;
+      }
       sync?.dispose();
     };
   }, []);
@@ -269,8 +288,8 @@ export default function GameApp() {
               nextSave.bestLapMs[trackId] = nextResults.playerBestLapMs;
             }
           }
-          // XP for the finished race (level and unlocks are derived from the total)
-          const award = computeRaceXp(nextResults);
+          // XP for the finished race (level and unlocks are derived from the total; spectators earn no XP)
+          const award = isSpectatingRef.current ? { rows: [], total: 0 } : computeRaceXp(nextResults);
           let finalSave = nextSave;
           let levelUpNote = '';
           if (award.total > 0) {
@@ -521,6 +540,10 @@ export default function GameApp() {
   };
 
   const goToTitle = () => {
+    if (hostedRoomCodeRef.current) {
+      void removePublicRoom(hostedRoomCodeRef.current);
+      hostedRoomCodeRef.current = null;
+    }
     netClientRef.current?.disconnect();
     setRoomState(null);
     setMpError('');
@@ -545,6 +568,9 @@ export default function GameApp() {
     setSnapshot(null);
     setResults(null);
     setIsOnlineResult(false);
+    isSpectatingRef.current = false;
+    setIsSpectating(false);
+    setSpectateLabel('');
     setShowHint(false);
   };
 
@@ -584,6 +610,10 @@ export default function GameApp() {
         if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
         hintTimer.current = window.setTimeout(() => setShowHint(false), 6000);
         setScreen('online-racing');
+        const spectating = Boolean(payload.isSpectator);
+        isSpectatingRef.current = spectating;
+        setIsSpectating(spectating);
+        setSpectateLabel(payload.participants[0]?.name ?? '');
         engine.startOnlineRace(
           track,
           payload.participants.map((p) => ({
@@ -597,6 +627,7 @@ export default function GameApp() {
           client,
           savedCam,
           payload.totalLaps,
+          spectating,
         );
         window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
       },
@@ -637,6 +668,47 @@ export default function GameApp() {
       openMultiplayer();
     }
   }, [openMultiplayer]);
+
+  const refreshPublicRooms = useCallback(async () => {
+    setRoomsLoading(true);
+    try {
+      const list = await listPublicRooms();
+      setPublicRooms(list);
+    } finally {
+      setRoomsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (screen !== 'multiplayer' || roomState) return;
+    void refreshPublicRooms();
+    const timer = window.setInterval(() => {
+      void refreshPublicRooms();
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [screen, roomState, refreshPublicRooms]);
+
+  useEffect(() => {
+    if (!roomState || !netPlayerId || roomState.hostId !== netPlayerId) {
+      return;
+    }
+    hostedRoomCodeRef.current = roomState.roomCode;
+    const hostPlayer = roomState.players.find((p) => p.isHost) ?? roomState.players[0];
+    const publish = () => {
+      void publishPublicRoom({
+        roomCode: roomState.roomCode,
+        hostName: hostPlayer?.name ?? playerName,
+        trackId: roomState.trackId,
+        totalLaps: roomState.totalLaps ?? 3,
+        playerCount: roomState.players.length,
+        maxPlayers: 6,
+        status: roomState.status,
+      });
+    };
+    publish();
+    const heartbeat = window.setInterval(publish, 10_000);
+    return () => window.clearInterval(heartbeat);
+  }, [roomState, netPlayerId, playerName]);
 
   useEffect(() => {
     if (!netDebugEnabled || screen !== 'online-racing') {
@@ -798,6 +870,9 @@ export default function GameApp() {
               selectedColorIndex={selectedColorIndex}
               selectedTrackId={save.selectedTrackId}
               initialJoinCode={initialJoinCode}
+              publicRooms={publicRooms}
+              roomsLoading={roomsLoading}
+              onRefreshRooms={refreshPublicRooms}
               onChangeName={(nextName) => {
                 hasCustomNameRef.current = nextName.trim().length > 0 && !nextName.startsWith('Tamu-');
                 setPlayerName(nextName);
@@ -938,7 +1013,36 @@ export default function GameApp() {
                   </div>
                 </div>
               )}
-              {isTouch && (
+              {onlineScreen && isSpectating && (
+                <div className="spectate-bar" role="group" aria-label="Kontrol penonton">
+                  <button
+                    type="button"
+                    className="btn btn-small"
+                    onClick={() => {
+                      const next = engineRef.current?.cycleSpectator(-1);
+                      if (next) setSpectateLabel(next.label);
+                    }}
+                    aria-label="Pembalap sebelumnya"
+                  >
+                    &lt;
+                  </button>
+                  <span className="spectate-label">
+                    Penonton · {spectateLabel || 'Pembalap'}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-small"
+                    onClick={() => {
+                      const next = engineRef.current?.cycleSpectator(1);
+                      if (next) setSpectateLabel(next.label);
+                    }}
+                    aria-label="Pembalap berikutnya"
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
+              {isTouch && !isSpectating && (
                 <TouchControls
                   onChange={(action, pressed) => engineRef.current?.setTouchControl(action, pressed)}
                 />

@@ -148,7 +148,7 @@ export class PeerNetClient {
             if (conn.open) {
               conn.send({ type: 'welcome', playerId: guestId } satisfies ServerMessage);
             }
-            const ok = room.addMember(guestId, msg.name, msg.carId, msg.colorIndex, (sMsg) => {
+            const sendFn = (sMsg: ServerMessage) => {
               if (sMsg.type === 'snapshot') {
                 const fast = this.guestFastConns.get(guestId);
                 if (fast && fast.open) {
@@ -167,11 +167,15 @@ export class PeerNetClient {
                   // Ignore transient send error on closing channel
                 }
               }
-            });
+            };
+            const ok =
+              room.status === 'lobby'
+                ? room.addMember(guestId, msg.name, msg.carId, msg.colorIndex, sendFn)
+                : room.addSpectator(guestId, msg.name, sendFn);
             if (!ok && conn.open) {
               conn.send({
                 type: 'error',
-                message: 'Room penuh atau balapan sudah dimulai.',
+                message: 'Room penuh atau balapan sudah berakhir.',
               } satisfies ServerMessage);
             }
             break;
@@ -190,6 +194,7 @@ export class PeerNetClient {
 
       conn.on('close', () => {
         this.guestConns.delete(guestId);
+        this.hostRoom?.removeSpectator(guestId);
         this.hostRoom?.markDisconnected(guestId);
       });
     });

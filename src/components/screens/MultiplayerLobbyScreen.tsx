@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import type { ConnectionStatus } from '../../game/net/client';
+import type { PublicRoomInfo } from '../../game/net/roomDirectory';
 import type { CarId, LapCount, RoomStatePacket, TrackId } from '../../game/types';
 import CarThumb from '../CarThumb';
 import TrackPreview from '../TrackPreview';
@@ -22,6 +23,9 @@ export default function MultiplayerLobbyScreen({
   selectedColorIndex,
   selectedTrackId,
   initialJoinCode = '',
+  publicRooms = [],
+  roomsLoading = false,
+  onRefreshRooms,
   onChangeName,
   onSelectCar,
   carLockLevel,
@@ -45,6 +49,9 @@ export default function MultiplayerLobbyScreen({
   selectedColorIndex: number;
   selectedTrackId: TrackId;
   initialJoinCode?: string;
+  publicRooms?: PublicRoomInfo[];
+  roomsLoading?: boolean;
+  onRefreshRooms?: () => void;
   onChangeName: (name: string) => void;
   onSelectCar: (carId: CarId) => void;
   carLockLevel?: (carId: CarId) => number | null;
@@ -272,6 +279,50 @@ export default function MultiplayerLobbyScreen({
                 </button>
               </div>
               <p className="detail-note">Sisa slot dari total 6 mobil otomatis diisi oleh Bot AI.</p>
+            </div>
+
+            <div className="panel mp-card mp-public-rooms">
+              <div className="mp-public-header">
+                <span className="label">Room Aktif ({publicRooms.length})</span>
+                {onRefreshRooms && (
+                  <button className="btn btn-small btn-quiet" type="button" onClick={onRefreshRooms} disabled={roomsLoading}>
+                    {roomsLoading ? 'Memuat...' : 'Muat ulang'}
+                  </button>
+                )}
+              </div>
+              {publicRooms.length === 0 ? (
+                <p className="detail-note">Belum ada room publik aktif. Buat room baru atau masukkan kode di atas.</p>
+              ) : (
+                <ul className="mp-room-list">
+                  {publicRooms.map((item) => {
+                    const isRacing = item.status !== 'lobby';
+                    const isFull = !isRacing && item.playerCount >= item.maxPlayers;
+                    return (
+                      <li key={item.roomCode} className="mp-room-list-item">
+                        <div className="mp-room-list-info">
+                          <strong>
+                            {item.roomCode} · {item.hostName}{' '}
+                            <span className="mp-room-status-tag" data-live={isRacing}>
+                              {isRacing ? 'Sedang Balapan' : 'Lobby'}
+                            </span>
+                          </strong>
+                          <small>
+                            {getTrack(item.trackId).name} · {item.totalLaps} putaran · {item.playerCount}/{item.maxPlayers} pemain
+                          </small>
+                        </div>
+                        <button
+                          className={`btn btn-small ${isRacing ? '' : 'btn-primary'}`}
+                          type="button"
+                          disabled={!isConnected || isFull}
+                          onClick={() => onJoinRoom(item.roomCode)}
+                        >
+                          {isRacing ? 'Tonton' : isFull ? 'Penuh' : 'Gabung'}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
         ) : (

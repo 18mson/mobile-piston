@@ -204,6 +204,7 @@ export class GameEngine {
     client: NetTransport,
     cameraMode?: CameraMode,
     totalLaps?: number,
+    isSpectator = false,
   ): void {
     if (this.destroyed) return;
     void this.audio.unlock();
@@ -213,7 +214,13 @@ export class GameEngine {
       this.renderer = new Renderer3D(this.canvas, track);
       this.renderer.setReducedMotion(this.reducedMotion);
     }
-    this.onlineSync = new NetRaceSync(this.track, participants, localPlayerId, totalLaps);
+    this.onlineSync = new NetRaceSync(
+      this.track,
+      participants,
+      isSpectator ? '__spectator__' : localPlayerId,
+      totalLaps,
+      isSpectator,
+    );
     this.netClient = client;
     this.race = this.onlineSync.sim;
     this.selectedCar = this.race.player.carId;
@@ -286,6 +293,14 @@ export class GameEngine {
   getNetDebugStats(): NetDebugStats | null {
     if (!this.onlineSync) return null;
     return this.onlineSync.getDebugStats(this.netClient?.pingMs ?? null);
+  }
+
+  cycleSpectator(dir: 1 | -1 = 1): { id: string; label: string } | null {
+    return this.onlineSync?.cycleSpectateTarget(dir) ?? null;
+  }
+
+  getSpectateTarget(): { id: string; label: string } | null {
+    return this.onlineSync?.getSpectateTarget() ?? null;
   }
 
   debugFinishRace(): boolean {
@@ -498,7 +513,9 @@ export class GameEngine {
     let lastSeq = 0;
     let steps = 0;
     while (this.accumulator >= FIXED_STEP && steps < 16) {
-      lastSeq = this.onlineSync.predictLocal(playerInput, FIXED_STEP);
+      if (!this.onlineSync.isSpectator) {
+        lastSeq = this.onlineSync.predictLocal(playerInput, FIXED_STEP);
+      }
       this.accumulator -= FIXED_STEP;
       steps += 1;
     }
@@ -510,7 +527,7 @@ export class GameEngine {
       this.lastSentInput.brake !== playerInput.brake ||
       this.lastSentInput.nitro !== playerInput.nitro ||
       this.lastSentInput.gas !== playerInput.gas;
-    if (lastSeq > 0 && (inputChanged || this.netInputTimer >= 0.016)) {
+    if (!this.onlineSync.isSpectator && lastSeq > 0 && (inputChanged || this.netInputTimer >= 0.016)) {
       this.netInputTimer = 0;
       this.lastSentInput = { ...playerInput };
       this.netClient.sendInput(lastSeq, playerInput, this.onlineSync.getRecentInputs(8));

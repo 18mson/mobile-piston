@@ -304,7 +304,7 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: 'welcome'; playerId: string }
   | RoomStatePacket
-  | { type: 'race_started'; trackId: TrackId; totalLaps?: LapCount; participants: { id: string; name: string; carId: CarId; colorIndex: number; isHuman: boolean; number: number }[] }
+  | { type: 'race_started'; trackId: TrackId; totalLaps?: LapCount; isSpectator?: boolean; participants: { id: string; name: string; carId: CarId; colorIndex: number; isHuman: boolean; number: number }[] }
   | { type: 'snapshot'; snapshot: WorldSnapshot }
   | { type: 'race_finished'; results: RaceResults }
   | { type: 'pong'; sentAt: number; serverTime: number }

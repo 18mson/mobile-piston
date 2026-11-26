@@ -53,6 +53,8 @@ export interface NetDebugStats {
 export class NetRaceSync {
   readonly sim: RaceSim;
   readonly localPlayerId: string;
+  readonly isSpectator: boolean;
+  private spectateTargetId: string;
   private pendingInputs: PendingInput[] = [];
   private recentInputs: SequencedInput[] = [];
   private snapshotBuffer: BufferedSnapshot[] = [];
@@ -86,8 +88,16 @@ export class NetRaceSync {
   private remoteJitterSpikes = 0;
   private maxRemoteJitterRatio = 0;
 
-  constructor(track: Track, participants: RaceParticipant[], localPlayerId: string, totalLaps?: number) {
+  constructor(
+    track: Track,
+    participants: RaceParticipant[],
+    localPlayerId: string,
+    totalLaps?: number,
+    isSpectator = false,
+  ) {
     this.localPlayerId = localPlayerId;
+    this.isSpectator = isSpectator;
+    this.spectateTargetId = isSpectator ? (participants[0]?.id ?? localPlayerId) : localPlayerId;
     this.sim = new RaceSim(track, participants[0]?.carId ?? 'sirip', {
       participants,
       localPlayerId,
@@ -96,6 +106,22 @@ export class NetRaceSync {
     });
     this.renderPlayerCache = { ...this.sim.player };
     this.renderRacersCache = [...this.sim.racers];
+  }
+
+  getSpectateTarget(): { id: string; label: string } | null {
+    if (!this.isSpectator || this.sim.racers.length === 0) return null;
+    const found = this.sim.racers.find((r) => r.id === this.spectateTargetId) ?? this.sim.racers[0];
+    return { id: found.id, label: found.label };
+  }
+
+  cycleSpectateTarget(dir: 1 | -1 = 1): { id: string; label: string } | null {
+    if (!this.isSpectator || this.sim.racers.length === 0) return null;
+    const idx = this.sim.racers.findIndex((r) => r.id === this.spectateTargetId);
+    const cur = idx >= 0 ? idx : 0;
+    const nextIdx = (cur + dir + this.sim.racers.length) % this.sim.racers.length;
+    const next = this.sim.racers[nextIdx];
+    this.spectateTargetId = next.id;
+    return { id: next.id, label: next.label };
   }
 
   get currentMode(): 'countdown' | 'racing' | 'finished' {
@@ -138,7 +164,7 @@ export class NetRaceSync {
    * Returns the sequence number assigned to this input.
    */
   predictLocal(input: PlayerInput, dt: number): number {
-    if (this.currentMode !== 'racing') {
+    if (this.isSpectator || this.currentMode !== 'racing') {
       return 0;
     }
 
@@ -214,6 +240,8 @@ export class NetRaceSync {
     if (this.snapshotBuffer.length > 24) {
       this.snapshotBuffer.shift();
     }
+
+    if (this.isSpectator) return;
 
     const ackSeq = snapshot.lastProcessedSeq[this.localPlayerId] ?? 0;
     this.pendingInputs = this.pendingInputs.filter((item) => item.seq > ackSeq);
@@ -335,7 +363,7 @@ export class NetRaceSync {
     if (!isRacing) {
       const latest = this.snapshotBuffer[this.snapshotBuffer.length - 1];
       for (const racer of this.sim.racers) {
-        if (racer.id === this.localPlayerId) continue;
+        if (!this.isSpectator && racer.id === this.localPlayerId) continue;
         const state = latest.snapshot.racers.find((r) => r.id === racer.id);
         if (state) {
           this.copyNetToRacer(state, racer);
@@ -383,7 +411,7 @@ export class NetRaceSync {
     const blendExtrap = 1 - Math.exp(-dt * 20);
 
     for (const racer of this.sim.racers) {
-      if (racer.id === this.localPlayerId) continue;
+      if (!this.isSpectator && racer.id === this.localPlayerId) continue;
 
       const prevVisX = racer.x;
       const prevVisY = racer.y;
@@ -473,7 +501,7 @@ export class NetRaceSync {
 
   private lockRemotePrevToCurrent(): void {
     for (const racer of this.sim.racers) {
-      if (racer.id === this.localPlayerId) continue;
+      if (!this.isSpectator && racer.id === this.localPlayerId) continue;
       racer.prevX = racer.x;
       racer.prevY = racer.y;
       racer.prevAngle = racer.angle;
@@ -496,6 +524,9 @@ export class NetRaceSync {
   }
 
   getRenderPlayer(): RacerState {
+    if (this.isSpectator) {
+      return this.sim.racers.find((r) => r.id === this.spectateTargetId) ?? this.sim.racers[0];
+    }
     const p = this.sim.player;
     if (this.errorOffsetX === 0 && this.errorOffsetY === 0 && this.errorOffsetAngle === 0) {
       return p;
@@ -511,6 +542,9 @@ export class NetRaceSync {
   }
 
   getRenderRacers(): RacerState[] {
+    if (this.isSpectator) {
+      return this.sim.racers;
+    }
     const renderPlayer = this.getRenderPlayer();
     const racers = this.sim.racers;
     if (this.renderRacersCache.length !== racers.length) {
@@ -525,7 +559,23 @@ export class NetRaceSync {
 
   toHudSnapshot(): RaceSnapshot {
     const mode = this.currentMode === 'countdown' ? 'countdown' : 'racing';
-    return this.sim.snapshot(mode, this.currentCountdown);
+    const snap = this.sim.snapshot(mode, this.currentCountdown);
+    if (!this.isSpectator) return snap;
+    const target = this.sim.racers.find((r) => r.id === this.spectateTargetId) ?? this.sim.racers[0];
+    if (!target) return snap;
+    const targetRow = snap.racers.find((r) => r.id === target.id);
+    return {
+      ...snap,
+      lap: target.startedLap ? Math.min(this.sim.totalLaps, target.lap + 1) : 1,
+      position: targetRow?.position ?? snap.position,
+      nitro: target.nitro,
+      speed: Math.hypot(target.vx, target.vy),
+      playerFinished: target.finished,
+      wrongWay: Boolean(target.wrongWay),
+      playerAngle: target.angle,
+      playerX: target.x,
+      playerY: target.y,
+    };
   }
 
   private copyNetToRacer(src: NetRacerState, dst: RacerState): void {
