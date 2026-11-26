@@ -115,6 +115,15 @@
 }
 
 /* Locked cars in the garage / lobby */
+.lockedPreview {
+  position: relative;
+}
+
+.lockedPreview > * {
+  filter: brightness(0.28) grayscale(0.8);
+  opacity: 0.72;
+}
+
 .lockedCard {
   opacity: 0.66;
   filter: grayscale(0.6);

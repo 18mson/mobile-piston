@@ -40,6 +40,14 @@ export default function GarageScreen({
     palette: getCarPalette(shownId, activeColorIndex),
   };
   const colorOptions = CAR_COLORS[shownId];
+  const orderedCars = [...CAR_ORDER].sort((a, b) => {
+    const la = lockLevel(a) ?? 0;
+    const lb = lockLevel(b) ?? 0;
+    if (la === lb) return 0;
+    if (la === 0) return -1;
+    if (lb === 0) return 1;
+    return la - lb;
+  });
 
   return (
     <section className="screen garage-screen" data-menu-scope="active" aria-labelledby="garage-heading">
@@ -52,14 +60,24 @@ export default function GarageScreen({
             <p className="eyebrow">Langkah 1 / 2</p>
             <h2 id="garage-heading">Pilih mobil</h2>
           </div>
-          <button className="btn btn-primary screen-heading-cta" type="button" onClick={onStart} data-nav>
+          <button
+            className="btn btn-primary screen-heading-cta"
+            type="button"
+            disabled={shownLockLevel != null}
+            title={shownLockLevel != null ? `Capai Level ${shownLockLevel} untuk memakai ${selected.name}` : undefined}
+            onClick={() => {
+              if (shownLockLevel != null) return;
+              onStart();
+            }}
+            data-nav
+          >
             Pilih lintasan
           </button>
         </div>
 
         <div className="garage-layout">
           <aside className="car-detail panel" aria-label={`Detail ${selected.name}`}>
-            <div className="car-detail-visual">
+            <div className={shownLockLevel != null ? `car-detail-visual ${styles.lockedPreview}` : 'car-detail-visual'}>
               <CarThumb car={selected} scale={6} />
             </div>
 
@@ -109,7 +127,7 @@ export default function GarageScreen({
           </aside>
 
           <div className="car-grid" role="group" aria-label="Daftar mobil">
-            {CAR_ORDER.map((id) => {
+            {orderedCars.map((id) => {
               const colorIdx = selectedColors[id] ?? 0;
               const car: CarSpec = {
                 ...CARS[id],

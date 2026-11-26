@@ -22,7 +22,9 @@ export default function XpSummary({ report }: { report: XpReport }) {
       <div className={styles.xpHeader}>
         <span>
           Level {report.levelAfter}
-          {after.nextLevelXp != null && ` / ${after.xpToNext} XP lagi`}
+          {after.nextLevelXp != null
+            ? ` · ${after.xpToNext} XP lagi ke Level ${report.levelAfter + 1}`
+            : ' (Maksimum)'}
         </span>
         <span className={styles.xpTotal}>+{report.award.total} XP</span>
       </div>
@@ -43,12 +45,12 @@ export default function XpSummary({ report }: { report: XpReport }) {
       {leveledUp && (
         <div className={styles.levelUp}>
           <span>
-            Naik level! Level {report.levelBefore} {'->'} Level {report.levelAfter}
+            Naik ke Level {report.levelAfter} (dari Level {report.levelBefore})
           </span>
           {report.unlocked.length > 0 && (
             <ul className={styles.unlockList}>
               {report.unlocked.map((item) => (
-                <li key={item.id}>Terbuka: {item.label}</li>
+                <li key={item.id}>Mobil terbuka: {item.label}</li>
               ))}
             </ul>
           )}
