@@ -46,7 +46,7 @@ export class GameAudio {
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.master && this.context) {
-      this.master.gain.setTargetAtTime(muted ? 0 : 0.45, this.context.currentTime, 0.03);
+      this.master.gain.setTargetAtTime(muted ? 0 : 0.62, this.context.currentTime, 0.03);
     }
   }
 
@@ -61,17 +61,17 @@ export class GameAudio {
     try {
       this.context = new Ctor();
       this.master = this.context.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.45;
+      this.master.gain.value = this.muted ? 0 : 0.62;
       this.master.connect(this.context.destination);
 
       const engineBus = this.context.createGain();
-      engineBus.gain.value = 0.035;
+      engineBus.gain.value = 0.055;
       engineBus.connect(this.master);
       this.engineGain = engineBus;
       this.engineFilter = this.context.createBiquadFilter();
       this.engineFilter.type = 'lowpass';
       this.engineFilter.frequency.value = 420;
-      this.engineFilter.Q.value = 5;
+      this.engineFilter.Q.value = 2.8;
       this.engineFilter.connect(engineBus);
 
       this.engineOsc = this.context.createOscillator();
@@ -81,10 +81,10 @@ export class GameAudio {
       this.engineOsc.start();
 
       this.engineOsc2 = this.context.createOscillator();
-      this.engineOsc2.type = 'square';
+      this.engineOsc2.type = 'triangle';
       this.engineOsc2.frequency.value = 78;
       const secondGain = this.context.createGain();
-      secondGain.gain.value = 0.22;
+      secondGain.gain.value = 0.34;
       this.engineOsc2.connect(secondGain);
       secondGain.connect(this.engineFilter);
       this.engineOsc2.start();
@@ -98,8 +98,8 @@ export class GameAudio {
       tyreSource.loop = true;
       this.tyreFilter = this.context.createBiquadFilter();
       this.tyreFilter.type = 'bandpass';
-      this.tyreFilter.frequency.value = 1700;
-      this.tyreFilter.Q.value = 1.1;
+      this.tyreFilter.frequency.value = 1600;
+      this.tyreFilter.Q.value = 1.0;
       this.tyreGain = this.context.createGain();
       this.tyreGain.gain.value = 0;
       tyreSource.connect(this.tyreFilter);
@@ -107,14 +107,14 @@ export class GameAudio {
       this.tyreGain.connect(this.master);
       tyreSource.start();
 
-      // Dirt / gravel crunch: white noise, band-passed and chopped by a fast LFO so it crackles
+      // Dirt / gravel: soft filtered noise (no harsh LFO clicks)
       const dirtSource = this.context.createBufferSource();
-      dirtSource.buffer = this.whiteNoise;
+      dirtSource.buffer = soft;
       dirtSource.loop = true;
       this.dirtFilter = this.context.createBiquadFilter();
       this.dirtFilter.type = 'bandpass';
-      this.dirtFilter.frequency.value = 900;
-      this.dirtFilter.Q.value = 0.7;
+      this.dirtFilter.frequency.value = 520;
+      this.dirtFilter.Q.value = 0.55;
       this.dirtGain = this.context.createGain();
       this.dirtGain.gain.value = 0;
       dirtSource.connect(this.dirtFilter);
@@ -122,22 +122,13 @@ export class GameAudio {
       this.dirtGain.connect(this.master);
       dirtSource.start();
 
-      const lfo = this.context.createOscillator();
-      lfo.type = 'square';
-      lfo.frequency.value = 17;
-      const lfoDepth = this.context.createGain();
-      lfoDepth.gain.value = 0.012;
-      lfo.connect(lfoDepth);
-      lfoDepth.connect(this.dirtGain.gain);
-      lfo.start();
-
-      // Low ground rumble under the crunch
+      // Low ground rumble under the gravel
       const rumbleSource = this.context.createBufferSource();
       rumbleSource.buffer = soft;
       rumbleSource.loop = true;
       const rumbleFilter = this.context.createBiquadFilter();
       rumbleFilter.type = 'lowpass';
-      rumbleFilter.frequency.value = 150;
+      rumbleFilter.frequency.value = 120;
       this.rumbleGain = this.context.createGain();
       this.rumbleGain.gain.value = 0;
       rumbleSource.connect(rumbleFilter);
@@ -149,8 +140,9 @@ export class GameAudio {
       nitroSource.buffer = soft;
       nitroSource.loop = true;
       const nitroFilter = this.context.createBiquadFilter();
-      nitroFilter.type = 'highpass';
-      nitroFilter.frequency.value = 850;
+      nitroFilter.type = 'bandpass';
+      nitroFilter.frequency.value = 1200;
+      nitroFilter.Q.value = 0.9;
       this.nitroGain = this.context.createGain();
       this.nitroGain.gain.value = 0;
       nitroSource.connect(nitroFilter);
@@ -196,13 +188,13 @@ export class GameAudio {
     if (!this.context || !this.engineOsc || !this.engineOsc2 || !this.engineFilter) return;
     const now = this.context.currentTime;
     const ratio = clamp(speed / Math.max(1, maxSpeed), 0, 1.2);
-    const targetGain = racing ? 0.03 + ratio * 0.028 : 0;
+    const targetGain = racing ? 0.055 + ratio * 0.048 : 0;
     this.engineGain?.gain.setTargetAtTime(targetGain, now, 0.08);
     const base = 48 + ratio * 86 + (nitro ? 16 : 0);
     this.engineOsc.frequency.setTargetAtTime(base, now, 0.06);
     this.engineOsc2.frequency.setTargetAtTime(base * 1.51, now, 0.06);
-    this.engineFilter.frequency.setTargetAtTime(300 + ratio * 900, now, 0.08);
-    this.nitroGain?.gain.setTargetAtTime(racing && nitro ? 0.04 : 0, now, 0.05);
+    this.engineFilter.frequency.setTargetAtTime(280 + ratio * 920, now, 0.08);
+    this.nitroGain?.gain.setTargetAtTime(racing && nitro ? 0.055 : 0, now, 0.05);
 
     if (!racing) {
       this.tyreGain?.gain.setTargetAtTime(0, now, 0.05);
@@ -225,26 +217,26 @@ export class GameAudio {
     }
     const speedRatio = clamp(state.speed / Math.max(1, state.maxSpeed), 0, 1.2);
 
-    // tyre squeal: louder and higher the further the car slides; quiet on dirt
+    // tyre squeal: softer rubber scrub whose pitch and level follow the slide
     const sliding = state.drifting && !state.offroad && state.speed > 36;
     const slip = clamp(state.slip, 0, 1);
-    const tyreLevel = sliding ? 0.03 + slip * 0.07 + speedRatio * 0.015 : 0;
-    this.tyreGain.gain.setTargetAtTime(tyreLevel, now, 0.045);
-    this.tyreFilter.frequency.setTargetAtTime(1250 + slip * 1500 + speedRatio * 350, now, 0.06);
-    this.tyreFilter.Q.setTargetAtTime(1.0 + slip * 1.6, now, 0.08);
+    const tyreLevel = sliding ? 0.024 + slip * 0.05 + speedRatio * 0.012 : 0;
+    this.tyreGain.gain.setTargetAtTime(tyreLevel, now, 0.05);
+    this.tyreFilter.frequency.setTargetAtTime(1200 + slip * 1350 + speedRatio * 300, now, 0.06);
+    this.tyreFilter.Q.setTargetAtTime(0.9 + slip * 1.1, now, 0.08);
     if (sliding && !this.wasDrifting && now - this.lastChirpAt > 0.35) {
       this.chirp(0.4 + slip * 0.6);
       this.lastChirpAt = now;
     }
     this.wasDrifting = sliding;
 
-    // dirt / gravel: crunch + rumble scale with speed
+    // dirt / gravel: soft warm rumble & gentle grit (never harsh or overpowering)
     const dirtLevel = state.offroad && state.speed > 20 ? clamp(state.speed / 170, 0, 1) : 0;
-    this.dirtGain.gain.setTargetAtTime(dirtLevel > 0 ? 0.018 + dirtLevel * 0.06 : 0, now, 0.07);
-    this.dirtFilter.frequency.setTargetAtTime(650 + dirtLevel * 1100, now, 0.08);
-    this.rumbleGain.gain.setTargetAtTime(dirtLevel > 0 ? 0.03 + dirtLevel * 0.1 : 0, now, 0.08);
+    this.dirtGain.gain.setTargetAtTime(dirtLevel > 0 ? 0.012 + dirtLevel * 0.03 : 0, now, 0.08);
+    this.dirtFilter.frequency.setTargetAtTime(480 + dirtLevel * 450, now, 0.08);
+    this.rumbleGain.gain.setTargetAtTime(dirtLevel > 0 ? 0.018 + dirtLevel * 0.042 : 0, now, 0.08);
     if (state.offroad !== this.wasOffroad && state.speed > 55 && now - this.lastThumpAt > 0.25) {
-      this.thump(clamp(state.speed / 200, 0.25, 0.8));
+      this.thump(clamp(state.speed / 200, 0.25, 0.75));
       this.lastThumpAt = now;
     }
     this.wasOffroad = state.offroad;
@@ -286,9 +278,10 @@ export class GameAudio {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(110, now);
-    osc.frequency.exponentialRampToValueAtTime(48, now + 0.12);
-    gain.gain.setValueAtTime(0.14 * strength, now);
+    osc.frequency.setValueAtTime(95, now);
+    osc.frequency.exponentialRampToValueAtTime(42, now + 0.13);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.065 * strength, now + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
     osc.connect(gain);
     gain.connect(this.master);
@@ -409,24 +402,74 @@ export class GameAudio {
     }
   }
 
-  beep(frequency = 640, duration = 0.11, volume = 0.16): void {
+  /** Smooth warm chime + soft air whoosh when resetting car back onto track. */
+  reset(): void {
+    if (!this.context || !this.master) return;
+    const ctx = this.context;
+    const now = ctx.currentTime;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1800;
+    filter.connect(this.master);
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(340, now);
+    osc.frequency.exponentialRampToValueAtTime(520, now + 0.14);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.065, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    osc.connect(gain);
+    gain.connect(filter);
+    osc.start(now);
+    osc.stop(now + 0.24);
+
+    if (this.whiteNoise) {
+      const whoosh = ctx.createBufferSource();
+      whoosh.buffer = this.whiteNoise;
+      const wf = ctx.createBiquadFilter();
+      wf.type = 'bandpass';
+      wf.frequency.setValueAtTime(600, now);
+      wf.frequency.exponentialRampToValueAtTime(1400, now + 0.16);
+      wf.Q.value = 1.2;
+      const wg = ctx.createGain();
+      wg.gain.setValueAtTime(0.0001, now);
+      wg.gain.linearRampToValueAtTime(0.035, now + 0.03);
+      wg.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      whoosh.connect(wf);
+      wf.connect(wg);
+      wg.connect(this.master);
+      whoosh.start(now, Math.random() * 0.6);
+      whoosh.stop(now + 0.22);
+    }
+  }
+
+  beep(frequency = 640, duration = 0.11, volume = 0.1): void {
     if (!this.context || !this.master) return;
     const ctx = this.context;
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
-    osc.type = 'square';
+    osc.type = 'triangle';
     osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(volume, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-    osc.connect(gain);
+    filter.type = 'lowpass';
+    filter.frequency.value = 1900;
+    const peak = Math.min(0.11, volume * 0.72);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(peak, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(this.master);
     osc.start(now);
     osc.stop(now + duration + 0.02);
   }
 
   click(): void {
-    this.beep(430, 0.055, 0.09);
+    this.beep(480, 0.055, 0.065);
   }
 
   setMenuMusic(active: boolean): void {

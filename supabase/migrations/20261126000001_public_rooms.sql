@@ -42,3 +42,5 @@ create policy "rooms_delete_all"
   on public.rooms for delete
   to anon, authenticated
   using (true);
+
+grant select, insert, update, delete on table public.rooms to anon, authenticated;

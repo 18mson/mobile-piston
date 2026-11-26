@@ -135,7 +135,7 @@ export class GameEngine {
   resetCar(): void {
     if (this.destroyed || !this.race || (this.mode !== 'racing' && this.mode !== 'countdown')) return;
     this.race.resetPlayerCar();
-    this.audio.beep(520, 0.12, 0.2);
+    this.audio.reset();
     this.emitSnapshot();
   }
 

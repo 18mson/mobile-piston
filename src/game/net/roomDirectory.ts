@@ -18,7 +18,7 @@ export async function publishPublicRoom(info: Omit<PublicRoomInfo, 'updatedAt'>)
   const client = getSupabaseClient();
   if (!client) return;
   try {
-    await client.from('rooms').upsert(
+    const { error } = await client.from('rooms').upsert(
       {
         room_code: info.roomCode,
         host_name: info.hostName.slice(0, 16) || 'Host',
@@ -31,6 +31,9 @@ export async function publishPublicRoom(info: Omit<PublicRoomInfo, 'updatedAt'>)
       },
       { onConflict: 'room_code' },
     );
+    if (error) {
+      console.warn('[roomDirectory] publishPublicRoom failed:', error.code, error.message);
+    }
   } catch {
     // Best-effort directory publish; PeerJS room continues working regardless.
   }
@@ -59,7 +62,12 @@ export async function listPublicRooms(): Promise<PublicRoomInfo[]> {
       .order('updated_at', { ascending: false })
       .limit(20);
 
-    if (error || !data) return [];
+    if (error || !data) {
+      if (error) {
+        console.warn('[roomDirectory] listPublicRooms failed:', error.code, error.message);
+      }
+      return [];
+    }
 
     return data.map((row) => ({
       roomCode: String(row.room_code),

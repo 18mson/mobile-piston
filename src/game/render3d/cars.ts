@@ -824,36 +824,107 @@ export class CarView {
       this.addFlames(-length / 2 - 0.1, 0);
 
     } else if (carId === 'bagas') {
-      // BAGAS: Low-slung, powerful muscle car with long vented hood, supercharger blower, fastback cabin, dual quad exhausts
+      // BAGAS: Sculpted muscle fastback with beveled flanks, sloped hood, chrome supercharger blower, and rounded headlights
       const length = 6.2;
       const width = 3.6;
       const wheelRadius = 0.74;
       const wheelWidth = 0.58;
 
-      // Layer 1: Low chassis & deep chin spoiler
-      this.addBox([length, 0.36, width * 0.94], [0, 0.52, 0], darkTrimMat, true, true);
-      this.addBox([0.45, 0.22, width * 0.96], [length / 2 + 0.1, 0.46, 0], shadeMat);
+      // Sculpted lower splitter & chin spoiler
+      this.addProfile(
+        [
+          [length * 0.52, 0.36],
+          [length * 0.55, 0.48],
+          [length * 0.44, 0.6],
+          [-length * 0.48, 0.6],
+          [-length * 0.51, 0.44],
+          [-length * 0.46, 0.36],
+        ],
+        width * 0.88,
+        darkTrimMat,
+        0.08,
+      );
 
-      // Layer 2: Wide aggressive muscle flanks
-      this.addBox([length * 0.96, 0.54, width], [0, 0.88, 0], bodyMat, true, true);
-      // Twin racing stripe down center
-      this.addBox([length * 0.97, 0.04, 0.65], [0, 1.16, 0], stripeMat);
+      // Sculpted wide muscle body with sloped hood & muscular rear haunches
+      this.addProfile(
+        [
+          [length * 0.48, 0.56],
+          [length * 0.51, 0.86],
+          [length * 0.44, 1.06],
+          [length * 0.14, 1.18],
+          [-length * 0.22, 1.2],
+          [-length * 0.46, 1.24],
+          [-length * 0.5, 1.02],
+          [-length * 0.48, 0.58],
+        ],
+        width * 0.88,
+        bodyMat,
+        0.16,
+      );
 
-      // Layer 3: Long hood with chrome supercharger blower scoop!
-      this.addBox([length * 0.48, 0.24, width * 0.84], [length * 0.24, 1.16, 0], bodyMat, true, true);
-      // Supercharger block & triple butterflies
-      this.addBox([1.1, 0.42, 0.85], [length * 0.22, 1.42, 0], chromeMat);
-      this.addBox([0.2, 0.26, 0.7], [length * 0.22 + 0.5, 1.44, 0], darkTrimMat);
+      // Tapered racing stripe following the hood and trunk
+      const hoodStripe = this.addBox([2.1, 0.05, 0.64], [length * 0.29, 1.19, 0], stripeMat);
+      hoodStripe.rotation.z = -0.05;
+      this.addBox([1.4, 0.05, 0.64], [-length * 0.35, 1.24, 0], stripeMat);
 
-      // Layer 4: Fastback cabin / canopy
-      this.addBox([length * 0.4, 0.64, width * 0.72], [-length * 0.12, 1.5, 0], glassMat, true, true);
-      this.addBox([length * 0.28, 0.12, width * 0.66], [-length * 0.1, 1.84, 0], bodyMat, true, true); // Roof
+      // Chrome supercharger blower with rounded intake scoop
+      this.addProfile(
+        [
+          [length * 0.28, 1.18],
+          [length * 0.32, 1.48],
+          [length * 0.12, 1.54],
+          [length * 0.08, 1.18],
+        ],
+        0.72,
+        chromeMat,
+        0.06,
+      );
+      for (const z of [-0.18, 0, 0.18]) {
+        const butterfly = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 10), stripeMat);
+        butterfly.rotation.z = Math.PI / 2;
+        butterfly.position.set(length * 0.33, 1.44, z);
+        this.body.add(butterfly);
+      }
+
+      // Sculpted fastback cabin & raked windshield
+      this.addProfile(
+        [
+          [length * 0.08, 1.18],
+          [-length * 0.02, 1.78],
+          [-length * 0.22, 1.78],
+          [-length * 0.4, 1.22],
+        ],
+        width * 0.64,
+        glassMat,
+        0.1,
+      );
+      this.addProfile(
+        [
+          [0.02, 1.74],
+          [-0.08, 1.86],
+          [-length * 0.2, 1.86],
+          [-length * 0.24, 1.74],
+        ],
+        width * 0.58,
+        bodyMat,
+        0.07,
+      );
 
       // Driver
-      this.addDriver(-length * 0.1, 1.5, 0, '#e6ac32', '#151515', 0.98);
+      this.addDriver(-length * 0.1, 1.5, 0, '#e6ac32', '#263a4d', 0.98);
 
-      // Ducktail spoiler
-      this.addBox([0.38, 0.28, width * 0.82], [-length / 2 - 0.05, 1.25, 0], stripeMat);
+      // Sculpted ducktail spoiler
+      this.addProfile(
+        [
+          [-length * 0.44, 1.22],
+          [-length * 0.53, 1.42],
+          [-length * 0.55, 1.32],
+          [-length * 0.49, 1.16],
+        ],
+        width * 0.78,
+        stripeMat,
+        0.05,
+      );
 
       // Chunky wide drag wheels
       for (const side of [-1, 1]) {
@@ -861,15 +932,19 @@ export class CarView {
         this.addWheel(wheelRadius * 1.08, wheelWidth * 1.15, -length * 0.28, side * (width / 2 + 0.1), false, palette.wheel, '#d4a034');
       }
 
-      // Front double round muscle headlights
+      // Front double round muscle headlights & sleek tail lights
       for (const side of [-1, 1]) {
-        this.addBox([0.16, 0.26, 0.34], [length / 2 - 0.02, 0.94, side * width * 0.34], lightMat, false);
-        this.addBox([0.16, 0.26, 0.34], [length / 2 - 0.02, 0.94, side * width * 0.2], lightMat, false);
-        const tail = this.addBox([0.16, 0.22, 0.58], [-length / 2 + 0.02, 0.94, side * width * 0.3], tailMat, false);
+        for (const offset of [0.2, 0.34]) {
+          const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.14, 12), lightMat);
+          lamp.rotation.z = Math.PI / 2;
+          lamp.position.set(length * 0.5, 0.9, side * width * offset);
+          this.body.add(lamp);
+        }
+        const tail = this.addBox([0.14, 0.2, 0.56], [-length * 0.5, 0.96, side * width * 0.29], tailMat, false);
         this.brakeLights.push(tail);
       }
 
-      this.addNumber(number, -length * 0.1, 1.91, 0, '#ffffff', width);
+      this.addNumber(number, -length * 0.12, 1.93, 0, '#ffffff', width * 0.9);
       this.addFlames(-length / 2 - 0.18, 0);
 
     } else if (carId === 'okra') {
@@ -1189,59 +1264,123 @@ export class CarView {
       this.addNumber(number, -0.08, 2.26, 0, '#15222a', 2.0);
       this.addFlames(-length / 2 - 0.16, 0);
     } else if (carId === 'tanduk') {
-      // TANDUK: 4WD Turbo Rally Sedan with flared box arches, 4 front fog lamps, roof scoop, & tall rear wing
+      // TANDUK: Sculpted 4WD Turbo Rally Sedan with beveled arches, 4 front fog lamps, roof scoop, & rally wing
       const length = 5.2;
       const width = 3.32;
       const wheelRadius = 0.74;
       const wheelWidth = 0.54;
 
       // Undercarriage & rally skid plate
-      this.addBox([4.85, 0.24, 2.86], [0, 0.44, 0], darkTrimMat, true, false);
-      this.addBox([0.5, 0.14, 2.2], [2.42, 0.46, 0], chromeMat);
+      this.addBox([4.6, 0.22, 2.7], [0, 0.44, 0], darkTrimMat, true, false);
+      const skid = this.addBox([0.52, 0.14, 2.1], [2.4, 0.48, 0], chromeMat);
+      skid.rotation.z = 0.34;
 
-      // Wide rally sedan body & flared fenders
-      this.addBox([length, 0.68, 2.9], [0, 0.84, 0], bodyMat);
-      this.addBox([2.15, 0.16, 2.46], [1.42, 1.18, 0], bodyMat);
-      this.addBox([2.05, 0.04, 0.56], [1.4, 1.27, 0], stripeMat);
-      // Hood turbo intercooler scoop
-      this.addBox([0.78, 0.16, 0.92], [1.45, 1.32, 0], highlightMat);
-      this.addBox([0.12, 0.12, 0.78], [1.85, 1.32, 0], darkTrimMat);
+      // Sculpted rally sedan body with sloped hood & compact trunk
+      this.addProfile(
+        [
+          [2.44, 0.52],
+          [2.6, 0.74],
+          [2.54, 1.04],
+          [1.06, 1.2],
+          [-2.38, 1.24],
+          [-2.58, 1.04],
+          [-2.52, 0.54],
+        ],
+        2.78,
+        bodyMat,
+        0.14,
+      );
 
-      // Flared box wheel arches + mudflaps
+      // Sloped hood stripe & sculpted turbo intercooler scoop
+      const hoodStripe = this.addBox([1.45, 0.04, 0.56], [1.72, 1.19, 0], stripeMat);
+      hoodStripe.rotation.z = -0.1;
+      this.addProfile(
+        [
+          [1.82, 1.16],
+          [1.76, 1.32],
+          [1.12, 1.28],
+          [1.12, 1.18],
+        ],
+        0.84,
+        highlightMat,
+        0.05,
+      );
+
+      // Sculpted wheel arches + mudflaps
       for (const side of [-1, 1]) {
-        this.addBox([1.46, 0.56, 0.28], [length * 0.29, 0.86, side * 1.56], shadeMat);
-        this.addBox([1.46, 0.56, 0.28], [-length * 0.29, 0.86, side * 1.56], shadeMat);
-        this.addBox([0.08, 0.46, 0.52], [-length * 0.44, 0.48, side * 1.48], stripeMat);
+        for (const archX of [length * 0.29, -length * 0.29]) {
+          this.addProfile(
+            [
+              [archX + 0.68, 0.56],
+              [archX + 0.48, 1.14],
+              [archX - 0.48, 1.14],
+              [archX - 0.68, 0.56],
+            ],
+            0.22,
+            shadeMat,
+            0.05,
+          ).position.z = side * 1.54;
+        }
+        this.addBox([0.08, 0.44, 0.5], [-length * 0.44, 0.48, side * 1.46], stripeMat);
       }
 
-      // Cabin & roof air scoop
-      this.addBox([2.1, 0.68, 2.34], [-0.22, 1.54, 0], bodyMat);
-      this.addBox([2.06, 0.58, 2.4], [-0.22, 1.5, 0], glassMat);
-      this.addBox([1.56, 0.08, 2.18], [-0.24, 1.92, 0], highlightMat);
-      this.addBox([0.52, 0.14, 0.46], [0.22, 2.0, 0], stripeMat);
+      // Sculpted rally cabin & roof scoop
+      this.addProfile(
+        [
+          [1.02, 1.2],
+          [0.36, 1.84],
+          [-0.78, 1.84],
+          [-1.44, 1.24],
+        ],
+        2.22,
+        glassMat,
+        0.1,
+      );
+      this.addProfile(
+        [
+          [0.44, 1.82],
+          [0.24, 1.93],
+          [-0.74, 1.93],
+          [-0.86, 1.82],
+        ],
+        2.08,
+        highlightMat,
+        0.06,
+      );
+      this.addProfile(
+        [
+          [0.34, 1.92],
+          [0.26, 2.04],
+          [-0.12, 2.0],
+          [-0.12, 1.92],
+        ],
+        0.42,
+        stripeMat,
+        0.04,
+      );
 
       // Tall twin-pillar rally rear wing
-      this.addBox([0.52, 0.12, 2.92], [-2.28, 1.88, 0], bodyMat);
+      this.addBox([0.52, 0.1, 2.86], [-2.28, 1.86, 0], bodyMat);
       for (const side of [-1, 1]) {
-        this.addBox([0.28, 0.66, 0.12], [-2.24, 1.52, side * 0.92], shadeMat);
-        this.addBox([0.62, 0.26, 0.08], [-2.28, 1.88, side * 1.46], stripeMat);
+        this.addBox([0.28, 0.62, 0.1], [-2.24, 1.5, side * 0.9], shadeMat);
+        this.addBox([0.62, 0.24, 0.08], [-2.28, 1.86, side * 1.44], stripeMat);
       }
 
       // 4 rally fog lights on the front pod + 2 main headlights
       for (const z of [-0.62, -0.22, 0.22, 0.62]) {
-        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.18, 12), lightMat);
+        const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.18, 12), lightMat);
         pod.rotation.z = Math.PI / 2;
-        pod.position.set(length / 2 + 0.08, 0.92, z);
+        pod.position.set(length / 2 + 0.06, 0.88, z);
         this.body.add(pod);
       }
       for (const side of [-1, 1]) {
-        this.addBox([0.14, 0.22, 0.46], [length / 2 + 0.02, 0.96, side * 1.08], lightMat);
-        const tail = this.addBox([0.12, 0.2, 0.52], [-length / 2 - 0.02, 0.98, side * 1.02], tailMat);
+        this.addBox([0.14, 0.2, 0.44], [length / 2 + 0.02, 0.92, side * 1.06], lightMat);
+        const tail = this.addBox([0.12, 0.18, 0.5], [-length / 2 - 0.02, 0.96, side * 1.0], tailMat);
         this.brakeLights.push(tail);
       }
 
       // Large single rally exhaust
-      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.45, 10), chromeMat);
+      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.45, 12), chromeMat);
       exhaust.rotation.z = Math.PI / 2;
       exhaust.position.set(-length / 2 - 0.1, 0.48, -0.78);
       this.body.add(exhaust);
@@ -1250,43 +1389,83 @@ export class CarView {
         this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.04), true, palette.wheel, palette.stripe);
         this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.04), false, palette.wheel, palette.stripe);
       }
-      this.addNumber(number, -0.24, 1.98, 0, '#15222a', 2.4);
+      this.addNumber(number, -0.24, 2.01, 0, '#15222a', 2.2);
       this.addFlames(-length / 2 - 0.18, 0);
     } else if (carId === 'bima') {
-      // BIMA: Classic Open-Wheel Formula V8 with tapered nose cone, front/rear wings, sidepods, & high airbox
+      // BIMA: Sculpted Open-Wheel Formula V8 with tapered bullet nose, curved sidepods, & high airbox
       const length = 5.4;
       const width = 3.55;
 
-      // Narrow monocoque tub & tapered bullet nose
-      this.addBox([3.8, 0.44, 1.18], [-0.15, 0.58, 0], bodyMat);
-      this.addBox([1.45, 0.34, 0.88], [2.15, 0.54, 0], bodyMat);
-      this.addBox([0.85, 0.24, 0.54], [2.78, 0.5, 0], highlightMat);
-      this.addBox([4.4, 0.04, 0.38], [0.5, 0.82, 0], stripeMat);
+      // Sculpted monocoque tub & tapered bullet nose
+      this.addProfile(
+        [
+          [3.12, 0.38],
+          [3.18, 0.52],
+          [1.65, 0.78],
+          [-2.05, 0.86],
+          [-2.25, 0.56],
+          [-2.0, 0.36],
+        ],
+        0.96,
+        bodyMat,
+        0.1,
+      );
+      this.addBox([4.0, 0.04, 0.36], [0.45, 0.85, 0], stripeMat);
 
-      // Front wing with endplates
-      this.addBox([0.52, 0.1, 3.05], [2.72, 0.36, 0], shadeMat);
+      // Front wing with rounded endplates
+      this.addBox([0.52, 0.08, 3.0], [2.76, 0.34, 0], shadeMat);
       for (const side of [-1, 1]) {
-        this.addBox([0.56, 0.32, 0.08], [2.72, 0.44, side * 1.52], stripeMat);
+        this.addBox([0.54, 0.28, 0.08], [2.76, 0.42, side * 1.5], stripeMat);
         // Sculpted radiator sidepods
-        this.addBox([2.15, 0.48, 0.62], [-0.45, 0.66, side * 0.82], shadeMat);
-        this.addBox([0.1, 0.36, 0.46], [0.62, 0.68, side * 0.82], darkTrimMat);
-        // Exposed suspension A-arms
-        this.addBox([0.16, 0.08, 1.1], [1.75, 0.58, side * 1.0], darkTrimMat);
-        this.addBox([0.16, 0.08, 1.1], [-1.55, 0.62, side * 1.0], darkTrimMat);
+        this.addProfile(
+          [
+            [0.65, 0.42],
+            [0.52, 0.84],
+            [-1.38, 0.84],
+            [-1.58, 0.48],
+          ],
+          0.52,
+          shadeMat,
+          0.08,
+        ).position.z = side * 0.8;
+        this.addBox([0.08, 0.32, 0.42], [0.64, 0.64, side * 0.8], darkTrimMat);
+        // Tubular suspension arms
+        this.addTube([1.75, 0.58, side * 0.45], [1.75, 0.54, side * 1.4], 0.06, darkTrimMat);
+        this.addTube([1.45, 0.56, side * 0.45], [1.75, 0.54, side * 1.4], 0.05, darkTrimMat);
+        this.addTube([-1.55, 0.62, side * 0.48], [-1.55, 0.62, side * 1.45], 0.06, darkTrimMat);
       }
 
-      // Cockpit surround, driver helmet, & tall V8 airbox intake
-      this.addBox([0.85, 0.24, 1.02], [-0.35, 0.9, 0], darkTrimMat);
-      this.addBox([0.36, 0.22, 0.92], [0.22, 0.88, 0], glassMat);
+      // Cockpit surround, driver helmet, & sculpted V8 airbox intake
+      this.addProfile(
+        [
+          [0.24, 0.82],
+          [0.05, 1.02],
+          [-0.65, 1.02],
+          [-0.82, 0.84],
+        ],
+        0.92,
+        darkTrimMat,
+        0.05,
+      );
       this.addDriver(-0.28, 0.92, 0, palette.stripe, '#263a4d', 0.92);
-      this.addBox([0.92, 0.58, 0.58], [-1.05, 1.18, 0], bodyMat);
-      this.addBox([0.12, 0.36, 0.44], [-0.56, 1.24, 0], darkTrimMat);
+      this.addProfile(
+        [
+          [-0.55, 0.84],
+          [-0.62, 1.44],
+          [-1.36, 1.36],
+          [-1.65, 0.86],
+        ],
+        0.48,
+        bodyMat,
+        0.08,
+      );
+      this.addBox([0.1, 0.32, 0.38], [-0.58, 1.24, 0], darkTrimMat);
 
       // Tall rear formula wing + rain tail light
-      this.addBox([0.58, 0.12, 2.7], [-2.42, 1.56, 0], bodyMat);
+      this.addBox([0.56, 0.1, 2.68], [-2.42, 1.54, 0], bodyMat);
       for (const side of [-1, 1]) {
-        this.addBox([0.32, 0.72, 0.1], [-2.36, 1.16, side * 0.72], darkTrimMat);
-        this.addBox([0.66, 0.34, 0.08], [-2.42, 1.54, side * 1.35], stripeMat);
+        this.addBox([0.3, 0.7, 0.1], [-2.36, 1.15, side * 0.72], darkTrimMat);
+        this.addBox([0.64, 0.32, 0.08], [-2.42, 1.52, side * 1.34], stripeMat);
       }
       const tail = this.addBox([0.14, 0.2, 0.24], [-2.28, 0.72, 0], tailMat);
       this.brakeLights.push(tail);
@@ -1296,48 +1475,93 @@ export class CarView {
         this.addWheel(0.62, 0.52, 1.75, side * (width / 2 - 0.18), true, palette.wheel, '#d6dde4');
         this.addWheel(0.76, 0.72, -1.55, side * (width / 2 - 0.12), false, palette.wheel, '#d6dde4');
       }
-      this.addNumber(number, 1.15, 0.84, 0, '#15222a', 1.4);
+      this.addNumber(number, 1.15, 0.88, 0, '#15222a', 1.3);
       this.addFlames(-length / 2 + 0.1, 0);
     } else if (carId === 'rota') {
-      // ROTA: Low Sleek Rotary Sports Coupe with fastback glass roof, vented hood, & curved GT wing
+      // ROTA: Sculpted Sleek Rotary Sports Coupe with beveled fastback glass roof, vented hood, & curved GT wing
       const length = 5.25;
       const width = 3.3;
       const wheelRadius = 0.7;
       const wheelWidth = 0.52;
 
       // Low ground-effect splitter & side skirts
-      this.addBox([5.0, 0.2, 2.9], [0, 0.38, 0], darkTrimMat, true, false);
-      this.addBox([0.42, 0.1, width * 0.92], [2.56, 0.4, 0], shadeMat);
+      this.addBox([4.8, 0.18, 2.78], [0, 0.38, 0], darkTrimMat, true, false);
+      const splitter = this.addBox([0.42, 0.1, width * 0.88], [2.52, 0.4, 0], shadeMat);
+      splitter.rotation.z = 0.08;
 
-      // Low sleek rotary coupe body
-      this.addBox([length, 0.56, 2.95], [0, 0.74, 0], bodyMat);
-      this.addBox([2.15, 0.16, 2.66], [1.45, 1.04, 0], bodyMat);
-      // Hood rotary heat-extractor vents
+      // Sculpted low sleek rotary coupe body
+      this.addProfile(
+        [
+          [2.44, 0.46],
+          [2.64, 0.68],
+          [2.54, 0.88],
+          [1.08, 1.06],
+          [-2.38, 1.1],
+          [-2.62, 0.92],
+          [-2.52, 0.48],
+        ],
+        2.82,
+        bodyMat,
+        0.14,
+      );
+
+      // Hood rotary heat-extractor vents & sculpted fenders
       for (const side of [-1, 1]) {
-        this.addBox([0.54, 0.06, 0.42], [1.45, 1.13, side * 0.54], darkTrimMat);
-        this.addBox([1.42, 0.46, 0.24], [length * 0.3, 0.78, side * 1.54], bodyMat);
-        this.addBox([1.56, 0.52, 0.28], [-length * 0.28, 0.82, side * 1.56], bodyMat);
+        const vent = this.addBox([0.52, 0.05, 0.42], [1.56, 1.04, side * 0.54], darkTrimMat);
+        vent.rotation.z = -0.12;
+        for (const archX of [length * 0.29, -length * 0.29]) {
+          this.addProfile(
+            [
+              [archX + 0.64, 0.48],
+              [archX + 0.44, 1.02],
+              [archX - 0.44, 1.02],
+              [archX - 0.64, 0.48],
+            ],
+            0.2,
+            bodyMat,
+            0.05,
+          ).position.z = side * 1.5;
+        }
       }
 
-      // Fastback cabin & rear louvers
-      this.addBox([2.35, 0.54, 2.26], [-0.36, 1.32, 0], glassMat);
-      this.addBox([1.48, 0.08, 2.12], [-0.26, 1.62, 0], bodyMat);
-      this.addBox([0.75, 0.04, 1.8], [-1.3, 1.4, 0], darkTrimMat);
-      this.addBox([4.8, 0.04, 0.44], [0, 1.67, 0], stripeMat);
+      // Sculpted fastback cabin & rear louvers
+      this.addProfile(
+        [
+          [1.02, 1.06],
+          [0.2, 1.62],
+          [-0.78, 1.62],
+          [-1.92, 1.1],
+        ],
+        2.16,
+        glassMat,
+        0.1,
+      );
+      this.addProfile(
+        [
+          [0.28, 1.59],
+          [0.08, 1.69],
+          [-0.76, 1.69],
+          [-0.86, 1.59],
+        ],
+        1.98,
+        bodyMat,
+        0.06,
+      );
+      this.addBox([4.4, 0.04, 0.42], [-0.1, 1.72, 0], stripeMat);
 
       // Curved GT rear wing
-      this.addBox([0.46, 0.1, 2.96], [-2.34, 1.52, 0], shadeMat);
+      this.addBox([0.46, 0.09, 2.92], [-2.34, 1.5, 0], shadeMat);
       for (const side of [-1, 1]) {
-        this.addBox([0.24, 0.48, 0.1], [-2.3, 1.24, side * 0.88], darkTrimMat);
-        this.addBox([0.52, 0.22, 0.08], [-2.34, 1.52, side * 1.48], stripeMat);
+        this.addBox([0.22, 0.46, 0.1], [-2.3, 1.22, side * 0.88], darkTrimMat);
+        this.addBox([0.52, 0.22, 0.08], [-2.34, 1.5, side * 1.46], stripeMat);
       }
 
       // Sleek front headlamps & wide rear bar tail lights
       for (const side of [-1, 1]) {
-        this.addBox([0.14, 0.16, 0.58], [length / 2 + 0.02, 0.82, side * 1.02], lightMat);
-        const tail = this.addBox([0.12, 0.18, 0.68], [-length / 2 - 0.02, 0.86, side * 0.96], tailMat);
+        this.addBox([0.14, 0.16, 0.56], [length / 2 + 0.02, 0.8, side * 1.0], lightMat);
+        const tail = this.addBox([0.12, 0.18, 0.66], [-length / 2 - 0.02, 0.88, side * 0.94], tailMat);
         this.brakeLights.push(tail);
-        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.42, 10), chromeMat);
+        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.42, 12), chromeMat);
         pipe.rotation.z = Math.PI / 2;
         pipe.position.set(-length / 2 - 0.08, 0.44, side * 0.72);
         this.body.add(pipe);
@@ -1347,7 +1571,7 @@ export class CarView {
         this.addWheel(wheelRadius, wheelWidth, length * 0.29, side * (width / 2 + 0.04), true, palette.wheel, '#d6dde4');
         this.addWheel(wheelRadius, wheelWidth, -length * 0.29, side * (width / 2 + 0.04), false, palette.wheel, '#d6dde4');
       }
-      this.addNumber(number, -0.26, 1.72, 0, '#15222a', 2.2);
+      this.addNumber(number, -0.32, 1.76, 0, '#15222a', 2.1);
       this.addFlames(-length / 2 - 0.16, 0);
     }
   }
