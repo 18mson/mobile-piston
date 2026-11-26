@@ -88,39 +88,60 @@ export default function RaceHud({
 
       <div className="hud-top-center">
         <button
-          className="btn btn-icon pause-button"
+          className="btn btn-icon pause-button hud-action-btn"
           type="button"
           onClick={onPause}
           aria-label={isExplore ? 'Kembali ke menu utama (Esc)' : 'Jeda balapan'}
+          title={isExplore ? 'Menu (Esc)' : 'Jeda'}
         >
-          <span aria-hidden="true">{isExplore ? 'MENU (ESC)' : 'II'}</span>
+          {isExplore ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 5L8 12L15 19" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="square" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="6" y="5" width="4" height="14" fill="currentColor" />
+              <rect x="14" y="5" width="4" height="14" fill="currentColor" />
+            </svg>
+          )}
         </button>
         <button
-          className="btn btn-icon camera-button"
+          className="btn btn-icon camera-button hud-action-btn"
           type="button"
           onClick={onCycleCamera}
           aria-label={`Ganti sudut kamera. Tampilan sekarang: ${cameraLabel}`}
+          title={`Kamera: ${cameraLabel}`}
         >
-          <span aria-hidden="true">{cameraLabel}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 8H8L10 5H14L16 8H20V19H4V8Z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinejoin="miter" />
+            <circle cx="12" cy="13.5" r="3" stroke="currentColor" strokeWidth="2" fill="none" />
+          </svg>
         </button>
         {onToggleFullscreen && (
           <button
-            className="btn btn-icon fullscreen-button"
+            className="btn btn-icon fullscreen-button hud-action-btn"
             type="button"
             onClick={onToggleFullscreen}
             aria-label="Layar penuh otomatis lanskap"
+            title="Layar penuh"
           >
-            <span aria-hidden="true">FULL</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9V4H9M20 9V4H15M4 15V20H9M20 15V20H15" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="square" />
+            </svg>
           </button>
         )}
         {!isExplore && onResetCar && (
           <button
-            className="btn btn-icon reset-button"
+            className="btn btn-icon reset-button hud-action-btn"
             type="button"
             onClick={onResetCar}
             aria-label="Kembalikan mobil ke lintasan (R)"
+            title="Reset posisi mobil (R)"
           >
-            <span aria-hidden="true">RESET</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 12A8 8 0 1 1 6.5 17.8" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="square" />
+              <path d="M4 7V12H9" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="square" />
+            </svg>
           </button>
         )}
         {showHint && (

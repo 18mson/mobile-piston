@@ -1364,24 +1364,31 @@ p {
 
 .pause-button,
 .camera-button,
-.reset-button {
-  min-height: 46px;
+.fullscreen-button,
+.reset-button,
+.hud-action-btn {
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
   background: rgba(12, 24, 32, 0.9);
   border-color: var(--line-strong);
   box-shadow: none;
   color: var(--bone);
-  letter-spacing: 0.08em;
 }
 
-.camera-button,
-.reset-button {
-  width: auto;
-  min-width: 46px;
-  padding: 0 10px;
-  font-size: 10px;
+.hud-action-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .pause-button:hover,
+.camera-button:hover,
+.fullscreen-button:hover,
 .reset-button:hover {
   background: var(--bone);
   color: var(--ink);
@@ -3168,6 +3175,14 @@ kbd {
     bottom: auto;
   }
 
+  .hud-top-center {
+    top: calc(44dvh + 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 14px;
+    z-index: 25;
+  }
+
   .hud-nitro {
     bottom: 8px;
     width: 180px;
@@ -3183,7 +3198,7 @@ kbd {
   }
 
   .touch-cluster {
-    top: 50%;
+    top: 60%;
     bottom: auto;
     transform: translateY(-50%);
   }
