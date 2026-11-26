@@ -618,6 +618,14 @@ export default function GameApp() {
           <button className="btn btn-quiet btn-small" type="button" onClick={toggleMute}>
             Suara: {save.audioMuted ? 'mati' : 'nyala'}
           </button>
+          <button
+            className="btn btn-quiet btn-small"
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label="Layar penuh"
+          >
+            Full
+          </button>
           <button className="btn btn-quiet btn-small" type="button" onClick={openControls}>
             Kontrol
           </button>

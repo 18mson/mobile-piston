@@ -9,7 +9,7 @@ const ACTIONS: { action: TouchAction; className: string; aria: string }[] = [
   { action: 'left', className: 'touch-steer touch-left', aria: 'Belok kiri' },
   { action: 'right', className: 'touch-steer touch-right', aria: 'Belok kanan' },
   { action: 'brake', className: 'touch-brake', aria: 'Rem dan mundur' },
-  { action: 'nitro', className: 'touch-nitro', aria: 'Nitro' },
+  { action: 'nitro', className: 'touch-nitro', aria: 'Boost dan nitro' },
 ];
 
 function TouchArrowIcon({ action }: { action: TouchAction }) {
@@ -35,9 +35,12 @@ function TouchArrowIcon({ action }: { action: TouchAction }) {
     );
   }
   return (
-    <svg className="touch-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 17L12 7L20 17H4Z" fill="currentColor" />
-    </svg>
+    <span className="touch-boost-wrap" aria-hidden="true">
+      <svg className="touch-icon" viewBox="0 0 24 24">
+        <path d="M13 2L4 14H11L10 22L20 10H13L13 2Z" fill="currentColor" />
+      </svg>
+      <span className="touch-boost-label">BOOST</span>
+    </span>
   );
 }
 
