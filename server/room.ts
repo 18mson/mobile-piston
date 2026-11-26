@@ -17,7 +17,7 @@ export const MAX_ROOM_PLAYERS = 6;
 export const RECONNECT_GRACE_MS = 15_000;
 const FIXED_STEP = 1 / 120;
 const SNAPSHOT_INTERVAL_SECONDS = 1 / 30; // 30 Hz network broadcast
-const MAX_HOLD_TICKS = 6; // Repeat last input briefly on jitter before falling back to neutral
+const MAX_HOLD_TICKS = 12; // Repeat last input up to 100ms on jitter before falling back to neutral
 const MAX_INPUT_QUEUE = 32;
 
 export type SendMessageFn = (msg: ServerMessage) => void;

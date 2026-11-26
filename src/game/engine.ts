@@ -513,7 +513,7 @@ export class GameEngine {
     if (lastSeq > 0 && (inputChanged || this.netInputTimer >= 0.016)) {
       this.netInputTimer = 0;
       this.lastSentInput = { ...playerInput };
-      this.netClient.sendInput(lastSeq, playerInput, this.onlineSync.getRecentInputs(4));
+      this.netClient.sendInput(lastSeq, playerInput, this.onlineSync.getRecentInputs(8));
     }
 
     this.onlineSync.updateVisuals(dt, Date.now());

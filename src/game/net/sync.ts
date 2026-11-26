@@ -138,12 +138,12 @@ export class NetRaceSync {
    * Returns the sequence number assigned to this input.
    */
   predictLocal(input: PlayerInput, dt: number): number {
+    if (this.currentMode !== 'racing') {
+      return 0;
+    }
+
     const seq = this.nextSeq;
     this.nextSeq += 1;
-
-    if (this.currentMode !== 'racing') {
-      return seq;
-    }
 
     const inputCopy: PlayerInput = { ...input };
     this.pendingInputs.push({ seq, input: inputCopy, dt });
@@ -307,8 +307,20 @@ export class NetRaceSync {
    */
   updateVisuals(dt: number, nowMs = Date.now()): void {
     const decay = Math.exp(-dt * 10);
-    this.errorOffsetX *= decay;
-    this.errorOffsetY *= decay;
+    const nextOffX = this.errorOffsetX * decay;
+    const nextOffY = this.errorOffsetY * decay;
+    const stepX = this.errorOffsetX - nextOffX;
+    const stepY = this.errorOffsetY - nextOffY;
+    const stepDist = Math.hypot(stepX, stepY);
+    const maxStep = Math.max(0.1, dt * 95);
+    if (stepDist > maxStep) {
+      const scale = maxStep / stepDist;
+      this.errorOffsetX -= stepX * scale;
+      this.errorOffsetY -= stepY * scale;
+    } else {
+      this.errorOffsetX = nextOffX;
+      this.errorOffsetY = nextOffY;
+    }
     this.errorOffsetAngle *= decay;
     if (Math.abs(this.errorOffsetX) < 0.01) this.errorOffsetX = 0;
     if (Math.abs(this.errorOffsetY) < 0.01) this.errorOffsetY = 0;
@@ -386,16 +398,25 @@ export class NetRaceSync {
         if (a && b) {
           this.copyNetToRacer(b, racer);
 
-          // Cubic Hermite interpolation for C1-continuous position & velocity
-          const t2 = t * t;
-          const t3 = t2 * t;
-          const h00 = 2 * t3 - 3 * t2 + 1;
-          const h10 = t3 - 2 * t2 + t;
-          const h01 = -2 * t3 + 3 * t2;
-          const h11 = t3 - t2;
+          const dv = Math.hypot(b.vx - a.vx, b.vy - a.vy);
+          let targetX: number;
+          let targetY: number;
+          if (dv > 40) {
+            // Collision/wall-hit velocity discontinuity: linear interp avoids Hermite overshoot
+            targetX = a.x + (b.x - a.x) * t;
+            targetY = a.y + (b.y - a.y) * t;
+          } else {
+            // Cubic Hermite interpolation for C1-continuous position & velocity
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const h00 = 2 * t3 - 3 * t2 + 1;
+            const h10 = t3 - 2 * t2 + t;
+            const h01 = -2 * t3 + 3 * t2;
+            const h11 = t3 - t2;
 
-          let targetX = h00 * a.x + h10 * (a.vx * spanSec) + h01 * b.x + h11 * (b.vx * spanSec);
-          let targetY = h00 * a.y + h10 * (a.vy * spanSec) + h01 * b.y + h11 * (b.vy * spanSec);
+            targetX = h00 * a.x + h10 * (a.vx * spanSec) + h01 * b.x + h11 * (b.vx * spanSec);
+            targetY = h00 * a.y + h10 * (a.vy * spanSec) + h01 * b.y + h11 * (b.vy * spanSec);
+          }
           let targetAngle = a.angle + shortestAngle(a.angle, b.angle) * t;
 
           if (this.remoteExtrapolating.has(racer.id)) {

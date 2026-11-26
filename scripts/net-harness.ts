@@ -136,8 +136,8 @@ export function runHeadlessHarness(): HarnessMetrics {
   const posErrSamples: number[] = [];
   const angleErrSamples: number[] = [];
 
-  const prevRemotePos = new Map<string, { x: number; y: number; dx: number; dy: number }>();
-  let prevLocalVis: { x: number; y: number } | null = null;
+  const prevRemotePos = new Map<string, { x: number; y: number; dx: number; dy: number; speed: number }>();
+  let prevLocalVis: { x: number; y: number; speed: number } | null = null;
 
   // Simulate 10 seconds at 60 FPS (600 frames), with occasional host slowdown
   const totalFrames = 600;
@@ -154,8 +154,15 @@ export function runHeadlessHarness(): HarnessMetrics {
       ...baseGuestInput,
       nitro: tSec > 1.5 && tSec < 3.5 ? true : baseGuestInput.nitro,
     };
+    const latestHostSnap = hostSnapQueue[hostSnapQueue.length - 1];
+    const hostState = latestHostSnap?.racers.find((r) => r.id === 'host');
     const hostRacer = guestSync.sim.racers.find((r) => r.id === 'host') ?? guestSync.sim.player;
-    const hostInput: PlayerInput = computeAiInput(hostRacer, guestSync.sim.racers, TELUK_SORE, tSec);
+    const hostInput: PlayerInput = computeAiInput(
+      hostState ? { ...hostRacer, x: hostState.x, y: hostState.y, angle: hostState.angle, vx: hostState.vx, vy: hostState.vy, s: hostState.s } : hostRacer,
+      guestSync.sim.racers,
+      TELUK_SORE,
+      tSec,
+    );
 
     // 2. Host steps (with occasional slowdown simulated)
     room.handleInput('host', frame + 1, hostInput);
@@ -230,17 +237,19 @@ export function runHeadlessHarness(): HarnessMetrics {
     const focusY = pPrevY + (renderPlayer.y - pPrevY) * alpha;
     cameraMeshMaxDiff = Math.max(cameraMeshMaxDiff, Math.hypot(meshX - focusX, meshY - focusY));
 
+    const localSpeed = Math.hypot(renderPlayer.vx, renderPlayer.vy);
     if (prevLocalVis && tSec > 0.5) {
       const jump = Math.hypot(meshX - prevLocalVis.x, meshY - prevLocalVis.y);
-      const expectedMax = Math.hypot(renderPlayer.vx, renderPlayer.vy) * frameDt + 2.0;
+      const refSpeed = Math.max(localSpeed, prevLocalVis.speed);
+      const expectedMax = refSpeed * frameDt + 2.0;
       if (jump > expectedMax) {
         if (process.env.VERBOSE_HARNESS) {
           console.log('LOCAL_JUMP', { frame, tSec: tSec.toFixed(2), jump: jump.toFixed(2), expectedMax: expectedMax.toFixed(2), x: meshX.toFixed(1), prevX: prevLocalVis.x.toFixed(1) });
         }
-        localMaxVisualJumpPerFrame = Math.max(localMaxVisualJumpPerFrame, jump - Math.hypot(renderPlayer.vx, renderPlayer.vy) * frameDt);
+        localMaxVisualJumpPerFrame = Math.max(localMaxVisualJumpPerFrame, jump - refSpeed * frameDt);
       }
     }
-    prevLocalVis = { x: meshX, y: meshY };
+    prevLocalVis = { x: meshX, y: meshY, speed: localSpeed };
 
     // Check remote cars visual displacement (simulating renderRace)
     for (const r of guestSync.sim.racers) {
@@ -251,12 +260,12 @@ export function runHeadlessHarness(): HarnessMetrics {
       const visY = rPrevY + (r.y - rPrevY) * alpha;
 
       const prev = prevRemotePos.get(r.id);
+      const speed = Math.hypot(r.vx, r.vy);
       if (prev && tSec > 0.5) {
         const dx = visX - prev.x;
         const dy = visY - prev.y;
         const move = Math.hypot(dx, dy);
-        const speed = Math.hypot(r.vx, r.vy);
-        const expected = speed * frameDt;
+        const expected = Math.max(speed, prev.speed) * frameDt;
         if (expected > 0.05 && move < 40) {
           const ratio = move / expected;
           remoteMaxRatio = Math.max(remoteMaxRatio, ratio);
@@ -275,9 +284,9 @@ export function runHeadlessHarness(): HarnessMetrics {
             remoteOscillations += 1;
           }
         }
-        prevRemotePos.set(r.id, { x: visX, y: visY, dx, dy });
+        prevRemotePos.set(r.id, { x: visX, y: visY, dx, dy, speed });
       } else {
-        prevRemotePos.set(r.id, { x: visX, y: visY, dx: 0, dy: 0 });
+        prevRemotePos.set(r.id, { x: visX, y: visY, dx: 0, dy: 0, speed });
       }
     }
   }

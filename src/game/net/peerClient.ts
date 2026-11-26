@@ -152,11 +152,21 @@ export class PeerNetClient {
               if (sMsg.type === 'snapshot') {
                 const fast = this.guestFastConns.get(guestId);
                 if (fast && fast.open) {
-                  fast.send(sMsg);
-                  return;
+                  try {
+                    fast.send(sMsg);
+                    return;
+                  } catch {
+                    // Fallback to reliable connection if fast channel throws
+                  }
                 }
               }
-              if (conn.open) conn.send(sMsg);
+              if (conn.open) {
+                try {
+                  conn.send(sMsg);
+                } catch {
+                  // Ignore transient send error on closing channel
+                }
+              }
             });
             if (!ok && conn.open) {
               conn.send({
@@ -279,7 +289,11 @@ export class PeerNetClient {
     if (this.hostRoom) {
       this.hostRoom.handleInput('host', seq, input, inputs);
     } else if (this.fastConnToHost && this.fastConnToHost.open) {
-      this.fastConnToHost.send({ type: 'input', seq, input, inputs } satisfies ClientMessage);
+      try {
+        this.fastConnToHost.send({ type: 'input', seq, input, inputs } satisfies ClientMessage);
+      } catch {
+        this.sendToHost({ type: 'input', seq, input, inputs });
+      }
     } else {
       this.sendToHost({ type: 'input', seq, input, inputs });
     }
@@ -287,7 +301,11 @@ export class PeerNetClient {
 
   private sendToHost(msg: ClientMessage): void {
     if (this.connToHost && this.connToHost.open) {
-      this.connToHost.send(msg);
+      try {
+        this.connToHost.send(msg);
+      } catch {
+        // Ignore transient send error
+      }
     }
   }
 
