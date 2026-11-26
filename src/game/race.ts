@@ -78,6 +78,7 @@ export interface RaceParticipant {
 export interface RaceOptions {
   playerPalette?: CarPalette;
   explore?: boolean;
+  totalLaps?: number;
   initialPose?: { x: number; y: number; angle: number; vx: number; vy: number; s: number };
   participants?: RaceParticipant[];
   localPlayerId?: string;
@@ -88,7 +89,7 @@ export class RaceSim {
   readonly track: Track;
   readonly racers: RacerState[];
   readonly player: RacerState;
-  readonly totalLaps = TOTAL_LAPS;
+  readonly totalLaps: number;
   readonly explore: boolean;
   elapsed = 0;
   tick = 0;
@@ -100,6 +101,7 @@ export class RaceSim {
         ? { playerPalette: paletteOrOptions }
         : (paletteOrOptions ?? {});
     this.explore = Boolean(opts.explore);
+    this.totalLaps = opts.totalLaps && opts.totalLaps >= 1 ? Math.floor(opts.totalLaps) : TOTAL_LAPS;
 
     if (opts.participants && opts.participants.length > 0) {
       const localId = opts.localPlayerId ?? opts.participants[0].id;
@@ -392,6 +394,7 @@ export class RaceSim {
       previousBestLapMs,
       isNewRecord,
       totalTimeMs: this.player.finishTime == null ? 0 : Math.round(this.player.finishTime * 1000),
+      totalLaps: this.totalLaps,
     };
   }
 

@@ -25,7 +25,9 @@ export default function ResultsScreen({
       <div className="results-panel panel">
         <div className="results-heading">
           <div>
-            <p className="eyebrow">{trackName} / 3 putaran</p>
+            <p className="eyebrow">
+              {trackName} / {results.totalLaps ?? 3} putaran
+            </p>
             <h2 id="results-heading">Hasil balapan</h2>
           </div>
           <div className="finish-plate" aria-label={`Kamu finis di posisi ${results.playerPosition}`}>

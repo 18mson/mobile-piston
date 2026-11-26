@@ -150,13 +150,19 @@ export class GameEngine {
     if (pressed) void this.audio.unlock();
   }
 
-  startRace(carId: CarId, previousBestLapMs: number | null, cameraMode?: CameraMode, playerPalette?: CarPalette): void {
+  startRace(
+    carId: CarId,
+    previousBestLapMs: number | null,
+    cameraMode?: CameraMode,
+    playerPalette?: CarPalette,
+    totalLaps?: number,
+  ): void {
     if (this.destroyed) return;
     void this.audio.unlock();
     this.selectedCar = carId;
     this.previousBestLapMs = previousBestLapMs;
     this.raceStats.reset();
-    this.race = new RaceSim(this.track, carId, playerPalette);
+    this.race = new RaceSim(this.track, carId, { playerPalette, totalLaps });
     this.renderer.setRacers(this.race.racers, cameraMode);
     this.renderer.resetMarks();
     this.mode = 'countdown';

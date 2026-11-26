@@ -3036,6 +3036,30 @@ kbd {
   pointer-events: none;
 }
 
+.lap-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lap-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.lap-pill {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.lap-pill[data-active='true'] {
+  background: var(--orange);
+  border-color: var(--bone);
+  color: var(--ink);
+  box-shadow: 2px 2px 0 var(--orange-ink);
+}
+
 .btn-soon-badge {
   padding: 2px 6px;
   background: rgba(255, 143, 61, 0.2);

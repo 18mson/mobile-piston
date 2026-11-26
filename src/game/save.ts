@@ -1,4 +1,4 @@
-import type { CarId, SaveData, SavedCameraMode, TrackId } from './types';
+import type { CarId, LapCount, SaveData, SavedCameraMode, TrackId } from './types';
 import { CAR_ORDER } from './data/cars';
 import { TRACK_ORDER } from './track/tracks';
 import { isCarUnlocked, MAX_XP } from './progression';
@@ -59,6 +59,8 @@ export function normalizeSave(raw: unknown): SaveData {
 
   const xp =
     typeof data.xp === 'number' && Number.isFinite(data.xp) ? Math.min(MAX_XP, Math.max(0, Math.floor(data.xp))) : 0;
+  const selectedLaps: LapCount | undefined =
+    data.selectedLaps === 3 || data.selectedLaps === 4 || data.selectedLaps === 5 ? data.selectedLaps : undefined;
 
   if (!isCarUnlocked(selectedCarId, { xp, unlocks })) {
     selectedCarId = fallback.selectedCarId;
@@ -78,6 +80,9 @@ export function normalizeSave(raw: unknown): SaveData {
   }
   if (xp > 0) {
     normalized.xp = xp;
+  }
+  if (selectedLaps && selectedLaps !== 3) {
+    normalized.selectedLaps = selectedLaps;
   }
   return normalized;
 }

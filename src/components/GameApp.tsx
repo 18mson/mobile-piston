@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   CarId,
+  LapCount,
   RaceResults,
   RaceSnapshot,
   RoomStatePacket,
@@ -189,10 +190,15 @@ export default function GameApp() {
     const onOnline = () => {
       void sync?.flushPending();
     };
+    const onPageHide = () => {
+      void sync?.flushPending();
+    };
     window.addEventListener('online', onOnline);
+    window.addEventListener('pagehide', onPageHide);
     return () => {
       sub?.unsubscribe();
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('pagehide', onPageHide);
       sync?.dispose();
     };
   }, []);
@@ -371,6 +377,7 @@ export default function GameApp() {
     const record = saveRef.current.bestLapMs[saveRef.current.selectedTrackId] ?? null;
     const savedCam = saveRef.current.cameraMode ?? 'top';
     const colorIdx = saveRef.current.selectedColors?.[id] ?? 0;
+    const totalLaps = saveRef.current.selectedLaps ?? 3;
     const palette = getCarPalette(id, colorIdx);
     setSnapshot(null);
     setResults(null);
@@ -382,7 +389,7 @@ export default function GameApp() {
     if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => setShowHint(false), 8000);
     setScreen('racing');
-    engine.startRace(id, record, savedCam, palette);
+    engine.startRace(id, record, savedCam, palette, totalLaps);
     window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
   }, []);
 
@@ -424,6 +431,11 @@ export default function GameApp() {
     setAnnouncement(`Lintasan ${getTrack(id).name} dipilih.`);
   };
 
+  const selectLaps = (laps: LapCount) => {
+    const nextSave: SaveData = { ...saveRef.current, selectedLaps: laps };
+    commitSave(nextSave);
+  };
+
   const selectCar = (id: CarId) => {
     if (!isCarUnlocked(id, saveRef.current)) {
       const need = carUnlockDef(id)?.level;
@@ -453,6 +465,10 @@ export default function GameApp() {
   };
 
   const handleLogout = async () => {
+    const currentUserId = authUserIdRef.current;
+    if (currentUserId) {
+      await cloudSyncRef.current?.flushPending(currentUserId);
+    }
     await signOutAccount();
     authUserIdRef.current = null;
     setAuthUsername(null);
@@ -813,8 +829,10 @@ export default function GameApp() {
           {screen === 'tracks' && (
             <TrackSelectScreen
               selectedTrackId={save.selectedTrackId}
+              selectedLaps={save.selectedLaps ?? 3}
               bestLapMs={save.bestLapMs}
               onSelect={selectTrack}
+              onSelectLaps={selectLaps}
               onBack={() => setScreen('garage')}
               onStart={() => startRace()}
             />

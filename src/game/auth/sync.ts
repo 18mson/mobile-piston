@@ -227,6 +227,10 @@ export class CloudSaveSync {
   }
 
   async flushPending(expectedUserId?: string): Promise<boolean> {
+    if (this.debounceTimer != null && typeof window !== 'undefined') {
+      window.clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
     const pending = readPendingSync();
     const userId = expectedUserId ?? this.activeUserId;
     if (!pending || !userId || pending.userId !== userId) return true;

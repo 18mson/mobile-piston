@@ -1,20 +1,26 @@
 'use client';
 
-import type { Track, TrackId } from '../../game/types';
+import type { LapCount, Track, TrackId } from '../../game/types';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import { formatTime } from '../../game/utils';
 import TrackPreview from '../TrackPreview';
 
+const LAP_OPTIONS: LapCount[] = [3, 4, 5];
+
 export default function TrackSelectScreen({
   selectedTrackId,
+  selectedLaps = 3,
   bestLapMs,
   onSelect,
+  onSelectLaps,
   onBack,
   onStart,
 }: {
   selectedTrackId: TrackId;
+  selectedLaps?: LapCount;
   bestLapMs: Partial<Record<string, number>>;
   onSelect: (id: TrackId) => void;
+  onSelectLaps?: (laps: LapCount) => void;
   onBack: () => void;
   onStart: () => void;
 }) {
@@ -55,7 +61,7 @@ export default function TrackSelectScreen({
                   <span className="label">Rute {track.name === 'TELUK SORE' ? 'pesisir' : 'danau'}</span>
                   <strong>{track.name}</strong>
                   <span className="track-select-subtitle">{track.subtitle}</span>
-                  <span className="track-select-meta">3 putaran / 6 mobil / start P6</span>
+                  <span className="track-select-meta">{selectedLaps} putaran / 6 mobil / start P6</span>
                   <span className="track-select-record">
                     Rekor: {record == null ? 'Belum ada' : formatTime(record)}
                   </span>
@@ -72,6 +78,26 @@ export default function TrackSelectScreen({
             <strong>{selected.name}</strong>
             <p>{selected.subtitle}</p>
           </div>
+          {onSelectLaps && (
+            <div className="lap-picker" role="group" aria-label="Jumlah putaran">
+              <span className="label">Putaran</span>
+              <div className="lap-pills">
+                {LAP_OPTIONS.map((laps) => (
+                  <button
+                    key={laps}
+                    type="button"
+                    className="btn btn-small lap-pill"
+                    data-active={selectedLaps === laps}
+                    aria-pressed={selectedLaps === laps}
+                    onClick={() => onSelectLaps(laps)}
+                    data-nav
+                  >
+                    {laps}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
             Balapan di {selected.name}
           </button>

@@ -192,10 +192,12 @@ export interface RaceResults {
   previousBestLapMs: number | null;
   isNewRecord: boolean;
   totalTimeMs: number;
+  totalLaps?: number;
   stats?: RaceStats;
 }
 
 export type SavedCameraMode = 'top' | 'chase' | 'cockpit';
+export type LapCount = 3 | 4 | 5;
 
 export interface CarColorOption {
   id: string;
@@ -211,6 +213,7 @@ export interface SaveData {
   audioMuted: boolean;
   cameraMode?: SavedCameraMode;
   selectedColors?: Partial<Record<CarId, number>>;
+  selectedLaps?: LapCount;
   unlocks?: string[];
   xp?: number;
 }
