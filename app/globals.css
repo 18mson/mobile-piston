@@ -3202,6 +3202,11 @@ kbd {
     height: 44dvh;
   }
 
+  .race-hud {
+    z-index: 20;
+    inset: 0;
+  }
+
   .hud-overlay {
     height: 44dvh;
     bottom: auto;
