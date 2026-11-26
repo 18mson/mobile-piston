@@ -322,24 +322,110 @@ export class CarView {
     }
   }
 
-  private addDriver(x: number, y: number, z: number, helmetColor: string, visorColor: string, scale = 1.0): void {
-    // Driver torso/shoulders
-    const torso = this.addBox([0.55 * scale, 0.4 * scale, 0.9 * scale], [x, y - 0.22 * scale, z], this.material('#1f2833'));
-    
-    // Chunky racing helmet with distinct visor
-    const helmetGeo = new THREE.SphereGeometry(0.42 * scale, 8, 6);
-    const helmet = new THREE.Mesh(helmetGeo, this.material(helmetColor));
-    helmet.position.set(x, y + 0.15 * scale, z);
+  private addDriver(
+    x: number,
+    y: number,
+    z: number,
+    helmetColor: string,
+    visorColor: string,
+    scale = 1.0,
+    steeringTarget?: [number, number, number],
+    pedalTarget?: [number, number, number],
+  ): void {
+    const suitMat = this.material('#2a3340');
+    const gloveMat = this.material('#d6dde6');
+    const helmetMat = this.material(helmetColor);
+    const visorMat = new THREE.MeshBasicMaterial({ color: visorColor });
+
+    // Racing suit torso (rounded cylinder so shoulders aren't sharp boxes)
+    const torsoGeo = new THREE.CylinderGeometry(0.28 * scale, 0.24 * scale, 0.44 * scale, 14);
+    torsoGeo.scale(0.85, 1, 1.45);
+    const torso = new THREE.Mesh(torsoGeo, suitMat);
+    torso.position.set(x, y - 0.24 * scale, z);
+    torso.castShadow = true;
+    this.body.add(torso);
+
+    // Neck collar
+    const collar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15 * scale, 0.19 * scale, 0.14 * scale, 12),
+      suitMat,
+    );
+    collar.position.set(x, y - 0.02 * scale, z);
+    this.body.add(collar);
+
+    // Smooth racing helmet (18x14 segments)
+    const helmetY = y + 0.16 * scale;
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.34 * scale, 18, 14), helmetMat);
+    helmet.position.set(x + 0.02 * scale, helmetY, z);
     helmet.castShadow = true;
     this.body.add(helmet);
 
-    // Dark glossy visor
-    const visor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.22 * scale, 0.18 * scale, 0.52 * scale),
-      new THREE.MeshBasicMaterial({ color: visorColor }),
+    // Curved wrap-around visor facing +X (theta = PI/2 in CylinderGeometry)
+    const visorArc = 1.15;
+    const visorGeo = new THREE.CylinderGeometry(
+      0.348 * scale,
+      0.348 * scale,
+      0.15 * scale,
+      16,
+      1,
+      false,
+      Math.PI / 2 - visorArc / 2,
+      visorArc,
     );
-    visor.position.set(x + 0.28 * scale, y + 0.14 * scale, z);
+    const visor = new THREE.Mesh(visorGeo, visorMat);
+    visor.position.set(x + 0.03 * scale, helmetY + 0.01 * scale, z);
     this.body.add(visor);
+
+    // Arms & gloved hands reaching to steering wheel (or forward inside cabin)
+    const targetX = steeringTarget ? steeringTarget[0] : x + 0.44 * scale;
+    const targetY = steeringTarget ? steeringTarget[1] : y - 0.2 * scale;
+    const targetSpread = steeringTarget ? 0.21 : 0.24 * scale;
+
+    for (const side of [-1, 1]) {
+      const shoulder: [number, number, number] = [x + 0.02 * scale, y - 0.14 * scale, z + side * 0.34 * scale];
+      const elbow: [number, number, number] = [
+        (shoulder[0] + targetX) * 0.5 + 0.03 * scale,
+        Math.min(shoulder[1], targetY) - 0.06 * scale,
+        z + side * (0.32 * scale),
+      ];
+      const handPos: [number, number, number] = [targetX, targetY, z + side * targetSpread];
+
+      this.addTube(shoulder, elbow, 0.09 * scale, suitMat);
+      this.addTube(elbow, handPos, 0.075 * scale, suitMat);
+
+      const glove = new THREE.Mesh(new THREE.SphereGeometry(0.095 * scale, 10, 8), gloveMat);
+      glove.position.set(handPos[0], handPos[1], handPos[2]);
+      glove.castShadow = true;
+      this.body.add(glove);
+    }
+
+    // Thighs, knees, shins, and racing boots extending into the pedal bay (for open-chassis karts)
+    if (pedalTarget) {
+      const bootMat = this.material('#222a35');
+      for (const side of [-1, 1]) {
+        const hip: [number, number, number] = [x + 0.05 * scale, y - 0.54 * scale, z + side * 0.17 * scale];
+        const knee: [number, number, number] = [
+          (hip[0] + pedalTarget[0]) * 0.48,
+          Math.max(hip[1], pedalTarget[1]) + 0.08 * scale,
+          z + side * 0.22 * scale,
+        ];
+        const ankle: [number, number, number] = [pedalTarget[0], pedalTarget[1], z + side * 0.17 * scale];
+
+        this.addTube(hip, knee, 0.125 * scale, suitMat);
+        this.addTube(knee, ankle, 0.105 * scale, suitMat);
+
+        const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(0.12 * scale, 10, 8), suitMat);
+        kneeCap.position.set(knee[0], knee[1], knee[2]);
+        kneeCap.castShadow = true;
+        this.body.add(kneeCap);
+
+        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.2 * scale, 0.24 * scale, 0.16 * scale), bootMat);
+        boot.position.set(ankle[0] + 0.05 * scale, ankle[1] + 0.04 * scale, ankle[2]);
+        boot.rotation.z = -0.25;
+        boot.castShadow = true;
+        this.body.add(boot);
+      }
+    }
   }
 
   private build(carId: CarId, palette: CarPalette, number: number): void {
@@ -672,8 +758,8 @@ export class CarView {
       this.body.add(eng);
       this.addTube([-1.28, 0.78, -0.4], [-1.84, 0.92, -0.48], 0.065, chromeMat);
 
-      // Driver
-      this.addDriver(-0.5, 1.54, 0, palette.stripe, '#1a2228', 1.05);
+      // Driver with arms gripping the kart steering wheel and legs extending to pedals
+      this.addDriver(-0.5, 1.48, 0, palette.stripe, '#1a2228', 1.02, [0.22, 1.24, 0], [0.66, 0.68, 0]);
 
       // Exposed slick kart wheels
       for (const side of [-1, 1]) {
@@ -1447,7 +1533,12 @@ export class CarView {
         darkTrimMat,
         0.05,
       );
-      this.addDriver(-0.28, 0.92, 0, palette.stripe, '#263a4d', 0.92);
+      const formulaWheel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 8, 14), darkTrimMat);
+      formulaWheel.rotation.y = Math.PI / 2;
+      formulaWheel.rotation.x = 0.35;
+      formulaWheel.position.set(0.08, 0.92, 0);
+      this.body.add(formulaWheel);
+      this.addDriver(-0.28, 0.98, 0, palette.stripe, '#263a4d', 0.92, [0.08, 0.92, 0]);
       this.addProfile(
         [
           [-0.55, 0.84],

@@ -486,7 +486,7 @@ export class GameEngine {
     this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
     if (this.race.player.impact > 0.34 && this.impactSoundCooldown <= 0) {
       this.audio.impact(this.race.player.impact, this.race.player.impactKind);
-      this.impactSoundCooldown = 0.16;
+      this.impactSoundCooldown = 0.24;
     }
     this.updateRaceAudio(this.race.player, true);
     if (this.mode === 'racing') this.raceStats.update(dt, this.race.player);
@@ -540,7 +540,7 @@ export class GameEngine {
     this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
     if (renderPlayer.impact > 0.34 && this.impactSoundCooldown <= 0) {
       this.audio.impact(renderPlayer.impact, renderPlayer.impactKind);
-      this.impactSoundCooldown = 0.16;
+      this.impactSoundCooldown = 0.24;
     }
     this.updateRaceAudio(renderPlayer, this.onlineSync.currentMode === 'racing');
     if (this.onlineSync.currentMode === 'racing') this.raceStats.update(dt, renderPlayer);

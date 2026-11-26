@@ -332,7 +332,7 @@ export class RaceSim {
     racer.prevAngle = racer.angle;
     racer.wrongWay = false;
     racer.wrongWayTime = 0;
-    racer.impact = 0.6;
+    racer.impact = 0;
   }
 
   snapshot(mode: RaceSnapshot['mode'], countdown: number | null, totalRacers = this.racers.length): RaceSnapshot {

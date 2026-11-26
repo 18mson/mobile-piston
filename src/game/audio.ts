@@ -27,6 +27,7 @@ export class GameAudio {
   private dirtFilter: BiquadFilterNode | null = null;
   private rumbleGain: GainNode | null = null;
   private nitroGain: GainNode | null = null;
+  private softNoise: AudioBuffer | null = null;
   private whiteNoise: AudioBuffer | null = null;
   private muted = false;
   private unlocked = false;
@@ -90,6 +91,7 @@ export class GameAudio {
       this.engineOsc2.start();
 
       const soft = this.createNoiseBuffer(2);
+      this.softNoise = soft;
       this.whiteNoise = this.createWhiteBuffer(1.5);
 
       // Tyre squeal: band-passed noise whose pitch and level follow the slide
@@ -326,79 +328,83 @@ export class GameAudio {
   }
 
   /**
-   * Collision, layered: a low body thump, a noisy crunch, and (for hard hits) a short metallic ring.
-   * Walls sound drier with a scrape tail; car-to-car hits are heavier and more "clanky".
+   * Collision, layered: a low body thump, a warm filtered crunch, and (for hard hits) a short soft ring.
+   * Frequencies and levels are balanced to sit naturally with the engine audio.
    */
   impact(strength = 1, kind: ImpactKind = 'wall'): void {
-    if (!this.context || !this.master || !this.whiteNoise) return;
+    if (!this.context || !this.master || !this.softNoise) return;
     const ctx = this.context;
     const now = ctx.currentTime;
     const s = clamp(strength, 0.05, 1);
-    const pitch = 0.9 + Math.random() * 0.2;
+    const pitch = 0.92 + Math.random() * 0.16;
     const isCar = kind === 'car';
 
-    // 1. body thump
+    // 1. body thump (warm low-end, smooth attack)
     const thump = ctx.createOscillator();
     const thumpGain = ctx.createGain();
     thump.type = 'sine';
-    thump.frequency.setValueAtTime((isCar ? 170 : 140) * pitch, now);
-    thump.frequency.exponentialRampToValueAtTime(42, now + 0.22);
-    thumpGain.gain.setValueAtTime(0.1 + 0.3 * s, now);
-    thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+    thump.frequency.setValueAtTime((isCar ? 145 : 115) * pitch, now);
+    thump.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+    thumpGain.gain.setValueAtTime(0.0001, now);
+    thumpGain.gain.linearRampToValueAtTime(0.05 + 0.12 * s, now + 0.008);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
     thump.connect(thumpGain);
     thumpGain.connect(this.master);
     thump.start(now);
-    thump.stop(now + 0.28);
+    thump.stop(now + 0.26);
 
-    // 2. crunch (noise burst)
+    // 2. crunch (warm soft noise burst, matched to vehicle mid-range)
     const crunch = ctx.createBufferSource();
-    crunch.buffer = this.whiteNoise;
+    crunch.buffer = this.softNoise;
     const crunchFilter = ctx.createBiquadFilter();
     crunchFilter.type = 'bandpass';
-    crunchFilter.frequency.value = (isCar ? 780 : 1150) * pitch;
-    crunchFilter.Q.value = 0.8;
+    crunchFilter.frequency.value = (isCar ? 640 : 540) * pitch;
+    crunchFilter.Q.value = 0.7;
     const crunchGain = ctx.createGain();
-    crunchGain.gain.setValueAtTime(0.06 + 0.24 * s, now);
-    crunchGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05 + 0.13 * s);
+    crunchGain.gain.setValueAtTime(0.0001, now);
+    crunchGain.gain.linearRampToValueAtTime(0.03 + 0.09 * s, now + 0.01);
+    crunchGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06 + 0.12 * s);
     crunch.connect(crunchFilter);
     crunchFilter.connect(crunchGain);
     crunchGain.connect(this.master);
     crunch.start(now, Math.random() * 0.8);
     crunch.stop(now + 0.22);
 
-    // 3. metal ring on hard hits
-    if (s > 0.42) {
-      const ringBase = (isCar ? 520 : 340) * pitch;
-      for (const ratio of [1, 1.62]) {
+    // 3. soft metal ring on hard hits
+    if (s > 0.45) {
+      const ringBase = (isCar ? 420 : 280) * pitch;
+      for (const ratio of [1, 1.5]) {
         const ring = ctx.createOscillator();
         const ringGain = ctx.createGain();
-        ring.type = 'triangle';
+        ring.type = 'sine';
         ring.frequency.value = ringBase * ratio;
-        ringGain.gain.setValueAtTime(0.045 * s, now);
-        ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+        ringGain.gain.setValueAtTime(0.0001, now);
+        ringGain.gain.linearRampToValueAtTime(0.02 * s, now + 0.01);
+        ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
         ring.connect(ringGain);
         ringGain.connect(this.master);
         ring.start(now);
-        ring.stop(now + 0.3);
+        ring.stop(now + 0.24);
       }
     }
 
-    // 4. scrape tail when sliding along a barrier
+    // 4. warm low-mid scrape tail when sliding along a barrier (no harsh 2.6kHz hiss)
     if (!isCar) {
       const scrape = ctx.createBufferSource();
-      scrape.buffer = this.whiteNoise;
+      scrape.buffer = this.softNoise;
       const scrapeFilter = ctx.createBiquadFilter();
-      scrapeFilter.type = 'highpass';
-      scrapeFilter.frequency.value = 2600;
+      scrapeFilter.type = 'bandpass';
+      scrapeFilter.frequency.value = 720 * pitch;
+      scrapeFilter.Q.value = 0.8;
       const scrapeGain = ctx.createGain();
-      scrapeGain.gain.setValueAtTime(0.0001, now + 0.03);
-      scrapeGain.gain.exponentialRampToValueAtTime(0.05 * s + 0.01, now + 0.07);
-      scrapeGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+      scrapeGain.gain.setValueAtTime(0.0001, now + 0.02);
+      scrapeGain.gain.linearRampToValueAtTime(0.024 * s + 0.005, now + 0.06);
+      scrapeGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
       scrape.connect(scrapeFilter);
       scrapeFilter.connect(scrapeGain);
       scrapeGain.connect(this.master);
       scrape.start(now, Math.random() * 0.8);
-      scrape.stop(now + 0.34);
+      scrape.stop(now + 0.28);
     }
   }
 

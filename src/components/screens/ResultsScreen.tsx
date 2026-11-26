@@ -87,26 +87,26 @@ export default function ResultsScreen({
             </tbody>
           </table>
         </div>
+      </div>
 
-        <div className="results-actions">
-          {onReturnToLobby ? (
-            <button className="btn btn-primary" type="button" onClick={onReturnToLobby} data-nav>
-              Kembali ke Lobby
-            </button>
-          ) : (
-            <>
-              <button className="btn btn-primary" type="button" onClick={onRestart} data-nav>
-                Balap lagi
-              </button>
-              <button className="btn" type="button" onClick={onGarage} data-nav>
-                Ganti mobil
-              </button>
-            </>
-          )}
-          <button className="btn btn-quiet" type="button" onClick={onMenu} data-nav data-gamepad-back>
-            Menu utama
+      <div className="results-actions">
+        {onReturnToLobby ? (
+          <button className="btn btn-primary" type="button" onClick={onReturnToLobby} data-nav>
+            Kembali ke Lobby
           </button>
-        </div>
+        ) : (
+          <>
+            <button className="btn btn-primary" type="button" onClick={onRestart} data-nav>
+              Balap lagi
+            </button>
+            <button className="btn" type="button" onClick={onGarage} data-nav>
+              Ganti mobil
+            </button>
+          </>
+        )}
+        <button className="btn btn-quiet" type="button" onClick={onMenu} data-nav data-gamepad-back>
+          Menu utama
+        </button>
       </div>
     </section>
   );

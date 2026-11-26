@@ -65,7 +65,6 @@ export default function TrackSelectScreen({
                   <span className="track-select-record">
                     Rekor: {record == null ? 'Belum ada' : formatTime(record)}
                   </span>
-                  <span className="track-card-state">{isSelected ? 'Lintasan terpilih' : 'Pilih lintasan'}</span>
                 </span>
               </button>
             );
@@ -73,11 +72,6 @@ export default function TrackSelectScreen({
         </div>
 
         <div className="track-select-footer panel">
-          <div>
-            <span className="label">Lintasan terpilih</span>
-            <strong>{selected.name}</strong>
-            <p>{selected.subtitle}</p>
-          </div>
           {onSelectLaps && (
             <div className="lap-picker" role="group" aria-label="Jumlah putaran">
               <span className="label">Putaran</span>
