@@ -156,3 +156,109 @@
 .pillLocked {
   opacity: 0.55;
 }
+
+/* Tyre picker (garage) and weather picker (track select) */
+.tireBlock {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.tireRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tireBtn {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.tireBtn strong {
+  letter-spacing: 0.04em;
+}
+
+.tireBtn[data-selected='true'] {
+  border-color: #ffd45a;
+  background: rgba(255, 212, 90, 0.16);
+}
+
+.tireBtn[data-locked='true'] {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}
+
+.tireLock {
+  font-size: 0.68rem;
+  color: #ffd45a;
+  font-weight: 800;
+}
+
+.tireInfo {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.tireEffects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  opacity: 0.92;
+}
+
+.good {
+  color: #8ff0a8;
+}
+
+.bad {
+  color: #ff9d8a;
+}
+
+.weatherRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weatherBtn {
+  display: grid;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.weatherBtn[data-selected='true'] {
+  border-color: #ffd45a;
+  background: rgba(255, 212, 90, 0.16);
+}
+
+.weatherBtn span {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.hudWeather strong {
+  color: #9fd4ff;
+}

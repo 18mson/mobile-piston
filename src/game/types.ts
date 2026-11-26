@@ -11,6 +11,8 @@ export type CarId =
   | 'rota';
 export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan';
 export type TrackTheme = 'coast' | 'highland';
+export type TireId = 'standard' | 'grip' | 'rain' | 'terrain';
+export type WeatherMode = 'clear' | 'rain' | 'dynamic';
 
 export type ScreenName = 'loading' | 'title' | 'garage' | 'racing' | 'paused' | 'results' | 'error';
 
@@ -54,6 +56,7 @@ export interface RacerConfig {
   isHuman?: boolean;
   palette: CarPalette;
   skill: number;
+  tire?: TireId;
 }
 
 export interface TrackSample {
@@ -132,6 +135,10 @@ export interface RacerState {
   impact: number;
   /** What caused the latest impact (for sound/particles). Optional, local-only. */
   impactKind?: 'wall' | 'car';
+  /** Tyre compound this car races on (default: standard). */
+  tire?: TireId;
+  /** Grip multiplier from tyre + weather applied this step (1 = dry road, standard tyre). Local-only. */
+  gripMul?: number;
   /** True while the tyres are off the asphalt (dirt/grass). Optional, local-only. */
   offroad?: boolean;
   padCooldown: number;
@@ -158,6 +165,8 @@ export interface RaceSnapshot {
   lastLapMs: number | null;
   playerFinished: boolean;
   wrongWay: boolean;
+  /** Current weather: rain intensity and road wetness, both 0..1 */
+  weather?: { rain: number; wetness: number };
   playerAngle?: number;
   playerX?: number;
   playerY?: number;
@@ -204,6 +213,8 @@ export interface RaceResults {
   totalTimeMs: number;
   totalLaps?: number;
   stats?: RaceStats;
+  weather?: WeatherMode;
+  tire?: TireId;
 }
 
 export type SavedCameraMode = 'top' | 'chase' | 'cockpit';
@@ -225,6 +236,8 @@ export interface SaveData {
   selectedColors?: Partial<Record<CarId, number>>;
   selectedLaps?: LapCount;
   unlocks?: string[];
+  selectedTire?: TireId;
+  selectedWeather?: WeatherMode;
   xp?: number;
 }
 

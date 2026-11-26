@@ -9,12 +9,26 @@ import type {
   RoomStatePacket,
   SaveData,
   SavedCameraMode,
+  TireId,
   TrackId,
+  WeatherMode,
 } from '../game/types';
 import { CARS, getCarPalette } from '../game/data/cars';
 import { getTrack } from '../game/track/tracks';
 import { defaultSave, loadSave } from '../game/save';
-import { applyXp, carUnlockDef, computeRaceXp, isCarUnlocked, type XpReport } from '../game/progression';
+import {
+  applyXp,
+  carUnlockDef,
+  computeRaceXp,
+  isCarUnlocked,
+  isTireUnlocked,
+  isTrackUnlocked,
+  tireUnlockDef,
+  trackUnlockDef,
+  type XpReport,
+} from '../game/progression';
+import { getTire, TIRES } from '../game/data/tires';
+import { randomWeatherSeed } from '../game/weather';
 import {
   extractUsernameFromUser,
   getSupabaseClient,
@@ -424,7 +438,10 @@ export default function GameApp() {
     if (hintTimer.current != null) window.clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => setShowHint(false), 8000);
     setScreen('racing');
-    engine.startRace(id, record, savedCam, palette, totalLaps);
+    const wantedTire = saveRef.current.selectedTire ?? 'standard';
+    const tire: TireId = isTireUnlocked(wantedTire, saveRef.current) ? wantedTire : 'standard';
+    const weather = { mode: saveRef.current.selectedWeather ?? 'clear', seed: randomWeatherSeed() };
+    engine.startRace(id, record, savedCam, palette, totalLaps, tire, weather);
     window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
   }, []);
 
@@ -460,6 +477,11 @@ export default function GameApp() {
   }, [screen, controlsOpen, startExplore]);
 
   const selectTrack = (id: TrackId) => {
+    if (!isTrackUnlocked(id, saveRef.current)) {
+      const need = trackUnlockDef(id)?.level;
+      setAnnouncement(need ? `Lintasan terkunci. Capai level ${need} untuk membukanya.` : 'Lintasan terkunci.');
+      return;
+    }
     if (id === saveRef.current.selectedTrackId) return;
     const nextSave: SaveData = { ...saveRef.current, selectedTrackId: id };
     commitSave(nextSave);
@@ -469,6 +491,26 @@ export default function GameApp() {
 
   const selectLaps = (laps: LapCount) => {
     const nextSave: SaveData = { ...saveRef.current, selectedLaps: laps };
+    commitSave(nextSave);
+  };
+
+  const selectTire = (id: TireId) => {
+    if (!isTireUnlocked(id, saveRef.current)) {
+      const need = tireUnlockDef(id)?.level;
+      setAnnouncement(need ? `Ban terkunci. Capai level ${need} untuk membukanya.` : 'Ban terkunci.');
+      return;
+    }
+    const nextSave: SaveData = { ...saveRef.current };
+    if (id === 'standard') delete nextSave.selectedTire;
+    else nextSave.selectedTire = id;
+    commitSave(nextSave);
+    setAnnouncement(`Ban ${TIRES[id].name} dipasang.`);
+  };
+
+  const selectWeather = (mode: WeatherMode) => {
+    const nextSave: SaveData = { ...saveRef.current };
+    if (mode === 'clear') delete nextSave.selectedWeather;
+    else nextSave.selectedWeather = mode;
     commitSave(nextSave);
   };
 
@@ -943,6 +985,8 @@ export default function GameApp() {
               selectedColors={save.selectedColors ?? {}}
               xp={save.xp ?? 0}
               unlocks={save.unlocks}
+              selectedTire={save.selectedTire ?? 'standard'}
+              onSelectTire={selectTire}
               onSelect={selectCar}
               onSelectColor={selectCarColor}
               onBack={() => setScreen('title')}
@@ -956,6 +1000,11 @@ export default function GameApp() {
               bestLapMs={save.bestLapMs}
               onSelect={selectTrack}
               onSelectLaps={selectLaps}
+              weather={save.selectedWeather ?? 'clear'}
+              onSelectWeather={selectWeather}
+              tireName={getTire(save.selectedTire).name}
+              xp={save.xp ?? 0}
+              unlocks={save.unlocks}
               onBack={() => setScreen('garage')}
               onStart={() => startRace()}
             />

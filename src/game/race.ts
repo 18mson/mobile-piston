@@ -8,12 +8,16 @@ import type {
   RaceSnapshot,
   RacerConfig,
   RacerState,
+  TireId,
   Track,
+  WeatherMode,
 } from './types';
 import { AI_LIVERIES, getCar, getCarPalette } from './data/cars';
 import { nearestOnTrack, pointAtDistance, sampleAtDistance } from './track/geometry';
 import { computeAiInput } from './ai';
-import { resolveRacerCollisions, stepRacer } from './physics';
+import { resolveRacerCollisions, stepRacer, type PhysicsEnv } from './physics';
+import { getTire } from './data/tires';
+import { WeatherTimeline, type WeatherConfig, type WeatherState } from './weather';
 import { clamp, mod } from './utils';
 
 const TOTAL_LAPS = 3;
@@ -63,6 +67,7 @@ function createRacer(config: RacerConfig, track: Track, slotIndex: number): Race
     wrongWayTime: 0,
     yawRate: 0,
     longAccel: 0,
+    tire: config.tire ?? 'standard',
   };
 }
 
@@ -83,7 +88,18 @@ export interface RaceOptions {
   participants?: RaceParticipant[];
   localPlayerId?: string;
   fillWithAi?: boolean;
+  /** Offline races only: weather for this race (default clear) */
+  weather?: WeatherConfig;
+  /** Offline races only: tyre the player runs on (default standard) */
+  playerTire?: TireId;
 }
+
+/** AI tyre choices per weather mode. Mixed on purpose so the field is not all on the same gamble. */
+const AI_TIRES: Record<WeatherMode, TireId[]> = {
+  clear: ['standard', 'standard', 'grip', 'standard', 'standard'],
+  rain: ['rain', 'standard', 'rain', 'rain', 'standard'],
+  dynamic: ['standard', 'rain', 'standard', 'grip', 'standard'],
+};
 
 export class RaceSim {
   readonly track: Track;
@@ -92,6 +108,9 @@ export class RaceSim {
   readonly totalLaps: number;
   readonly explore: boolean;
   elapsed = 0;
+  readonly weatherConfig: WeatherConfig;
+  private readonly weather: WeatherTimeline;
+  currentWeather: WeatherState = { rain: 0, wetness: 0 };
   tick = 0;
 
   constructor(track: Track, playerCarId: CarId, paletteOrOptions?: CarPalette | RaceOptions) {
@@ -102,6 +121,9 @@ export class RaceSim {
         : (paletteOrOptions ?? {});
     this.explore = Boolean(opts.explore);
     this.totalLaps = opts.totalLaps && opts.totalLaps >= 1 ? Math.floor(opts.totalLaps) : TOTAL_LAPS;
+    this.weatherConfig = opts.weather ?? { mode: 'clear', seed: 1 };
+    this.weather = new WeatherTimeline(this.weatherConfig);
+    this.currentWeather = this.weather.at(0);
 
     if (opts.participants && opts.participants.length > 0) {
       const localId = opts.localPlayerId ?? opts.participants[0].id;
@@ -167,8 +189,9 @@ export class RaceSim {
     for (const ch of track.id) trackHash = (trackHash * 31 + ch.charCodeAt(0)) >>> 0;
     const aiConfigs = Array.from({ length: 5 }, (_, i) => {
       const livery = aiPool[(trackHash + i) % aiPool.length];
-      return { ...livery, isPlayer: false, isHuman: false };
+      return { ...livery, isPlayer: false, isHuman: false, tire: AI_TIRES[this.weatherConfig.mode][i] };
     });
+    playerConfig.tire = opts.playerTire ?? 'standard';
     const configurations: RacerConfig[] = [
       aiConfigs[0],
       aiConfigs[1],
@@ -193,6 +216,8 @@ export class RaceSim {
   update(dt: number, inputOrMap: PlayerInput | Map<string, PlayerInput>): void {
     this.elapsed += dt;
     this.tick += 1;
+    this.currentWeather = this.weather.at(this.elapsed);
+    const wetness = this.currentWeather.wetness;
 
     if (this.explore) {
       const racer = this.player;
@@ -201,7 +226,7 @@ export class RaceSim {
       racer.prevAngle = racer.angle;
       const spec = getCar(racer.carId);
       const exploreInput = inputOrMap instanceof Map ? (inputOrMap.get(racer.id) ?? NEUTRAL_INPUT) : inputOrMap;
-      stepRacer(racer, spec, this.track, exploreInput, dt);
+      stepRacer(racer, spec, this.track, exploreInput, dt, { wetness: 0, tire: getTire(racer.tire) });
       racer.wrongWay = false;
       racer.wrongWayTime = 0;
       racer.stuckTime = 0;
@@ -224,7 +249,8 @@ export class RaceSim {
         ? (inputOrMap instanceof Map ? (inputOrMap.get(racer.id) ?? NEUTRAL_INPUT) : inputOrMap)
         : computeAiInput(racer, this.racers, this.track, this.elapsed);
       const spec = getCar(racer.carId);
-      stepRacer(racer, spec, this.track, input, dt);
+      const env: PhysicsEnv = { wetness, tire: getTire(racer.tire) };
+      stepRacer(racer, spec, this.track, input, dt, env);
 
       if (Math.hypot(racer.vx, racer.vy) < 5) {
         racer.stuckTime += dt;
@@ -352,6 +378,7 @@ export class RaceSim {
       lastLapMs: this.player.lastLapMs,
       playerFinished: this.player.finished,
       wrongWay: Boolean(this.player.wrongWay),
+      weather: { rain: this.currentWeather.rain, wetness: this.currentWeather.wetness },
       playerAngle: this.player.angle,
       playerX: this.player.x,
       playerY: this.player.y,
@@ -395,6 +422,8 @@ export class RaceSim {
       isNewRecord,
       totalTimeMs: this.player.finishTime == null ? 0 : Math.round(this.player.finishTime * 1000),
       totalLaps: this.totalLaps,
+      weather: this.weatherConfig.mode,
+      tire: this.player.tire ?? 'standard',
     };
   }
 

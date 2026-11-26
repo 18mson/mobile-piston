@@ -27,6 +27,8 @@ export class GameAudio {
   private dirtFilter: BiquadFilterNode | null = null;
   private rumbleGain: GainNode | null = null;
   private nitroGain: GainNode | null = null;
+  private rainGain: GainNode | null = null;
+  private wetHissGain: GainNode | null = null;
   private softNoise: AudioBuffer | null = null;
   private whiteNoise: AudioBuffer | null = null;
   private muted = false;
@@ -138,6 +140,34 @@ export class GameAudio {
       this.rumbleGain.connect(this.master);
       rumbleSource.start();
 
+      // Rain on the roof/ground: broad hiss; wet-road tyre hiss: brighter noise that scales with speed
+      const rainSource = this.context.createBufferSource();
+      rainSource.buffer = this.whiteNoise;
+      rainSource.loop = true;
+      const rainFilter = this.context.createBiquadFilter();
+      rainFilter.type = 'bandpass';
+      rainFilter.frequency.value = 3400;
+      rainFilter.Q.value = 0.45;
+      this.rainGain = this.context.createGain();
+      this.rainGain.gain.value = 0;
+      rainSource.connect(rainFilter);
+      rainFilter.connect(this.rainGain);
+      this.rainGain.connect(this.master);
+      rainSource.start();
+
+      const hissSource = this.context.createBufferSource();
+      hissSource.buffer = this.whiteNoise;
+      hissSource.loop = true;
+      const hissFilter = this.context.createBiquadFilter();
+      hissFilter.type = 'highpass';
+      hissFilter.frequency.value = 2600;
+      this.wetHissGain = this.context.createGain();
+      this.wetHissGain.gain.value = 0;
+      hissSource.connect(hissFilter);
+      hissFilter.connect(this.wetHissGain);
+      this.wetHissGain.connect(this.master);
+      hissSource.start();
+
       const nitroSource = this.context.createBufferSource();
       nitroSource.buffer = soft;
       nitroSource.loop = true;
@@ -202,6 +232,8 @@ export class GameAudio {
       this.tyreGain?.gain.setTargetAtTime(0, now, 0.05);
       this.dirtGain?.gain.setTargetAtTime(0, now, 0.05);
       this.rumbleGain?.gain.setTargetAtTime(0, now, 0.05);
+      this.rainGain?.gain.setTargetAtTime(0, now, 0.2);
+      this.wetHissGain?.gain.setTargetAtTime(0, now, 0.1);
       this.wasDrifting = false;
       this.wasOffroad = false;
     }
@@ -246,6 +278,38 @@ export class GameAudio {
     // boost pad pick-up
     if (state.padHit && !this.wasPadHit) this.boost();
     this.wasPadHit = state.padHit;
+  }
+
+  /** Rain ambience, wet-road tyre hiss. Call every frame; pass zeros for no weather. */
+  updateWeather(rain: number, wetness: number, speedRatio: number, racing: boolean): void {
+    if (!this.context || !this.rainGain || !this.wetHissGain) return;
+    const now = this.context.currentTime;
+    const r = racing ? clamp(rain, 0, 1) : 0;
+    const w = racing ? clamp(wetness, 0, 1) : 0;
+    this.rainGain.gain.setTargetAtTime(r > 0.03 ? 0.012 + r * 0.05 : 0, now, 0.25);
+    this.wetHissGain.gain.setTargetAtTime(w > 0.15 ? w * clamp(speedRatio, 0, 1.1) * 0.05 : 0, now, 0.12);
+  }
+
+  /** Distant rolling thunder, for heavy rain. */
+  thunder(): void {
+    if (!this.context || !this.master || !this.whiteNoise) return;
+    const ctx = this.context;
+    const now = ctx.currentTime + 0.05;
+    const src = ctx.createBufferSource();
+    src.buffer = this.whiteNoise;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(420, now);
+    filter.frequency.exponentialRampToValueAtTime(90, now + 2.2);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.12);
+    gain.gain.setTargetAtTime(0.0001, now + 0.4, 0.7);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.master);
+    src.start(now, Math.random() * 0.4);
+    src.stop(now + 2.6);
   }
 
   /** Short rising tyre chirp when a slide starts. */

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { CarId, CarSpec } from '../../game/types';
+import type { CarId, CarSpec, TireId } from '../../game/types';
 import { carUnlockDef, isCarUnlocked } from '../../game/progression';
 import styles from '../progression.module.css';
+import TirePicker from '../TirePicker';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import CarThumb from '../CarThumb';
 import StatBars from '../StatBars';
@@ -17,9 +18,13 @@ export default function GarageScreen({
   onStart,
   xp = 0,
   unlocks,
+  selectedTire = 'standard',
+  onSelectTire,
 }: {
   xp?: number;
   unlocks?: string[];
+  selectedTire?: TireId;
+  onSelectTire?: (id: TireId) => void;
   selectedCarId: CarId;
   selectedColors: Partial<Record<CarId, number>>;
   onSelect: (id: CarId) => void;
@@ -114,6 +119,7 @@ export default function GarageScreen({
                 </div>
 
                 <StatBars car={selected} />
+                {onSelectTire && <TirePicker selectedTire={selectedTire} xp={xp} unlocks={unlocks} onSelect={onSelectTire} />}
               </div>
 
               {shownLockLevel != null && (

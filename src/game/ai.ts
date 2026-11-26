@@ -8,16 +8,17 @@ const AI_WHEELBASE = 14.5;
 const AI_BRAKE_DECEL = 300;
 
 /** Fastest speed the AI will carry through the next stretch of road, given the car's real grip limit. */
-function gripLimitedSpeed(track: Track, s: number, spec: ReturnType<typeof getCar>, skill: number, speed: number): number {
+function gripLimitedSpeed(track: Track, s: number, spec: ReturnType<typeof getCar>, skill: number, speed: number, gripMul: number): number {
   const axleFactor = 0.5 + 0.5 * (spec.stats.rearGrip ?? 1);
-  const grip = lateralGripAt(spec, spec.stats.topSpeed * 0.8) * axleFactor * (0.78 + 0.16 * skill);
+  const grip = lateralGripAt(spec, spec.stats.topSpeed * 0.8) * axleFactor * gripMul * (0.78 + 0.16 * skill);
+  const brakeDecel = AI_BRAKE_DECEL * (0.7 + 0.3 * gripMul);
   let limit = Infinity;
   for (let d = 0; d <= 240; d += 20) {
     const curve = Math.abs(curvatureAt(track, s + d, 56));
     if (curve < 1e-4) continue;
     const corner = Math.sqrt(grip / curve);
     // speed we may still have right now if we brake at AI_BRAKE_DECEL for d units
-    limit = Math.min(limit, Math.sqrt(corner * corner + 2 * AI_BRAKE_DECEL * d));
+    limit = Math.min(limit, Math.sqrt(corner * corner + 2 * brakeDecel * d));
   }
   return Math.max(70, limit);
 }
@@ -53,7 +54,7 @@ export function computeAiInput(
   const catchUp = clamp((leaderProgress - ownProgress) / 2200, -0.032, 0.032);
   const speedFactor = skill * (1 + catchUp);
 
-  let targetSpeed = Math.min(spec.stats.topSpeed * speedFactor, gripLimitedSpeed(track, racer.s, spec, skill, speed));
+  let targetSpeed = Math.min(spec.stats.topSpeed * speedFactor, gripLimitedSpeed(track, racer.s, spec, skill, speed, racer.gripMul ?? 1));
   targetSpeed = Math.max(68, targetSpeed);
 
   const lookAhead = clamp(42 + speed * 0.55, 54, 142);

@@ -1,7 +1,9 @@
-import type { CarId, LapCount, SaveData, SavedCameraMode, TrackId } from './types';
+import type { CarId, LapCount, SaveData, SavedCameraMode, TireId, TrackId, WeatherMode } from './types';
 import { CAR_ORDER } from './data/cars';
 import { TRACK_ORDER } from './track/tracks';
-import { isCarUnlocked, MAX_XP } from './progression';
+import { isCarUnlocked, isTireUnlocked, isTrackUnlocked, MAX_XP } from './progression';
+import { TIRE_ORDER } from './data/tires';
+import { WEATHER_MODES } from './weather';
 
 export const SAVE_KEY = 'mobile-piston.save.v2';
 export const LEGACY_SAVE_KEY = 'mobile-piston.save.v1';
@@ -26,7 +28,7 @@ export function normalizeSave(raw: unknown): SaveData {
   let selectedCarId = CAR_ORDER.includes(data.selectedCarId as CarId)
     ? (data.selectedCarId as CarId)
     : fallback.selectedCarId;
-  const selectedTrackId = TRACK_ORDER.includes(data.selectedTrackId as TrackId)
+  let selectedTrackId = TRACK_ORDER.includes(data.selectedTrackId as TrackId)
     ? (data.selectedTrackId as TrackId)
     : fallback.selectedTrackId;
   const bestLapMs: Partial<Record<string, number>> = {};
@@ -65,6 +67,9 @@ export function normalizeSave(raw: unknown): SaveData {
   if (!isCarUnlocked(selectedCarId, { xp, unlocks })) {
     selectedCarId = fallback.selectedCarId;
   }
+  if (!isTrackUnlocked(selectedTrackId, { xp, unlocks })) {
+    selectedTrackId = fallback.selectedTrackId;
+  }
 
   const normalized: SaveData = {
     version: 2,
@@ -83,6 +88,14 @@ export function normalizeSave(raw: unknown): SaveData {
   }
   if (selectedLaps && selectedLaps !== 3) {
     normalized.selectedLaps = selectedLaps;
+  }
+  const tire = data.selectedTire as TireId | undefined;
+  if (tire && tire !== 'standard' && TIRE_ORDER.includes(tire) && isTireUnlocked(tire, { xp, unlocks })) {
+    normalized.selectedTire = tire;
+  }
+  const weather = data.selectedWeather as WeatherMode | undefined;
+  if (weather && weather !== 'clear' && WEATHER_MODES.includes(weather)) {
+    normalized.selectedWeather = weather;
   }
   return normalized;
 }

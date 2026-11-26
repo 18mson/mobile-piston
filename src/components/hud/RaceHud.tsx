@@ -1,5 +1,6 @@
 'use client';
 
+import styles from '../progression.module.css';
 import type { RaceSnapshot, Track } from '../../game/types';
 import { formatTime } from '../../game/utils';
 import TrackMinimap from '../TrackMinimap';
@@ -83,6 +84,12 @@ export default function RaceHud({
               <span className="hud-total">/{snapshot.laps}</span>
             </strong>
           </div>
+          {snapshot.weather && (snapshot.weather.rain > 0.04 || snapshot.weather.wetness > 0.2) && (
+            <div className={`hud-plate ${styles.hudWeather}`} aria-live="polite">
+              <span className="hud-label">Cuaca</span>
+              <strong>{snapshot.weather.rain > 0.55 ? 'HUJAN' : snapshot.weather.rain > 0.04 ? 'GERIMIS' : 'BASAH'}</strong>
+            </div>
+          )}
         </div>
       )}
 

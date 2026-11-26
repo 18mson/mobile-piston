@@ -939,7 +939,12 @@ p {
   font-size: 10px;
 }
 
-.track-select-card[data-selected="true"] .track-card-state {
+.track-select-card[data-locked="true"] {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.track-select-card[data-locked="true"] .track-select-record {
   color: var(--orange);
 }
 

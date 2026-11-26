@@ -1,4 +1,5 @@
-import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, RacerState, SequencedInput, Track, WorldSnapshot } from './types';
+import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, RacerState, SequencedInput, TireId, Track, WorldSnapshot } from './types';
+import type { WeatherConfig } from './weather';
 import { getCar } from './data/cars';
 import { RaceSim, type RaceParticipant } from './race';
 import { Renderer3D, type CameraMode } from './render3d/renderer3d';
@@ -59,7 +60,7 @@ export class GameEngine {
   private lastSentInput: PlayerInput | null = null;
 
   /** Engine, tyre squeal, dirt crunch and boost-pad sounds for the car the player drives. */
-  private updateRaceAudio(racer: RacerState, racing: boolean): void {
+  private updateRaceAudio(racer: RacerState, racing: boolean, weather = { rain: 0, wetness: 0 }): void {
     const speed = Math.hypot(racer.vx, racer.vy);
     const topSpeed = getCar(racer.carId).stats.topSpeed;
     this.audio.updateEngine(speed, topSpeed, racer.drifting, racer.nitroActive, racing);
@@ -74,6 +75,13 @@ export class GameEngine {
       padHit: racer.padCooldown > 0.6,
       racing,
     });
+    this.audio.updateWeather(weather.rain, weather.wetness, speed / Math.max(1, topSpeed), racing);
+  }
+
+  /** Pushes the current weather to the renderer, and rolls the occasional thunder in heavy rain. */
+  private applyWeather(weather: { rain: number; wetness: number }, dt: number, racing: boolean): void {
+    this.renderer.setWeather(weather.rain, weather.wetness);
+    if (racing && weather.rain > 0.7 && dt > 0 && Math.random() < dt / 16) this.audio.thunder();
   }
 
   constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks, track: Track) {
@@ -156,13 +164,16 @@ export class GameEngine {
     cameraMode?: CameraMode,
     playerPalette?: CarPalette,
     totalLaps?: number,
+    tire: TireId = 'standard',
+    weather?: WeatherConfig,
   ): void {
     if (this.destroyed) return;
     void this.audio.unlock();
     this.selectedCar = carId;
     this.previousBestLapMs = previousBestLapMs;
     this.raceStats.reset();
-    this.race = new RaceSim(this.track, carId, { playerPalette, totalLaps });
+    this.race = new RaceSim(this.track, carId, { playerPalette, totalLaps, playerTire: tire, weather });
+    this.renderer.setWeather(this.race.currentWeather.rain, this.race.currentWeather.wetness);
     this.renderer.setRacers(this.race.racers, cameraMode);
     this.renderer.resetMarks();
     this.mode = 'countdown';
@@ -186,6 +197,7 @@ export class GameEngine {
       explore: true,
       initialPose: lead,
     });
+    this.renderer.setWeather(0, 0);
     this.renderer.setRacers(this.race.racers, cameraMode, true);
     this.renderer.resetMarks();
     this.mode = 'explore';
@@ -224,6 +236,7 @@ export class GameEngine {
     this.netClient = client;
     this.race = this.onlineSync.sim;
     this.selectedCar = this.race.player.carId;
+    this.renderer.setWeather(0, 0); // online races are always dry for now (weather is not synced between players)
     this.renderer.setRacers(this.race.racers, cameraMode, false);
     this.renderer.resetMarks();
     this.raceStats.reset();
@@ -272,6 +285,7 @@ export class GameEngine {
   }
 
   quitToTitle(): void {
+    this.renderer.setWeather(0, 0);
     this.mode = 'attract';
     this.race = null;
     this.accumulator = 0;
@@ -488,7 +502,8 @@ export class GameEngine {
       this.audio.impact(this.race.player.impact, this.race.player.impactKind);
       this.impactSoundCooldown = 0.24;
     }
-    this.updateRaceAudio(this.race.player, true);
+    this.updateRaceAudio(this.race.player, true, this.race.currentWeather);
+    this.applyWeather(this.race.currentWeather, dt, this.mode === 'racing');
     if (this.mode === 'racing') this.raceStats.update(dt, this.race.player);
 
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);

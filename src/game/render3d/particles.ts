@@ -9,6 +9,7 @@ const SPARK: Kind = 2;
 
 const DIRT_COLORS = ['#8b6a3f', '#a2814f', '#6e5232', '#b08d58', '#5f8f3c'].map((c) => new THREE.Color(c));
 const SMOKE_COLORS = ['#eef0f2', '#d6dade', '#c3c8ce'].map((c) => new THREE.Color(c));
+const SPRAY_COLORS = ['#e6f1f8', '#cfe2ee', '#b9d2e2'].map((c) => new THREE.Color(c));
 const SPARK_COLORS = ['#ffd45a', '#ff9a2e', '#fff1b0'].map((c) => new THREE.Color(c));
 
 /**
@@ -39,6 +40,7 @@ export class ParticleFx {
   private readonly dummy = new THREE.Object3D();
   private readonly accumDirt = new Map<string, number>();
   private readonly accumSmoke = new Map<string, number>();
+  private readonly accumSpray = new Map<string, number>();
   private readonly lastImpact = new Map<string, number>();
 
   constructor() {
@@ -58,6 +60,7 @@ export class ParticleFx {
     this.head = 0;
     this.accumDirt.clear();
     this.accumSmoke.clear();
+    this.accumSpray.clear();
     this.lastImpact.clear();
     this.dummy.position.set(0, -999, 0);
     this.dummy.scale.set(0, 0, 0);
@@ -101,7 +104,7 @@ export class ParticleFx {
    * Emit particles for one car this frame.
    * (sceneX/sceneZ are already in scene units; angle is the car heading; dt in seconds)
    */
-  emitForRacer(racer: RacerState, worldX: number, worldY: number, angle: number, dt: number): void {
+  emitForRacer(racer: RacerState, worldX: number, worldY: number, angle: number, dt: number, wetness = 0): void {
     if (dt <= 0) return;
     const id = racer.id;
     const speed = Math.hypot(racer.vx, racer.vy);
@@ -172,6 +175,36 @@ export class ParticleFx {
       this.accumSmoke.set(id, acc);
     } else {
       this.accumSmoke.delete(id);
+    }
+
+    // --- water spray behind the wheels on a wet road
+    if (wetness > 0.25 && !racer.offroad && speed > 55) {
+      const rate = wetness * clamp(speed / 100, 0.5, 2.2) * 48;
+      let acc = (this.accumSpray.get(id) ?? 0) + rate * dt;
+      while (acc >= 1) {
+        acc -= 1;
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const back = -1.3 + (Math.random() - 0.5) * 0.3;
+        const lat = side * (1.1 + Math.random() * 0.3);
+        const x = sceneX + back * cosA - lat * sinA;
+        const z = sceneZ + back * sinA + lat * cosA;
+        this.spawn(
+          SMOKE,
+          x,
+          ROAD_Y + 0.2,
+          z,
+          carVx * 0.18 - cosA * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.6,
+          1.6 + Math.random() * 2.4,
+          carVz * 0.18 - sinA * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.6,
+          0.38 + Math.random() * 0.3,
+          0.25,
+          0.9 + Math.random() * 0.5,
+          SPRAY_COLORS[(Math.random() * SPRAY_COLORS.length) | 0],
+        );
+      }
+      this.accumSpray.set(id, acc);
+    } else {
+      this.accumSpray.delete(id);
     }
 
     // --- sparks on a fresh impact (value jumps up); wall hits throw a few more

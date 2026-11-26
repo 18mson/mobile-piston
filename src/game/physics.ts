@@ -1,4 +1,5 @@
 import type { CarSpec, PlayerInput, RacerState, Track } from './types';
+import { getTire, tireGripMultiplier, type TireSpec } from './data/tires';
 import { getCar } from './data/cars';
 import { clamp } from './utils';
 import { nearestOnTrack, sampleAtDistance } from './track/geometry';
@@ -75,13 +76,25 @@ function tireCurve(slip: number): number {
   return Math.max(SLIDE_FORCE, 1 - ((x - 1) * (1 - SLIDE_FORCE)) / 1.4);
 }
 
+/** Conditions that change how the tyres grip: how wet the road is and which tyre the car wears. */
+export interface PhysicsEnv {
+  wetness: number;
+  tire: TireSpec;
+}
+
 export function stepRacer(
   racer: RacerState,
   spec: CarSpec,
   track: Track,
   input: PlayerInput,
   dt: number,
+  env?: PhysicsEnv,
 ): RacerState {
+  const tire = env?.tire ?? getTire(racer.tire);
+  const wetness = clamp(env?.wetness ?? 0, 0, 1);
+  const wetFactor = 1 - tire.wetLoss * wetness;
+  const gripMul = tireGripMultiplier(tire, wetness);
+  racer.gripMul = gripMul;
   const speed = Math.hypot(racer.vx, racer.vy);
   const speedRatio = clamp(speed / spec.stats.topSpeed, 0, 1.2);
 
@@ -95,7 +108,7 @@ export function stepRacer(
     racer.nitro = Math.max(0, racer.nitro - 34 * dt);
   }
 
-  const topSpeed = spec.stats.topSpeed + (wantNitro ? spec.stats.nitroBoost : 0);
+  const topSpeed = (spec.stats.topSpeed + (wantNitro ? spec.stats.nitroBoost : 0)) * tire.topSpeed;
   const acceleration = spec.stats.acceleration + (wantNitro ? spec.stats.nitroAcceleration : 0);
 
   const isBraking = Boolean(input.brake && !racer.finished);
@@ -112,7 +125,8 @@ export function stepRacer(
   const forwardBefore = forward;
 
   // 2. Longitudinal: engine / brake / coast / drag (progressive slowdown as more tires touch dirt)
-  const engineFactor = 1 - offroadRatio * 0.22;
+  // wheelspin on a wet road costs a little traction; the right tyre also copes better off the asphalt
+  const engineFactor = (1 - offroadRatio * 0.22 * tire.offroadPenalty) * (0.8 + 0.2 * wetFactor);
   const speedFraction = clamp(forward / topSpeed, 0, 1);
   const powerCurve = Math.max(0.18, 1.0 - Math.pow(speedFraction, 1.3));
   const effectiveAcceleration = acceleration * powerCurve * engineFactor;
@@ -120,7 +134,7 @@ export function stepRacer(
   if (isBraking) {
     if (forward > 0) {
       // Progressive braking: gentler deceleration when gas is still held (trail-braking)
-      const brakeDecel = brakeWhileThrottle ? 135 : 210;
+      const brakeDecel = (brakeWhileThrottle ? 135 : 210) * (0.55 + 0.45 * gripMul);
       const minFloor = brakeWhileThrottle ? 18 : 0;
       forward = Math.max(minFloor, forward - brakeDecel * dt);
     } else if (!brakeWhileThrottle) {
@@ -136,7 +150,7 @@ export function stepRacer(
       forward *= 1 - 0.75 * dt;
     }
   }
-  const drag = 0.05 + offroadRatio * 0.95;
+  const drag = 0.05 + offroadRatio * 0.95 * tire.offroadPenalty;
   forward *= 1 - drag * dt;
 
   // 3. Weight transfer (smoothed longitudinal acceleration). Braking / lift-off -> front is loaded.
@@ -147,7 +161,7 @@ export function stepRacer(
   const loadShift = clamp(-smoothedAccel / 2800, -0.06, 0.1) + liftOff; // + = more on the front
 
   // 4. Per-axle lateral grip budget
-  const gripBudget = lateralGripAt(spec, speed) * (1 - offroadRatio * 0.32);
+  const gripBudget = lateralGripAt(spec, speed) * (1 - offroadRatio * 0.32 * tire.offroadPenalty) * gripMul;
   const throttleLoss = onThrottle ? (0.07 + 0.11 * clamp(speedRatio, 0, 1)) * (wantNitro ? 1.25 : 1) : 0;
   const brakeLoss = isBraking ? 0.04 : 0;
   const frontCap = gripBudget * (0.5 + loadShift);

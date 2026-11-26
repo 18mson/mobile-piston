@@ -1,4 +1,4 @@
-import type { CarId, RaceResults, SaveData } from './types';
+import type { CarId, RaceResults, SaveData, TireId, TrackId } from './types';
 
 /**
  * Level / XP progression.
@@ -63,7 +63,7 @@ export function levelProgress(xp: number): LevelProgress {
 // Unlocks (add tyres / tracks here later: same table, new `kind`)
 // ---------------------------------------------------------------------------
 
-export type UnlockKind = 'car';
+export type UnlockKind = 'car' | 'tire' | 'track';
 
 export interface UnlockDef {
   id: string;
@@ -76,9 +76,13 @@ export interface UnlockDef {
 export const UNLOCKS: UnlockDef[] = [
   { id: 'car:kepik', kind: 'car', refId: 'kepik', level: 3, label: 'Kepik' },
   { id: 'car:tanduk', kind: 'car', refId: 'tanduk', level: 5, label: 'Tanduk' },
+  { id: 'tire:grip', kind: 'tire', refId: 'grip', level: 5, label: 'Ban Grip' },
+  { id: 'track:pelabuhan', kind: 'track', refId: 'pelabuhan', level: 5, label: 'Sirkuit Pelabuhan' },
   { id: 'car:hachi', kind: 'car', refId: 'hachi', level: 7, label: 'Hachi' },
   { id: 'car:bima', kind: 'car', refId: 'bima', level: 10, label: 'Bima' },
+  { id: 'tire:rain', kind: 'tire', refId: 'rain', level: 10, label: 'Ban Hujan' },
   { id: 'car:rota', kind: 'car', refId: 'rota', level: 12, label: 'Rota' },
+  { id: 'tire:terrain', kind: 'tire', refId: 'terrain', level: 14, label: 'Ban Tanah' },
 ];
 
 export function carUnlockDef(carId: CarId): UnlockDef | null {
@@ -92,9 +96,32 @@ export function isCarUnlocked(carId: CarId, save: Pick<SaveData, 'xp' | 'unlocks
   return levelFromXp(save.xp ?? 0) >= def.level;
 }
 
+export function tireUnlockDef(tireId: TireId): UnlockDef | null {
+  return UNLOCKS.find((item) => item.kind === 'tire' && item.refId === tireId) ?? null;
+}
+
+export function isTireUnlocked(tireId: TireId, save: Pick<SaveData, 'xp' | 'unlocks'>): boolean {
+  const def = tireUnlockDef(tireId);
+  if (!def) return true; // the standard tyre is always available
+  if (save.unlocks?.includes(def.id)) return true;
+  return levelFromXp(save.xp ?? 0) >= def.level;
+}
+
+export function trackUnlockDef(trackId: TrackId): UnlockDef | null {
+  return UNLOCKS.find((item) => item.kind === 'track' && item.refId === trackId) ?? null;
+}
+
+export function isTrackUnlocked(trackId: TrackId, save: Pick<SaveData, 'xp' | 'unlocks'>): boolean {
+  const def = trackUnlockDef(trackId);
+  if (!def) return true;
+  if (save.unlocks?.includes(def.id)) return true;
+  return levelFromXp(save.xp ?? 0) >= def.level;
+}
+
 /** Unlocks gained by going from `levelBefore` up to `levelAfter`. */
 export function unlocksBetween(levelBefore: number, levelAfter: number): UnlockDef[] {
-  return UNLOCKS.filter((item) => item.level > levelBefore && item.level <= levelAfter);
+  // listed in the order the player earned them
+  return UNLOCKS.filter((item) => item.level > levelBefore && item.level <= levelAfter).sort((a, b) => a.level - b.level);
 }
 
 // ---------------------------------------------------------------------------
@@ -118,6 +145,7 @@ const DRIFT_XP_PER_SECOND = 2;
 const DRIFT_XP_CAP = 40;
 const CLEAN_LAP_XP = 15;
 const RECORD_XP = 25;
+const WEATHER_XP = { rain: 20, dynamic: 15 } as const;
 
 /** Pure function: what a finished race is worth. Returns zero if the player did not finish. */
 export function computeRaceXp(results: RaceResults): XpAward {
@@ -144,6 +172,9 @@ export function computeRaceXp(results: RaceResults): XpAward {
     }
   }
   if (results.isNewRecord) rows.push({ id: 'record', label: 'Rekor putaran baru', xp: RECORD_XP });
+  if (results.weather === 'rain' || results.weather === 'dynamic') {
+    rows.push({ id: 'weather', label: 'Bonus cuaca', xp: WEATHER_XP[results.weather] });
+  }
 
   return { rows, total: rows.reduce((sum, row) => sum + row.xp, 0) };
 }

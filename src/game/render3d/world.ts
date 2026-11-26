@@ -40,6 +40,8 @@ export interface World3D {
   root: THREE.Group;
   sun: THREE.DirectionalLight;
   update: (time: number, dt: number, focus: THREE.Vector3, reducedMotion: boolean) => void;
+  /** rain intensity and road wetness, both 0..1: darkens the sky/lights/clouds and wets the road */
+  setWeather: (rain: number, wetness: number) => void;
 }
 
 function makeCanvas(width: number, height: number): HTMLCanvasElement {
@@ -58,7 +60,7 @@ function createSky(): THREE.Mesh {
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
-    uniforms: {},
+    uniforms: { uRain: { value: 0 } },
     vertexShader: `
       varying vec3 vWorldPosition;
       void main() {
@@ -68,6 +70,7 @@ function createSky(): THREE.Mesh {
       }
     `,
     fragmentShader: `
+      uniform float uRain;
       varying vec3 vWorldPosition;
       void main() {
         float h = normalize(vWorldPosition).y;
@@ -77,6 +80,8 @@ function createSky(): THREE.Mesh {
         vec3 col = h > 0.0
           ? mix(horizon, zenith, smoothstep(0.0, 0.58, h))
           : mix(horizon, lower, smoothstep(0.0, -0.25, h));
+        vec3 stormy = vec3(0.47, 0.52, 0.58) * (0.8 + 0.25 * clamp(h, 0.0, 1.0));
+        col = mix(col, stormy, uRain * 0.88);
         vec2 pixel = floor(gl_FragCoord.xy);
         float bayer = mod(pixel.x, 2.0) * 2.0 + mod(pixel.y, 2.0);
         col += (bayer / 4.0 - 0.375) * 0.012;
@@ -1025,5 +1030,31 @@ export function createWorld(track: Track): World3D {
     sun.target.updateMatrixWorld();
   };
 
-  return { root, sun, update };
+  const asphaltMaterial = (root.getObjectByName('asphalt') as THREE.Mesh | undefined)?.material as THREE.MeshLambertMaterial | undefined;
+  const shoulderMaterial = (root.getObjectByName('shoulder') as THREE.Mesh | undefined)?.material as THREE.MeshLambertMaterial | undefined;
+  const skyMaterial = sky.material as THREE.ShaderMaterial;
+  const baseHemi = hemi.intensity;
+  const baseSun = sun.intensity;
+  const dryCloud = new THREE.Color('#ffffff');
+  const stormCloud = new THREE.Color('#79848f');
+  const tint = new THREE.Color();
+
+  const setWeather = (rain: number, wetness: number) => {
+    const r = Math.min(1, Math.max(0, rain));
+    const w = Math.min(1, Math.max(0, wetness));
+    skyMaterial.uniforms.uRain.value = r;
+    hemi.intensity = baseHemi * (1 - 0.3 * r);
+    sun.intensity = baseSun * (1 - 0.62 * r);
+    // a wet road is darker and a touch bluer
+    if (asphaltMaterial) asphaltMaterial.color.setRGB(1 - 0.42 * w, 1 - 0.36 * w, 1 - 0.27 * w);
+    if (shoulderMaterial) shoulderMaterial.color.setRGB(1 - 0.28 * w, 1 - 0.24 * w, 1 - 0.18 * w);
+    tint.copy(dryCloud).lerp(stormCloud, r);
+    for (const cloud of clouds) {
+      const material = cloud.material as THREE.SpriteMaterial;
+      material.color.copy(tint);
+      material.opacity = 0.82 + 0.15 * r;
+    }
+  };
+
+  return { root, sun, update, setWeather };
 }

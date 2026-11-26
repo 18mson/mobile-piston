@@ -1,11 +1,20 @@
 'use client';
 
-import type { LapCount, Track, TrackId } from '../../game/types';
+import type { LapCount, Track, TrackId, WeatherMode } from '../../game/types';
+import { WEATHER_LABELS, WEATHER_MODES } from '../../game/weather';
+import { isTrackUnlocked, trackUnlockDef } from '../../game/progression';
+import styles from '../progression.module.css';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import { formatTime } from '../../game/utils';
 import TrackPreview from '../TrackPreview';
 
 const LAP_OPTIONS: LapCount[] = [3, 4, 5];
+const ROUTE_KIND: Record<string, string> = {
+  'teluk-sore': 'pesisir',
+  'mata-air': 'danau',
+  'lereng-kopi': 'pegunungan',
+  pelabuhan: 'pelabuhan',
+};
 
 export default function TrackSelectScreen({
   selectedTrackId,
@@ -15,6 +24,11 @@ export default function TrackSelectScreen({
   onSelectLaps,
   onBack,
   onStart,
+  weather = 'clear',
+  onSelectWeather,
+  tireName,
+  xp = 0,
+  unlocks,
 }: {
   selectedTrackId: TrackId;
   selectedLaps?: LapCount;
@@ -23,6 +37,11 @@ export default function TrackSelectScreen({
   onSelectLaps?: (laps: LapCount) => void;
   onBack: () => void;
   onStart: () => void;
+  weather?: WeatherMode;
+  onSelectWeather?: (mode: WeatherMode) => void;
+  tireName?: string;
+  xp?: number;
+  unlocks?: string[];
 }) {
   const selected: Track = getTrack(selectedTrackId);
 
@@ -44,13 +63,17 @@ export default function TrackSelectScreen({
             const track = getTrack(id);
             const isSelected = id === selectedTrackId;
             const record = bestLapMs[id] ?? null;
+            const unlocked = isTrackUnlocked(id, { xp, unlocks });
+            const lockLevel = unlocked ? null : (trackUnlockDef(id)?.level ?? null);
             return (
               <button
                 key={id}
                 type="button"
                 className="track-select-card"
                 data-selected={isSelected}
+                data-locked={lockLevel != null}
                 aria-pressed={isSelected}
+                aria-disabled={lockLevel != null}
                 onClick={() => onSelect(id)}
                 data-nav
               >
@@ -58,18 +81,43 @@ export default function TrackSelectScreen({
                   <TrackPreview track={track} />
                 </span>
                 <span className="track-select-copy">
-                  <span className="label">Rute {track.name === 'TELUK SORE' ? 'pesisir' : 'danau'}</span>
+                  <span className="label">Rute {ROUTE_KIND[id] ?? 'khusus'}</span>
                   <strong>{track.name}</strong>
                   <span className="track-select-subtitle">{track.subtitle}</span>
                   <span className="track-select-meta">{selectedLaps} putaran / 6 mobil / start P6</span>
                   <span className="track-select-record">
-                    Rekor: {record == null ? 'Belum ada' : formatTime(record)}
+                    {lockLevel != null
+                      ? `Terkunci - Terbuka di Level ${lockLevel}`
+                      : `Rekor: ${record == null ? 'Belum ada' : formatTime(record)}`}
                   </span>
                 </span>
               </button>
             );
           })}
         </div>
+
+        {onSelectWeather && (
+          <div className="panel" role="group" aria-label="Pilih cuaca">
+            <span className="label">Cuaca balapan</span>
+            <div className={styles.weatherRow}>
+              {WEATHER_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={styles.weatherBtn}
+                  data-selected={mode === weather}
+                  aria-pressed={mode === weather}
+                  onClick={() => onSelectWeather(mode)}
+                  data-nav
+                >
+                  <strong>{WEATHER_LABELS[mode].name}</strong>
+                  <span>{WEATHER_LABELS[mode].blurb}</span>
+                </button>
+              ))}
+            </div>
+            {tireName && <p className="detail-note">Ban terpasang: {tireName}. Ganti ban di Garasi.</p>}
+          </div>
+        )}
 
         <div className="track-select-footer panel">
           {onSelectLaps && (

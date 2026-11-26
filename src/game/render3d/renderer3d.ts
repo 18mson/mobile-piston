@@ -7,6 +7,7 @@ import { AI_LIVERIES } from '../data/cars';
 import { nearestOnTrack, sampleAtDistance } from '../track/geometry';
 import { RENDER_HEIGHT, RENDER_WIDTH, ROAD_Y, toSceneX, toSceneZ } from './constants';
 import { ParticleFx } from './particles';
+import { WeatherFx } from './weatherFx';
 
 export { type CameraMode } from './cameraRig';
 
@@ -53,6 +54,15 @@ export class Renderer3D {
   private lastSkidPos = new Map<string, { x: number; y: number }>();
   // Dirt, tyre smoke and collision sparks
   private fx = new ParticleFx();
+  // Rain streaks + the current weather levels (0..1)
+  private weatherFx = new WeatherFx();
+  private rainLevel = 0;
+  private wetLevel = 0;
+  private readonly clearFogColor = new THREE.Color('#a8cfd5');
+  private readonly stormFogColor = new THREE.Color('#76838f');
+  private readonly clearBackdrop = new THREE.Color('#8ebfcb');
+  private readonly stormBackdrop = new THREE.Color('#6b7985');
+  private readonly weatherColor = new THREE.Color();
 
   // Dirt tire tracks left when cars drive offroad on soil/grass
   private dirtMesh: THREE.InstancedMesh;
@@ -147,6 +157,7 @@ export class Renderer3D {
     this.dirtMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(this.dirtMesh);
     this.scene.add(this.fx.mesh);
+    this.scene.add(this.weatherFx.mesh);
   }
 
   private buildCockpitView(): void {
@@ -415,6 +426,24 @@ export class Renderer3D {
     };
   }
 
+  /** Rain intensity and road wetness (0..1). Cheap to call every frame: it only touches the scene when the values change. */
+  setWeather(rain: number, wetness: number): void {
+    const r = Math.min(1, Math.max(0, rain));
+    const w = Math.min(1, Math.max(0, wetness));
+    if (Math.abs(r - this.rainLevel) < 0.002 && Math.abs(w - this.wetLevel) < 0.002) return;
+    this.rainLevel = r;
+    this.wetLevel = w;
+    this.world.setWeather(r, w);
+    const fog = this.scene.fog as THREE.Fog | null;
+    if (fog) {
+      fog.color.copy(this.clearFogColor).lerp(this.stormFogColor, r);
+      fog.near = 210 - 80 * r;
+      fog.far = 720 - 240 * r;
+    }
+    this.weatherColor.copy(this.clearBackdrop).lerp(this.stormBackdrop, r);
+    this.renderer.setClearColor(this.weatherColor, 1);
+  }
+
   resetMarks(): void {
     this.skidIndex = 0;
     this.lastSkidPos.clear();
@@ -436,6 +465,7 @@ export class Renderer3D {
     }
     this.dirtMesh.instanceMatrix.needsUpdate = true;
     this.fx.clear();
+    this.weatherFx.clear();
   }
 
   renderAttract(time: number, dt: number): void {
@@ -502,6 +532,7 @@ export class Renderer3D {
 
     const focus = new THREE.Vector3(leadScene.x, 1.2, leadScene.z);
     this.world.update(time, dt, focus, this.reducedMotion);
+    this.weatherFx.update(dt, focus, this.reducedMotion ? 0 : this.rainLevel);
 
     // Attract view: pleasant overview chase
     const desired = leadScene.clone().addScaledVector(leadForward, -26).add(new THREE.Vector3(0, 14.0, 0));
@@ -615,7 +646,7 @@ export class Renderer3D {
 
       // Dirt thrown up by the tyres, drift smoke and collision sparks
       if (!isPaused && !this.reducedMotion) {
-        this.fx.emitForRacer(src, interpX, interpY, interpAngle, effectiveDt);
+        this.fx.emitForRacer(src, interpX, interpY, interpAngle, effectiveDt, this.wetLevel);
       }
     }
     this.fx.update(this.reducedMotion ? 0 : effectiveDt);
@@ -680,6 +711,7 @@ export class Renderer3D {
 
     const focus = new THREE.Vector3(toSceneX(playerInterpX), ROAD_Y, toSceneZ(playerInterpY));
     this.world.update(time, effectiveDt, focus, this.reducedMotion);
+    this.weatherFx.update(effectiveDt, focus, this.reducedMotion ? 0 : this.rainLevel);
 
     // Update unified camera rig with smoothly interpolated player
     this.cameraRig.update(interpPlayer, effectiveDt, impact);
