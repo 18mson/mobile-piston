@@ -77,7 +77,7 @@ export const CARS: Record<CarId, CarSpec> = {
     blurb: 'Berat dan lengket. Paling tenang saat rem dan banting setir.',
     stats: {
       topSpeed: 220,
-      acceleration: 222,
+      acceleration: 248,
       grip: 9.6,
       steerRate: 2.5,
       nitroBoost: 62,
@@ -373,11 +373,12 @@ export function getCarPalette(id: CarId, colorIndex = 0): CarPalette {
   return options[colorIndex]?.palette ?? CARS[id].palette;
 }
 
-export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip'): number {
+export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip' | 'nitroBoost'): number {
   const values = {
     topSpeed: [200, 264],
     acceleration: [210, 272],
     grip: [7.6, 10.4],
+    nitroBoost: [34, 78],
   } as const;
   const [min, max] = values[key];
   return Math.max(0, Math.min(1, (car.stats[key] - min) / (max - min)));

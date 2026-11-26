@@ -1,10 +1,11 @@
 import type { CarSpec } from '../game/types';
 import { statRatio } from '../game/data/cars';
 
-const BARS: { key: 'topSpeed' | 'acceleration' | 'grip'; label: string }[] = [
+const BARS: { key: 'topSpeed' | 'acceleration' | 'grip' | 'nitroBoost'; label: string }[] = [
   { key: 'topSpeed', label: 'Top Speed' },
   { key: 'acceleration', label: 'Akselerasi' },
   { key: 'grip', label: 'Grip' },
+  { key: 'nitroBoost', label: 'Nitro' },
 ];
 
 export default function StatBars({ car, compact = false }: { car: CarSpec; compact?: boolean }) {
