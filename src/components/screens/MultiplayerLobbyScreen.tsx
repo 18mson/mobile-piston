@@ -396,9 +396,19 @@ export default function MultiplayerLobbyScreen({
 
               <div className="mp-room-actions">
                 {isHost ? (
-                  <button className="btn btn-primary" type="button" onClick={onStartRace}>
-                    Mulai Balapan
-                  </button>
+                  (() => {
+                    const allGuestsReady = room.players.filter((p) => !p.isHost).every((p) => p.ready);
+                    return (
+                      <button
+                        className="btn btn-primary"
+                        type="button"
+                        disabled={!allGuestsReady}
+                        onClick={onStartRace}
+                      >
+                        {allGuestsReady ? 'Mulai Balapan' : 'Menunggu pemain lain siap...'}
+                      </button>
+                    );
+                  })()
                 ) : (
                   <button className="btn btn-primary" type="button" onClick={onToggleReady}>
                     {me?.ready ? 'Batal Siap' : 'Siap Balapan'}

@@ -86,6 +86,11 @@ function ErrorScreen({ message, onReload }: { message: string; onReload: () => v
   );
 }
 
+function randomGuestName(): string {
+  const num = 1000 + Math.floor(Math.random() * 9000);
+  return `Tamu-${num}`;
+}
+
 export default function GameApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
@@ -94,6 +99,7 @@ export default function GameApp() {
   const saveRef = useRef(save);
   const [snapshot, setSnapshot] = useState<RaceSnapshot | null>(null);
   const [results, setResults] = useState<RaceResults | null>(null);
+  const [isOnlineResult, setIsOnlineResult] = useState(false);
   const [xpReport, setXpReport] = useState<XpReport | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [controlsOpen, setControlsOpen] = useState(false);
@@ -124,7 +130,8 @@ export default function GameApp() {
   const [netPingMs, setNetPingMs] = useState<number | null>(null);
   const [roomState, setRoomState] = useState<RoomStatePacket | null>(null);
   const [mpError, setMpError] = useState('');
-  const [playerName, setPlayerName] = useState('Pembalap');
+  const [playerName, setPlayerName] = useState('Tamu');
+  const hasCustomNameRef = useRef(false);
   const [onlineTrackId, setOnlineTrackId] = useState<TrackId>('teluk-sore');
   const [initialJoinCode, setInitialJoinCode] = useState('');
   const [netDebugEnabled, setNetDebugEnabled] = useState(false);
@@ -157,7 +164,9 @@ export default function GameApp() {
       authUserIdRef.current = user.id;
       setAuthUsername(username);
       if (username) {
-        setPlayerName((prev) => (prev === 'Pembalap' || !prev.trim() ? username : prev));
+        setPlayerName((prev) =>
+          prev === 'Tamu' || prev === 'Pembalap' || prev.startsWith('Tamu-') || !prev.trim() ? username : prev,
+        );
       }
       if (sync) {
         const merged = await sync.syncOnLogin(user.id);
@@ -211,6 +220,9 @@ export default function GameApp() {
     const loaded = loadSave();
     setSave(loaded);
     saveRef.current = loaded;
+    if (!authUserIdRef.current && !hasCustomNameRef.current) {
+      setPlayerName(randomGuestName());
+    }
     if (loaded.cameraMode) {
       setCameraMode(loaded.cameraMode);
     }
@@ -381,6 +393,7 @@ export default function GameApp() {
     const palette = getCarPalette(id, colorIdx);
     setSnapshot(null);
     setResults(null);
+    setIsOnlineResult(false);
     setControlsOpen(false);
     setAnnouncement('Balapan dimulai.');
     setShowHint(true);
@@ -400,6 +413,7 @@ export default function GameApp() {
     const savedCam = saveRef.current.cameraMode ?? 'top';
     setSnapshot(null);
     setResults(null);
+    setIsOnlineResult(false);
     setControlsOpen(false);
     setAnnouncement('Mode Explore Map aktif. Kelilingi lintasan secara bebas.');
     setShowHint(true);
@@ -472,7 +486,8 @@ export default function GameApp() {
     await signOutAccount();
     authUserIdRef.current = null;
     setAuthUsername(null);
-    setPlayerName('Pembalap');
+    hasCustomNameRef.current = false;
+    setPlayerName(randomGuestName());
     const guestSave = cloudSyncRef.current?.handleLogout() ?? defaultSave();
     setSave(guestSave);
     saveRef.current = guestSave;
@@ -521,8 +536,20 @@ export default function GameApp() {
     setShowHint(false);
   };
 
+  const returnToLobby = () => {
+    engineRef.current?.quitToTitle();
+    setScreen('multiplayer');
+    setSnapshot(null);
+    setResults(null);
+    setIsOnlineResult(false);
+    setShowHint(false);
+  };
+
   const openMultiplayer = useCallback(() => {
     setMpError('');
+    if (!authUserIdRef.current && !hasCustomNameRef.current) {
+      setPlayerName(randomGuestName());
+    }
     setRoomState(null);
     setScreen('multiplayer');
     if (!netClientRef.current) {
@@ -573,6 +600,7 @@ export default function GameApp() {
         engineRef.current?.applyOnlineSnapshot(worldSnap);
       },
       onRaceFinished: (raceResults) => {
+        setIsOnlineResult(true);
         engineRef.current?.finishOnlineRace(raceResults);
       },
     });
@@ -756,6 +784,7 @@ export default function GameApp() {
               selectedTrackId={save.selectedTrackId}
               initialJoinCode={initialJoinCode}
               onChangeName={(nextName) => {
+                hasCustomNameRef.current = nextName.trim().length > 0 && !nextName.startsWith('Tamu-');
                 setPlayerName(nextName);
                 if (roomState) {
                   netClientRef.current?.updateLoadout(save.selectedCarId, selectedColorIndex, nextName);
@@ -922,10 +951,11 @@ export default function GameApp() {
           {screen === 'results' && results && (
             <ResultsScreen
               results={results}
-              trackName={selectedTrack.name}
+              trackName={isOnlineResult ? getTrack(onlineTrackId).name : selectedTrack.name}
               onRestart={restartRace}
               onGarage={goToGarage}
               onMenu={goToTitle}
+              onReturnToLobby={isOnlineResult ? returnToLobby : undefined}
               xpReport={xpReport}
             />
           )}

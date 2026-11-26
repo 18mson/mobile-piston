@@ -378,6 +378,15 @@ export class GameRoom {
         type: 'race_finished',
         results: this.sim.results(null),
       });
+      // Reset room back to lobby so players can return, ready up again, and race another round
+      this.status = 'lobby';
+      this.sim = null;
+      for (const member of this.members.values()) {
+        member.ready = member.id === this.hostId;
+        member.latestInput = { ...NEUTRAL_INPUT };
+        member.inputQueue.length = 0;
+        member.emptyQueueTicks = 0;
+      }
       this.broadcastRoomState();
     }
   }

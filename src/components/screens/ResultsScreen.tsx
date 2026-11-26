@@ -11,6 +11,7 @@ export default function ResultsScreen({
   onRestart,
   onGarage,
   onMenu,
+  onReturnToLobby,
   xpReport = null,
 }: {
   results: RaceResults;
@@ -19,6 +20,7 @@ export default function ResultsScreen({
   onRestart: () => void;
   onGarage: () => void;
   onMenu: () => void;
+  onReturnToLobby?: () => void;
 }) {
   return (
     <section className="screen results-screen" data-menu-scope="active" aria-labelledby="results-heading">
@@ -87,12 +89,20 @@ export default function ResultsScreen({
         </div>
 
         <div className="results-actions">
-          <button className="btn btn-primary" type="button" onClick={onRestart} data-nav>
-            Balap lagi
-          </button>
-          <button className="btn" type="button" onClick={onGarage} data-nav>
-            Ganti mobil
-          </button>
+          {onReturnToLobby ? (
+            <button className="btn btn-primary" type="button" onClick={onReturnToLobby} data-nav>
+              Kembali ke Lobby
+            </button>
+          ) : (
+            <>
+              <button className="btn btn-primary" type="button" onClick={onRestart} data-nav>
+                Balap lagi
+              </button>
+              <button className="btn" type="button" onClick={onGarage} data-nav>
+                Ganti mobil
+              </button>
+            </>
+          )}
           <button className="btn btn-quiet" type="button" onClick={onMenu} data-nav data-gamepad-back>
             Menu utama
           </button>
