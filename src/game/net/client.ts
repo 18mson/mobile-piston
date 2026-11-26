@@ -4,6 +4,7 @@ import type {
   PlayerInput,
   RaceResults,
   RoomStatePacket,
+  SequencedInput,
   ServerMessage,
   TrackId,
   WorldSnapshot,
@@ -152,8 +153,8 @@ export class NetClient {
     this.send({ type: 'start_race' });
   }
 
-  sendInput(seq: number, input: PlayerInput): void {
-    this.send({ type: 'input', seq, input });
+  sendInput(seq: number, input: PlayerInput, inputs?: SequencedInput[]): void {
+    this.send({ type: 'input', seq, input, inputs });
   }
 
   private send(msg: ClientMessage): void {

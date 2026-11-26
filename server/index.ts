@@ -109,7 +109,7 @@ wss.on('connection', (socket) => {
         break;
       }
       case 'input':
-        rooms.getRoomForPlayer(activePlayerId)?.handleInput(activePlayerId, msg.seq, msg.input);
+        rooms.getRoomForPlayer(activePlayerId)?.handleInput(activePlayerId, msg.seq, msg.input, msg.inputs);
         break;
       default:
         send({ type: 'error', message: 'Tipe pesan tidak dikenali.' });

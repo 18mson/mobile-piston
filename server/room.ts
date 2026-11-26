@@ -6,6 +6,7 @@ import type {
   PlayerInput,
   RoomPlayerInfo,
   RoomStatePacket,
+  SequencedInput,
   ServerMessage,
   TrackId,
   WorldSnapshot,
@@ -14,7 +15,9 @@ import type {
 export const MAX_ROOM_PLAYERS = 6;
 export const RECONNECT_GRACE_MS = 15_000;
 const FIXED_STEP = 1 / 120;
-const SNAPSHOT_INTERVAL_SECONDS = 1 / 20; // 20 Hz network broadcast
+const SNAPSHOT_INTERVAL_SECONDS = 1 / 30; // 30 Hz network broadcast
+const MAX_HOLD_TICKS = 6; // Repeat last input briefly on jitter before falling back to neutral
+const MAX_INPUT_QUEUE = 32;
 
 export type SendMessageFn = (msg: ServerMessage) => void;
 
@@ -29,6 +32,9 @@ interface RoomMember {
   send: SendMessageFn;
   latestInput: PlayerInput;
   lastSeq: number;
+  lastEnqueuedSeq: number;
+  inputQueue: SequencedInput[];
+  emptyQueueTicks: number;
 }
 
 const NEUTRAL_INPUT: PlayerInput = { steer: 0, brake: false, nitro: false, pause: false, gas: false };
@@ -87,6 +93,9 @@ export class GameRoom {
       send,
       latestInput: { ...NEUTRAL_INPUT },
       lastSeq: 0,
+      lastEnqueuedSeq: 0,
+      inputQueue: [],
+      emptyQueueTicks: 0,
     });
     this.broadcastRoomState();
     return true;
@@ -102,6 +111,8 @@ export class GameRoom {
     member.connected = false;
     member.disconnectedAt = nowMs;
     member.latestInput = { ...NEUTRAL_INPUT };
+    member.inputQueue.length = 0;
+    member.emptyQueueTicks = MAX_HOLD_TICKS + 1;
     this.broadcastRoomState();
     return false;
   }
@@ -204,6 +215,9 @@ export class GameRoom {
       });
       member.latestInput = { ...NEUTRAL_INPUT };
       member.lastSeq = 0;
+      member.lastEnqueuedSeq = 0;
+      member.inputQueue.length = 0;
+      member.emptyQueueTicks = 0;
       idx += 1;
     }
 
@@ -245,21 +259,43 @@ export class GameRoom {
     return true;
   }
 
-  handleInput(id: string, seq: number, input: PlayerInput): void {
+  handleInput(id: string, seq: number, input: PlayerInput, inputs?: SequencedInput[]): void {
     const member = this.members.get(id);
     if (!member) return;
-    if (seq >= member.lastSeq) {
-      member.lastSeq = seq;
-      member.latestInput = sanitizeInput(input);
+
+    const batch = inputs && inputs.length > 0 ? inputs : [{ seq, input }];
+    let added = false;
+    for (const item of batch) {
+      if (!Number.isFinite(item.seq) || item.seq <= member.lastSeq) continue;
+      if (member.inputQueue.some((q) => q.seq === item.seq)) continue;
+      member.inputQueue.push({
+        seq: item.seq,
+        input: sanitizeInput(item.input),
+      });
+      if (item.seq > member.lastEnqueuedSeq) {
+        member.lastEnqueuedSeq = item.seq;
+      }
+      added = true;
     }
+
+    if (added) {
+      member.inputQueue.sort((a, b) => a.seq - b.seq);
+      if (member.inputQueue.length > MAX_INPUT_QUEUE) {
+        member.inputQueue.splice(0, member.inputQueue.length - MAX_INPUT_QUEUE);
+      }
+    }
+  }
+
+  private nowHighRes(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
   private startLoop(): void {
     this.stopLoop();
-    this.lastTickMs = Date.now();
+    this.lastTickMs = this.nowHighRes();
     this.loopTimer = setInterval(() => {
-      const now = Date.now();
-      const dt = Math.min(0.1, (now - this.lastTickMs) / 1000);
+      const now = this.nowHighRes();
+      const dt = Math.min(0.1, Math.max(0, (now - this.lastTickMs) / 1000));
       this.lastTickMs = now;
       this.step(dt);
     }, 1000 / 60);
@@ -285,6 +321,8 @@ export class GameRoom {
       }
       if (this.countdownRemaining <= 0) {
         this.status = 'racing';
+        this.accumulator = 0;
+        this.snapshotAccum = 0;
         this.broadcastRoomState();
         this.broadcastSnapshot();
       }
@@ -295,12 +333,25 @@ export class GameRoom {
 
     this.accumulator += dt;
     const inputMap = new Map<string, PlayerInput>();
-    for (const member of this.members.values()) {
-      inputMap.set(member.id, member.latestInput);
-    }
 
     let steps = 0;
     while (this.accumulator >= FIXED_STEP && steps < 12) {
+      for (const member of this.members.values()) {
+        const next = member.inputQueue.shift();
+        if (next) {
+          member.latestInput = next.input;
+          member.lastSeq = next.seq;
+          member.emptyQueueTicks = 0;
+          inputMap.set(member.id, next.input);
+        } else {
+          member.emptyQueueTicks += 1;
+          if (member.emptyQueueTicks <= MAX_HOLD_TICKS) {
+            inputMap.set(member.id, member.latestInput);
+          } else {
+            inputMap.set(member.id, NEUTRAL_INPUT);
+          }
+        }
+      }
       this.sim.update(FIXED_STEP, inputMap);
       this.accumulator -= FIXED_STEP;
       steps += 1;
@@ -339,7 +390,7 @@ export class GameRoom {
     }
     return {
       tick: this.sim.tick,
-      elapsed: Math.round(this.sim.elapsed * 1000) / 1000,
+      elapsed: Math.round(this.sim.elapsed * 10000) / 10000,
       mode: this.status === 'countdown' ? 'countdown' : this.status === 'finished' ? 'finished' : 'racing',
       countdown: this.status === 'countdown' ? Math.max(1, Math.ceil(this.countdownRemaining)) : null,
       lastProcessedSeq,
@@ -356,6 +407,9 @@ export class GameRoom {
         progress: Math.round(r.progress * 100) / 100,
         yawRate: Math.round(r.yawRate * 1000) / 1000,
         longAccel: Math.round(r.longAccel * 100) / 100,
+        padCooldown: r.padCooldown != null ? Math.round(r.padCooldown * 1000) / 1000 : undefined,
+        wrongWayTime: r.wrongWayTime != null ? Math.round(r.wrongWayTime * 1000) / 1000 : undefined,
+        stuckTime: r.stuckTime != null ? Math.round(r.stuckTime * 1000) / 1000 : undefined,
       })),
     };
   }

@@ -51,8 +51,9 @@ describe('multiplayer room manager', () => {
     }
     expect(room.status).toBe('racing');
 
-    // Step race simulation
+    // Step race simulation with active input
     for (let i = 0; i < 10; i += 1) {
+      room.handleInput('host1', i + 2, { steer: 5, brake: false, nitro: true, pause: false, gas: true });
       room.step(1 / 60);
     }
 
@@ -60,7 +61,7 @@ describe('multiplayer room manager', () => {
     expect(snap).not.toBeNull();
     expect(snap!.mode).toBe('racing');
     expect(snap!.racers).toHaveLength(6);
-    expect(snap!.lastProcessedSeq.host1).toBe(1);
+    expect(snap!.lastProcessedSeq.host1).toBeGreaterThanOrEqual(2);
     const hostCar = snap!.racers.find((r) => r.id === 'host1')!;
     expect(hostCar.nitroActive).toBe(true);
   });

@@ -408,6 +408,10 @@ export class RaceSim {
       nitroActive: racer.nitroActive,
       drifting: racer.drifting,
       impact: racer.impact,
+      impactKind: racer.impactKind,
+      padCooldown: racer.padCooldown,
+      wrongWayTime: racer.wrongWayTime,
+      stuckTime: racer.stuckTime,
       lap: racer.lap,
       s: racer.s,
       progress: racer.progress,
@@ -439,6 +443,10 @@ export class RaceSim {
       racer.nitroActive = next.nitroActive;
       racer.drifting = next.drifting;
       racer.impact = next.impact;
+      if (next.impactKind !== undefined) racer.impactKind = next.impactKind;
+      if (next.padCooldown !== undefined) racer.padCooldown = next.padCooldown;
+      if (next.wrongWayTime !== undefined) racer.wrongWayTime = next.wrongWayTime;
+      if (next.stuckTime !== undefined) racer.stuckTime = next.stuckTime;
       racer.lap = next.lap;
       racer.s = next.s;
       racer.progress = next.progress;

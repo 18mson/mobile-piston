@@ -226,6 +226,10 @@ export interface NetRacerState {
   nitroActive: boolean;
   drifting: boolean;
   impact: number;
+  impactKind?: 'wall' | 'car';
+  padCooldown?: number;
+  wrongWayTime?: number;
+  stuckTime?: number;
   lap: number;
   s: number;
   progress: number;
@@ -236,6 +240,11 @@ export interface NetRacerState {
   wrongWay: boolean;
   yawRate: number;
   longAccel: number;
+}
+
+export interface SequencedInput {
+  seq: number;
+  input: PlayerInput;
 }
 
 export interface WorldSnapshot {
@@ -274,7 +283,7 @@ export type ClientMessage =
   | { type: 'set_track'; trackId: TrackId }
   | { type: 'set_ready'; ready: boolean }
   | { type: 'start_race' }
-  | { type: 'input'; seq: number; input: PlayerInput }
+  | { type: 'input'; seq: number; input: PlayerInput; inputs?: SequencedInput[] }
   | { type: 'ping'; sentAt: number };
 
 export type ServerMessage =

@@ -5,6 +5,7 @@ import type {
   ClientMessage,
   PlayerInput,
   RoomStatePacket,
+  SequencedInput,
   ServerMessage,
   TrackId,
 } from '../types';
@@ -118,7 +119,7 @@ export class PeerNetClient {
         conn.on('data', (raw) => {
           const msg = raw as ClientMessage;
           if (msg && typeof msg === 'object' && msg.type === 'input') {
-            this.hostRoom?.handleInput(fastId, msg.seq, msg.input);
+            this.hostRoom?.handleInput(fastId, msg.seq, msg.input, msg.inputs);
           }
         });
         conn.on('close', () => {
@@ -171,7 +172,7 @@ export class PeerNetClient {
             room.setReady(guestId, msg.ready);
             break;
           case 'input':
-            room.handleInput(guestId, msg.seq, msg.input);
+            room.handleInput(guestId, msg.seq, msg.input, msg.inputs);
             break;
         }
       });
@@ -267,13 +268,13 @@ export class PeerNetClient {
     }
   }
 
-  sendInput(seq: number, input: PlayerInput): void {
+  sendInput(seq: number, input: PlayerInput, inputs?: SequencedInput[]): void {
     if (this.hostRoom) {
-      this.hostRoom.handleInput('host', seq, input);
+      this.hostRoom.handleInput('host', seq, input, inputs);
     } else if (this.fastConnToHost && this.fastConnToHost.open) {
-      this.fastConnToHost.send({ type: 'input', seq, input } satisfies ClientMessage);
+      this.fastConnToHost.send({ type: 'input', seq, input, inputs } satisfies ClientMessage);
     } else {
-      this.sendToHost({ type: 'input', seq, input });
+      this.sendToHost({ type: 'input', seq, input, inputs });
     }
   }
 

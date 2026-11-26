@@ -1,4 +1,4 @@
-import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, RacerState, Track, WorldSnapshot } from './types';
+import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, RacerState, SequencedInput, Track, WorldSnapshot } from './types';
 import { getCar } from './data/cars';
 import { RaceSim, type RaceParticipant } from './race';
 import { Renderer3D, type CameraMode } from './render3d/renderer3d';
@@ -6,10 +6,11 @@ import { InputManager } from './input';
 import { GameAudio } from './audio';
 import { clamp } from './utils';
 import { computeAiInput } from './ai';
-import { NetRaceSync } from './net/sync';
+import { NetRaceSync, type NetDebugStats } from './net/sync';
 
 export interface NetTransport {
-  sendInput(seq: number, input: PlayerInput): void;
+  sendInput(seq: number, input: PlayerInput, inputs?: SequencedInput[]): void;
+  pingMs?: number | null;
 }
 
 type EngineMode = 'attract' | 'countdown' | 'racing' | 'explore' | 'online' | 'paused' | 'finished' | 'error';
@@ -271,6 +272,11 @@ export class GameEngine {
     };
   }
 
+  getNetDebugStats(): NetDebugStats | null {
+    if (!this.onlineSync) return null;
+    return this.onlineSync.getDebugStats(this.netClient?.pingMs ?? null);
+  }
+
   debugFinishRace(): boolean {
     if (!this.race) return false;
     this.mode = 'racing';
@@ -492,14 +498,15 @@ export class GameEngine {
       this.lastSentInput.brake !== playerInput.brake ||
       this.lastSentInput.nitro !== playerInput.nitro ||
       this.lastSentInput.gas !== playerInput.gas;
-    if (lastSeq > 0 && (inputChanged || this.netInputTimer >= 0.05)) {
+    if (lastSeq > 0 && (inputChanged || this.netInputTimer >= 0.016)) {
       this.netInputTimer = 0;
       this.lastSentInput = { ...playerInput };
-      this.netClient.sendInput(lastSeq, playerInput);
+      this.netClient.sendInput(lastSeq, playerInput, this.onlineSync.getRecentInputs(4));
     }
 
     this.onlineSync.updateVisuals(dt, Date.now());
     const renderPlayer = this.onlineSync.getRenderPlayer();
+    const renderRacers = this.onlineSync.getRenderRacers();
 
     this.impactSoundCooldown = Math.max(0, this.impactSoundCooldown - dt);
     if (renderPlayer.impact > 0.34 && this.impactSoundCooldown <= 0) {
@@ -511,7 +518,7 @@ export class GameEngine {
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
     const snapshotMode = this.onlineSync.currentMode === 'countdown' ? 'countdown' : 'racing';
     this.renderer.renderRace(
-      this.onlineSync.sim.racers,
+      renderRacers,
       renderPlayer,
       this.visualTime,
       dt,

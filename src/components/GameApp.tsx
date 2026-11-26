@@ -123,6 +123,8 @@ export default function GameApp() {
   const [playerName, setPlayerName] = useState('Pembalap');
   const [onlineTrackId, setOnlineTrackId] = useState<TrackId>('teluk-sore');
   const [initialJoinCode, setInitialJoinCode] = useState('');
+  const [netDebugEnabled, setNetDebugEnabled] = useState(false);
+  const [netDebugStats, setNetDebugStats] = useState<ReturnType<GameEngine['getNetDebugStats']>>(null);
 
   const selectedColorIndex = save.selectedColors?.[save.selectedCarId] ?? 0;
   const selectedCar = {
@@ -543,12 +545,26 @@ export default function GameApp() {
     if (didInitJoinRef.current || typeof window === 'undefined') return;
     didInitJoinRef.current = true;
     const params = new URLSearchParams(window.location.search);
+    if (params.get('netdebug') === '1') {
+      setNetDebugEnabled(true);
+    }
     const code = params.get('join')?.trim().toUpperCase();
     if (code && code.length >= 4) {
       setInitialJoinCode(code);
       openMultiplayer();
     }
   }, [openMultiplayer]);
+
+  useEffect(() => {
+    if (!netDebugEnabled || screen !== 'online-racing') {
+      setNetDebugStats(null);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setNetDebugStats(engineRef.current?.getNetDebugStats() ?? null);
+    }, 150);
+    return () => window.clearInterval(timer);
+  }, [netDebugEnabled, screen]);
 
   useEffect(() => {
     return () => {
@@ -734,6 +750,42 @@ export default function GameApp() {
                 isOnline={onlineScreen}
                 pingMs={netPingMs}
               />
+              {onlineScreen && netDebugEnabled && netDebugStats && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    left: 12,
+                    bottom: isTouch ? 140 : 12,
+                    zIndex: 40,
+                    background: 'rgba(10, 14, 20, 0.84)',
+                    color: '#e6f1ff',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    borderRadius: 6,
+                    padding: '8px 10px',
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    lineHeight: 1.45,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <div>NETDEBUG (?netdebug=1)</div>
+                  <div>
+                    posErr: {netDebugStats.posError.toFixed(2)}u (avg {netDebugStats.avgPosError.toFixed(2)}u)
+                  </div>
+                  <div>
+                    angErr: {netDebugStats.angleError.toFixed(4)}r (avg {netDebugStats.avgAngleError.toFixed(4)}r)
+                  </div>
+                  <div>
+                    snapGap: {netDebugStats.snapshotIntervalMs.toFixed(1)}ms | interp: {netDebugStats.interpDelayMs.toFixed(0)}ms
+                  </div>
+                  <div>
+                    starvation: {netDebugStats.starvationFrames} | jitter&gt;2x: {netDebugStats.remoteJitterSpikes} (max {netDebugStats.maxRemoteJitterRatio.toFixed(2)}x)
+                  </div>
+                  <div>
+                    RTT: {netDebugStats.rttMs ?? '-'}ms | pending: {netDebugStats.pendingInputs}
+                  </div>
+                </div>
+              )}
               {isTouch && (
                 <TouchControls
                   onChange={(action, pressed) => engineRef.current?.setTouchControl(action, pressed)}

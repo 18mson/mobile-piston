@@ -56,7 +56,7 @@ describe('client netcode prediction & interpolation', () => {
     expect(Math.abs(renderAfter.y - sync.sim.player.y)).toBeLessThan(0.1);
   });
 
-  it('interpolates remote racer positions smoothly between buffered snapshots', () => {
+  it('interpolates remote racer positions smoothly between buffered snapshots on server timeline', () => {
     const sync = new NetRaceSync(TELUK_SORE, participants, 'p1');
     const racersA = sync.sim.exportNetState();
     const racersB = sync.sim.exportNetState();
@@ -65,8 +65,10 @@ describe('client netcode prediction & interpolation', () => {
 
     p2A.x = 100;
     p2A.y = 200;
+    p2A.vx = 2000;
     p2B.x = 200;
     p2B.y = 200;
+    p2B.vx = 2000;
 
     sync.applyServerSnapshot(
       { tick: 1, elapsed: 0.1, mode: 'racing', countdown: null, lastProcessedSeq: {}, racers: racersA },
@@ -74,12 +76,43 @@ describe('client netcode prediction & interpolation', () => {
     );
     sync.applyServerSnapshot(
       { tick: 4, elapsed: 0.15, mode: 'racing', countdown: null, lastProcessedSeq: {}, racers: racersB },
-      1100,
+      1050,
     );
 
-    // At now = 1135, renderTime = 1135 - 85 = 1050 (exact midpoint between 1000 and 1100)
+    // Server time at now=1135 with clockOffset=900 and adaptive interpDelay (~108ms) is near midpoint (~127ms)
     sync.updateVisuals(1 / 60, 1135);
     const remoteP2 = sync.sim.racers.find((r) => r.id === 'p2')!;
-    expect(remoteP2.x).toBeCloseTo(150, 1);
+    expect(remoteP2.x).toBeGreaterThan(140);
+    expect(remoteP2.x).toBeLessThan(165);
+    // Remote racers lock prev = current so renderer fixed-step alpha does not double-lerp
+    expect(remoteP2.prevX).toBe(remoteP2.x);
+    expect(remoteP2.prevY).toBe(remoteP2.y);
+  });
+
+  it('smooths angle corrections with errorOffsetAngle and ignores deadzone micro-errors', () => {
+    const sync = new NetRaceSync(TELUK_SORE, participants, 'p1');
+    const initialStates = sync.sim.exportNetState();
+    sync.applyServerSnapshot(
+      { tick: 1, elapsed: 0.1, mode: 'racing', countdown: null, lastProcessedSeq: { p1: 0 }, racers: initialStates },
+      1000,
+    );
+
+    const serverRacers = sync.sim.exportNetState();
+    const serverP1 = serverRacers.find((r) => r.id === 'p1')!;
+    const origAngle = serverP1.angle;
+    serverP1.angle = origAngle + 0.25; // significant heading correction
+
+    sync.applyServerSnapshot(
+      { tick: 4, elapsed: 0.15, mode: 'racing', countdown: null, lastProcessedSeq: { p1: 0 }, racers: serverRacers },
+      1050,
+    );
+
+    const beforeDecay = sync.getRenderPlayer();
+    expect(Math.abs(beforeDecay.angle - origAngle)).toBeLessThan(0.05);
+    expect(beforeDecay.prevAngle).toBeCloseTo(beforeDecay.angle, 3);
+
+    sync.updateVisuals(0.4, 1450);
+    const afterDecay = sync.getRenderPlayer();
+    expect(Math.abs(afterDecay.angle - (origAngle + 0.25))).toBeLessThan(0.02);
   });
 });
