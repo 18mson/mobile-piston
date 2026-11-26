@@ -593,6 +593,7 @@ export default function GameApp() {
           client.playerId ?? payload.participants[0]?.id ?? 'player',
           client,
           savedCam,
+          payload.totalLaps,
         );
         window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
       },
@@ -807,6 +808,10 @@ export default function GameApp() {
               onSelectTrack={(tid) => {
                 selectTrack(tid);
                 netClientRef.current?.setTrack(tid);
+              }}
+              onSelectLaps={(laps) => {
+                selectLaps(laps);
+                netClientRef.current?.setLaps(laps);
               }}
               onCreateRoom={() => {
                 setMpError('');

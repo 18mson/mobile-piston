@@ -3,6 +3,7 @@ import { RaceSim, type RaceParticipant } from '../src/game/race';
 import { clamp } from '../src/game/utils';
 import type {
   CarId,
+  LapCount,
   PlayerInput,
   RoomPlayerInfo,
   RoomStatePacket,
@@ -52,6 +53,7 @@ export function sanitizeInput(raw: PlayerInput): PlayerInput {
 export class GameRoom {
   readonly roomCode: string;
   trackId: TrackId;
+  totalLaps: LapCount = 3;
   hostId: string;
   status: 'lobby' | 'countdown' | 'racing' | 'finished' = 'lobby';
   private members = new Map<string, RoomMember>();
@@ -191,6 +193,13 @@ export class GameRoom {
     this.broadcastRoomState();
   }
 
+  setLaps(id: string, totalLaps: LapCount): void {
+    if (id !== this.hostId || this.status !== 'lobby') return;
+    if (totalLaps !== 3 && totalLaps !== 4 && totalLaps !== 5) return;
+    this.totalLaps = totalLaps;
+    this.broadcastRoomState();
+  }
+
   setReady(id: string, ready: boolean): void {
     const member = this.members.get(id);
     if (!member || this.status !== 'lobby') return;
@@ -225,6 +234,7 @@ export class GameRoom {
       participants,
       localPlayerId: participants[0].id,
       fillWithAi: true,
+      totalLaps: this.totalLaps,
     });
 
     this.status = 'countdown';
@@ -248,6 +258,7 @@ export class GameRoom {
     this.broadcast({
       type: 'race_started',
       trackId: this.trackId,
+      totalLaps: this.totalLaps,
       participants: participantList,
     });
     this.broadcastRoomState();
@@ -437,6 +448,7 @@ export class GameRoom {
       type: 'room_state',
       roomCode: this.roomCode,
       trackId: this.trackId,
+      totalLaps: this.totalLaps,
       hostId: this.hostId,
       status: this.status,
       players,

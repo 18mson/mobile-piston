@@ -86,12 +86,13 @@ export class NetRaceSync {
   private remoteJitterSpikes = 0;
   private maxRemoteJitterRatio = 0;
 
-  constructor(track: Track, participants: RaceParticipant[], localPlayerId: string) {
+  constructor(track: Track, participants: RaceParticipant[], localPlayerId: string, totalLaps?: number) {
     this.localPlayerId = localPlayerId;
     this.sim = new RaceSim(track, participants[0]?.carId ?? 'sirip', {
       participants,
       localPlayerId,
       fillWithAi: false, // Server already provides the full 6-car participant list
+      totalLaps,
     });
     this.renderPlayerCache = { ...this.sim.player };
     this.renderRacersCache = [...this.sim.racers];

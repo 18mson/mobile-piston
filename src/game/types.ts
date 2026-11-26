@@ -283,6 +283,7 @@ export interface RoomStatePacket {
   type: 'room_state';
   roomCode: string;
   trackId: TrackId;
+  totalLaps?: LapCount;
   hostId: string;
   status: 'lobby' | 'countdown' | 'racing' | 'finished';
   players: RoomPlayerInfo[];
@@ -294,6 +295,7 @@ export type ClientMessage =
   | { type: 'rejoin_room'; roomCode: string; playerId: string }
   | { type: 'update_loadout'; carId: CarId; colorIndex: number; name?: string }
   | { type: 'set_track'; trackId: TrackId }
+  | { type: 'set_laps'; totalLaps: LapCount }
   | { type: 'set_ready'; ready: boolean }
   | { type: 'start_race' }
   | { type: 'input'; seq: number; input: PlayerInput; inputs?: SequencedInput[] }
@@ -302,7 +304,7 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: 'welcome'; playerId: string }
   | RoomStatePacket
-  | { type: 'race_started'; trackId: TrackId; participants: { id: string; name: string; carId: CarId; colorIndex: number; isHuman: boolean; number: number }[] }
+  | { type: 'race_started'; trackId: TrackId; totalLaps?: LapCount; participants: { id: string; name: string; carId: CarId; colorIndex: number; isHuman: boolean; number: number }[] }
   | { type: 'snapshot'; snapshot: WorldSnapshot }
   | { type: 'race_finished'; results: RaceResults }
   | { type: 'pong'; sentAt: number; serverTime: number }

@@ -1,6 +1,7 @@
 import type {
   CarId,
   ClientMessage,
+  LapCount,
   PlayerInput,
   RaceResults,
   RoomStatePacket,
@@ -143,6 +144,10 @@ export class NetClient {
 
   setTrack(trackId: TrackId): void {
     this.send({ type: 'set_track', trackId });
+  }
+
+  setLaps(totalLaps: LapCount): void {
+    this.send({ type: 'set_laps', totalLaps });
   }
 
   setReady(ready: boolean): void {

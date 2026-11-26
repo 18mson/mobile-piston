@@ -5,9 +5,11 @@ import QRCode from 'qrcode';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import type { ConnectionStatus } from '../../game/net/client';
-import type { CarId, RoomStatePacket, TrackId } from '../../game/types';
+import type { CarId, LapCount, RoomStatePacket, TrackId } from '../../game/types';
 import CarThumb from '../CarThumb';
 import TrackPreview from '../TrackPreview';
+
+const LAP_OPTIONS: LapCount[] = [3, 4, 5];
 
 export default function MultiplayerLobbyScreen({
   status,
@@ -25,6 +27,7 @@ export default function MultiplayerLobbyScreen({
   carLockLevel,
   onSelectColor,
   onSelectTrack,
+  onSelectLaps,
   onCreateRoom,
   onJoinRoom,
   onToggleReady,
@@ -47,6 +50,7 @@ export default function MultiplayerLobbyScreen({
   carLockLevel?: (carId: CarId) => number | null;
   onSelectColor: (colorIndex: number) => void;
   onSelectTrack: (trackId: TrackId) => void;
+  onSelectLaps?: (laps: LapCount) => void;
   onCreateRoom: () => void;
   onJoinRoom: (code: string) => void;
   onToggleReady: () => void;
@@ -96,6 +100,15 @@ export default function MultiplayerLobbyScreen({
   const me = room?.players.find((p) => p.id === playerId) ?? null;
   const isHost = Boolean(room && playerId && room.hostId === playerId);
   const activeColorOptions = CAR_COLORS[selectedCarId];
+  const orderedCars = [...CAR_ORDER].sort((a, b) => {
+    const la = carLockLevel?.(a) ?? 0;
+    const lb = carLockLevel?.(b) ?? 0;
+    if (la === lb) return 0;
+    if (la === 0) return -1;
+    if (lb === 0) return 1;
+    return la - lb;
+  });
+  const roomLaps = room?.totalLaps ?? 3;
   const previewCar = {
     ...CARS[selectedCarId],
     palette: getCarPalette(selectedCarId, selectedColorIndex),
@@ -179,7 +192,7 @@ export default function MultiplayerLobbyScreen({
                 <CarThumb car={previewCar} scale={3} />
                 <div className="mp-car-pickers">
                   <div className="mp-car-pills">
-                    {CAR_ORDER.map((id) => (
+                    {orderedCars.map((id) => (
                       <button
                         key={id}
                         type="button"
@@ -339,7 +352,7 @@ export default function MultiplayerLobbyScreen({
                 <CarThumb car={previewCar} scale={3} />
                 <div className="mp-car-pickers">
                   <div className="mp-car-pills">
-                    {CAR_ORDER.map((id) => (
+                    {orderedCars.map((id) => (
                       <button
                         key={id}
                         type="button"
@@ -392,6 +405,23 @@ export default function MultiplayerLobbyScreen({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <span className="label">Jumlah Putaran {isHost ? '(Host)' : '(Dipilih Host)'}</span>
+              <div className="lap-pills">
+                {LAP_OPTIONS.map((laps) => (
+                  <button
+                    key={laps}
+                    type="button"
+                    className="btn btn-small lap-pill"
+                    disabled={!isHost}
+                    data-active={roomLaps === laps}
+                    aria-pressed={roomLaps === laps}
+                    onClick={() => onSelectLaps?.(laps)}
+                  >
+                    {laps} Putaran
+                  </button>
+                ))}
               </div>
 
               <div className="mp-room-actions">

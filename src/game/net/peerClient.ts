@@ -3,6 +3,7 @@ import { GameRoom } from '../../../server/room';
 import type {
   CarId,
   ClientMessage,
+  LapCount,
   PlayerInput,
   RoomStatePacket,
   SequencedInput,
@@ -251,6 +252,12 @@ export class PeerNetClient {
   setTrack(trackId: TrackId): void {
     if (this.hostRoom) {
       this.hostRoom.setTrack('host', trackId);
+    }
+  }
+
+  setLaps(totalLaps: LapCount): void {
+    if (this.hostRoom) {
+      this.hostRoom.setLaps('host', totalLaps);
     }
   }
 

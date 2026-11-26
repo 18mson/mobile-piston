@@ -203,6 +203,7 @@ export class GameEngine {
     localPlayerId: string,
     client: NetTransport,
     cameraMode?: CameraMode,
+    totalLaps?: number,
   ): void {
     if (this.destroyed) return;
     void this.audio.unlock();
@@ -212,7 +213,7 @@ export class GameEngine {
       this.renderer = new Renderer3D(this.canvas, track);
       this.renderer.setReducedMotion(this.reducedMotion);
     }
-    this.onlineSync = new NetRaceSync(this.track, participants, localPlayerId);
+    this.onlineSync = new NetRaceSync(this.track, participants, localPlayerId, totalLaps);
     this.netClient = client;
     this.race = this.onlineSync.sim;
     this.selectedCar = this.race.player.carId;
