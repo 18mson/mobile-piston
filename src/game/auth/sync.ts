@@ -209,6 +209,7 @@ export class CloudSaveSync {
         .maybeSingle();
 
       if (error) {
+        console.warn('[CloudSaveSync] syncOnLogin failed:', error.code, error.message);
         writePendingSync({ userId, data: localSave, updatedAt: meta.updatedAt || Date.now() });
         this.onSyncError?.('Gagal mengambil progres akun dari cloud. Memakai data lokal.');
         return localSave;
@@ -257,6 +258,7 @@ export class CloudSaveSync {
         { onConflict: 'user_id' },
       );
       if (error) {
+        console.warn('[CloudSaveSync] pushToServer failed:', error.code, error.message);
         writePendingSync({ userId, data: save, updatedAt });
         this.onSyncError?.('Gagal menyimpan progres ke cloud. Akan dicoba ulang saat online.');
         return false;

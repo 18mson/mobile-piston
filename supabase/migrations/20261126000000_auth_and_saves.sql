@@ -144,3 +144,6 @@ $$;
 
 revoke all on function public.is_username_available(text) from public;
 grant execute on function public.is_username_available(text) to anon, authenticated;
+
+grant select, insert, update on table public.profiles to authenticated;
+grant select, insert, update on table public.game_saves to authenticated;
