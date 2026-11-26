@@ -56,6 +56,8 @@ export function mergeSaves(
     new Set([...(local.unlocks ?? []), ...(remote.unlocks ?? [])]),
   );
 
+  const mergedXp = Math.max(local.xp ?? 0, remote.xp ?? 0);
+
   const primary = remoteUpdatedAt > localUpdatedAt ? remote : local;
   const merged: SaveData = {
     ...primary,
@@ -65,7 +67,10 @@ export function mergeSaves(
   if (mergedUnlocks.length > 0) {
     merged.unlocks = mergedUnlocks;
   }
-  return merged;
+  if (mergedXp > 0) {
+    merged.xp = mergedXp;
+  }
+  return normalizeSave(merged);
 }
 
 function readMeta(): SaveMeta {

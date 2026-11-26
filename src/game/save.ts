@@ -1,6 +1,7 @@
 import type { CarId, SaveData, SavedCameraMode, TrackId } from './types';
 import { CAR_ORDER } from './data/cars';
 import { TRACK_ORDER } from './track/tracks';
+import { isCarUnlocked, MAX_XP } from './progression';
 
 export const SAVE_KEY = 'mobile-piston.save.v2';
 export const LEGACY_SAVE_KEY = 'mobile-piston.save.v1';
@@ -22,7 +23,7 @@ export function normalizeSave(raw: unknown): SaveData {
   const fallback = defaultSave();
   if (!raw || typeof raw !== 'object') return fallback;
   const data = raw as Partial<SaveData>;
-  const selectedCarId = CAR_ORDER.includes(data.selectedCarId as CarId)
+  let selectedCarId = CAR_ORDER.includes(data.selectedCarId as CarId)
     ? (data.selectedCarId as CarId)
     : fallback.selectedCarId;
   const selectedTrackId = TRACK_ORDER.includes(data.selectedTrackId as TrackId)
@@ -56,6 +57,13 @@ export function normalizeSave(raw: unknown): SaveData {
       )
     : undefined;
 
+  const xp =
+    typeof data.xp === 'number' && Number.isFinite(data.xp) ? Math.min(MAX_XP, Math.max(0, Math.floor(data.xp))) : 0;
+
+  if (!isCarUnlocked(selectedCarId, { xp, unlocks })) {
+    selectedCarId = fallback.selectedCarId;
+  }
+
   const normalized: SaveData = {
     version: 2,
     selectedCarId,
@@ -67,6 +75,9 @@ export function normalizeSave(raw: unknown): SaveData {
   };
   if (unlocks && unlocks.length > 0) {
     normalized.unlocks = unlocks;
+  }
+  if (xp > 0) {
+    normalized.xp = xp;
   }
   return normalized;
 }

@@ -1,13 +1,16 @@
 'use client';
 
 import type { Track } from '../../game/types';
+import ProgressBadge from '../ProgressBadge';
 
 export default function TitleScreen({
   track,
   onStart,
   onMultiplayer,
+  xp = 0,
 }: {
   track: Track;
+  xp?: number;
   onStart: () => void;
   onMultiplayer: () => void;
   onControls?: () => void;
@@ -35,6 +38,8 @@ export default function TitleScreen({
                   : 'Tiga putaran di pesisir Teluk Sore. Belok, drifting, lalu tekan nitro pada momen yang tepat.'}
           </p>
         </div>
+
+        <ProgressBadge xp={xp} />
 
         <div className="title-actions">
           <button className="btn btn-primary" type="button" onClick={onStart} data-nav>

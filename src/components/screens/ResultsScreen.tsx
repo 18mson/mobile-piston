@@ -2,6 +2,8 @@
 
 import type { RaceResults } from '../../game/types';
 import { formatTime } from '../../game/utils';
+import type { XpReport } from '../../game/progression';
+import XpSummary from '../XpSummary';
 
 export default function ResultsScreen({
   results,
@@ -9,8 +11,10 @@ export default function ResultsScreen({
   onRestart,
   onGarage,
   onMenu,
+  xpReport = null,
 }: {
   results: RaceResults;
+  xpReport?: XpReport | null;
   trackName: string;
   onRestart: () => void;
   onGarage: () => void;
@@ -50,6 +54,8 @@ export default function ResultsScreen({
             Rekor putaran baru tersimpan di perangkat ini.
           </p>
         )}
+
+        {xpReport && xpReport.award.total > 0 && <XpSummary report={xpReport} />}
 
         <div className="results-table-wrap">
           <table className="results-table">

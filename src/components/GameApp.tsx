@@ -13,6 +13,7 @@ import type {
 import { CARS, getCarPalette } from '../game/data/cars';
 import { getTrack } from '../game/track/tracks';
 import { defaultSave, loadSave } from '../game/save';
+import { applyXp, carUnlockDef, computeRaceXp, isCarUnlocked, type XpReport } from '../game/progression';
 import {
   extractUsernameFromUser,
   getSupabaseClient,
@@ -92,6 +93,7 @@ export default function GameApp() {
   const saveRef = useRef(save);
   const [snapshot, setSnapshot] = useState<RaceSnapshot | null>(null);
   const [results, setResults] = useState<RaceResults | null>(null);
+  const [xpReport, setXpReport] = useState<XpReport | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [controlsOpen, setControlsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -246,9 +248,24 @@ export default function GameApp() {
               nextSave.bestLapMs[trackId] = nextResults.playerBestLapMs;
             }
           }
-          commitSave(nextSave);
+          // XP for the finished race (level and unlocks are derived from the total)
+          const award = computeRaceXp(nextResults);
+          let finalSave = nextSave;
+          let levelUpNote = '';
+          if (award.total > 0) {
+            const applied = applyXp(nextSave, award);
+            finalSave = applied.save;
+            setXpReport(applied.report);
+            if (applied.report.levelAfter > applied.report.levelBefore) {
+              const names = applied.report.unlocked.map((item) => item.label).join(', ');
+              levelUpNote = ` Naik ke level ${applied.report.levelAfter}.${names ? ` Terbuka: ${names}.` : ''}`;
+            }
+          } else {
+            setXpReport(null);
+          }
+          commitSave(finalSave);
           setAnnouncement(
-            `Finis di posisi ${nextResults.playerPosition}. Waktu total ${formatTime(nextResults.totalTimeMs)}.`,
+            `Finis di posisi ${nextResults.playerPosition}. Waktu total ${formatTime(nextResults.totalTimeMs)}.${levelUpNote}`,
           );
         },
         onPause: () => {
@@ -349,7 +366,8 @@ export default function GameApp() {
     const engine = engineRef.current;
     if (!engine) return;
     if (isTouch) void enterFullscreenLandscape();
-    const id = carId ?? saveRef.current.selectedCarId;
+    const requested = carId ?? saveRef.current.selectedCarId;
+    const id: CarId = isCarUnlocked(requested, saveRef.current) ? requested : 'sirip';
     const record = saveRef.current.bestLapMs[saveRef.current.selectedTrackId] ?? null;
     const savedCam = saveRef.current.cameraMode ?? 'top';
     const colorIdx = saveRef.current.selectedColors?.[id] ?? 0;
@@ -407,6 +425,11 @@ export default function GameApp() {
   };
 
   const selectCar = (id: CarId) => {
+    if (!isCarUnlocked(id, saveRef.current)) {
+      const need = carUnlockDef(id)?.level;
+      setAnnouncement(need ? `Mobil terkunci. Capai level ${need} untuk membukanya.` : 'Mobil terkunci.');
+      return;
+    }
     const nextSave: SaveData = { ...saveRef.current, selectedCarId: id };
     commitSave(nextSave);
   };
@@ -701,6 +724,7 @@ export default function GameApp() {
               onStart={() => setScreen('garage')}
               onMultiplayer={openMultiplayer}
               onControls={openControls}
+              xp={save.xp ?? 0}
             />
           )}
           {screen === 'multiplayer' && (
@@ -721,7 +745,12 @@ export default function GameApp() {
                   netClientRef.current?.updateLoadout(save.selectedCarId, selectedColorIndex, nextName);
                 }
               }}
+              carLockLevel={(id) => (isCarUnlocked(id, save) ? null : (carUnlockDef(id)?.level ?? null))}
               onSelectCar={(id) => {
+                if (!isCarUnlocked(id, saveRef.current)) {
+                  selectCar(id);
+                  return;
+                }
                 selectCar(id);
                 const cIdx = saveRef.current.selectedColors?.[id] ?? 0;
                 netClientRef.current?.updateLoadout(id, cIdx);
@@ -773,6 +802,8 @@ export default function GameApp() {
             <GarageScreen
               selectedCarId={save.selectedCarId}
               selectedColors={save.selectedColors ?? {}}
+              xp={save.xp ?? 0}
+              unlocks={save.unlocks}
               onSelect={selectCar}
               onSelectColor={selectCarColor}
               onBack={() => setScreen('title')}
@@ -877,6 +908,7 @@ export default function GameApp() {
               onRestart={restartRace}
               onGarage={goToGarage}
               onMenu={goToTitle}
+              xpReport={xpReport}
             />
           )}
         </div>

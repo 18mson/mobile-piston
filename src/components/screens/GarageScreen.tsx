@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import type { CarId, CarSpec } from '../../game/types';
+import { carUnlockDef, isCarUnlocked } from '../../game/progression';
+import styles from '../progression.module.css';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import CarThumb from '../CarThumb';
 import StatBars from '../StatBars';
@@ -12,7 +15,11 @@ export default function GarageScreen({
   onSelectColor,
   onBack,
   onStart,
+  xp = 0,
+  unlocks,
 }: {
+  xp?: number;
+  unlocks?: string[];
   selectedCarId: CarId;
   selectedColors: Partial<Record<CarId, number>>;
   onSelect: (id: CarId) => void;
@@ -20,12 +27,19 @@ export default function GarageScreen({
   onBack: () => void;
   onStart: () => void;
 }) {
-  const activeColorIndex = selectedColors[selectedCarId] ?? 0;
+  // A locked car can be previewed (to tempt the player) but never selected.
+  const [previewId, setPreviewId] = useState<CarId | null>(null);
+  const shownId: CarId = previewId ?? selectedCarId;
+  const lockLevel = (id: CarId): number | null =>
+    isCarUnlocked(id, { xp, unlocks }) ? null : (carUnlockDef(id)?.level ?? null);
+  const shownLockLevel = lockLevel(shownId);
+
+  const activeColorIndex = selectedColors[shownId] ?? 0;
   const selected: CarSpec = {
-    ...CARS[selectedCarId],
-    palette: getCarPalette(selectedCarId, activeColorIndex),
+    ...CARS[shownId],
+    palette: getCarPalette(shownId, activeColorIndex),
   };
-  const colorOptions = CAR_COLORS[selectedCarId];
+  const colorOptions = CAR_COLORS[shownId];
 
   return (
     <section className="screen garage-screen" data-menu-scope="active" aria-labelledby="garage-heading">
@@ -52,7 +66,7 @@ export default function GarageScreen({
             <div className="car-detail-info">
               <div className="car-detail-heading">
                 <div>
-                  <span className="label">Mobil terpilih</span>
+                  <span className="label">{shownLockLevel == null ? 'Mobil terpilih' : 'Pratinjau (terkunci)'}</span>
                   <h3>{selected.name}</h3>
                   <p className="car-kind">{selected.kind}</p>
                 </div>
@@ -71,7 +85,8 @@ export default function GarageScreen({
                         data-active={index === activeColorIndex}
                         aria-label={`Warna ${option.label}`}
                         aria-pressed={index === activeColorIndex}
-                        onClick={() => onSelectColor(selectedCarId, index)}
+                        disabled={shownLockLevel != null}
+                        onClick={() => onSelectColor(shownId, index)}
                         style={{
                           background: `linear-gradient(135deg, ${option.palette.body} 62%, ${option.palette.stripe} 62%)`,
                         }}
@@ -83,6 +98,11 @@ export default function GarageScreen({
                 <StatBars car={selected} />
               </div>
 
+              {shownLockLevel != null && (
+                <p className={styles.lockNote} role="status">
+                  Terkunci. Capai Level {shownLockLevel} untuk membuka {selected.name}.
+                </p>
+              )}
               <p className="car-blurb">{selected.blurb}</p>
               <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
             </div>
@@ -95,23 +115,35 @@ export default function GarageScreen({
                 ...CARS[id],
                 palette: getCarPalette(id, colorIdx),
               };
-              const selectedCard = id === selectedCarId;
+              const selectedCard = id === selectedCarId && previewId == null;
+              const needLevel = lockLevel(id);
               return (
                 <button
                   key={id}
                   type="button"
-                  className="car-card"
+                  className={needLevel == null ? 'car-card' : `car-card ${styles.lockedCard}`}
                   data-selected={selectedCard}
+                  data-locked={needLevel != null}
                   aria-pressed={selectedCard}
-                  onClick={() => onSelect(id)}
+                  onClick={() => {
+                    if (needLevel != null) {
+                      setPreviewId(id);
+                      return;
+                    }
+                    setPreviewId(null);
+                    onSelect(id);
+                  }}
                   data-nav
                 >
+                  {needLevel != null && <span className={styles.lockTag}>Level {needLevel}</span>}
                   <span className="car-card-top">
                     <strong>{car.name}</strong>
                     <span>{car.kind}</span>
                   </span>
                   <StatBars car={car} compact />
-                  <span className="car-card-state">{selectedCard ? 'Mobil terpilih' : 'Pilih mobil'}</span>
+                  <span className="car-card-state">
+                    {needLevel != null ? `Terkunci: Level ${needLevel}` : selectedCard ? 'Mobil terpilih' : 'Pilih mobil'}
+                  </span>
                 </button>
               );
             })}

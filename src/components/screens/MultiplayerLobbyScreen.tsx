@@ -22,6 +22,7 @@ export default function MultiplayerLobbyScreen({
   initialJoinCode = '',
   onChangeName,
   onSelectCar,
+  carLockLevel,
   onSelectColor,
   onSelectTrack,
   onCreateRoom,
@@ -43,6 +44,7 @@ export default function MultiplayerLobbyScreen({
   initialJoinCode?: string;
   onChangeName: (name: string) => void;
   onSelectCar: (carId: CarId) => void;
+  carLockLevel?: (carId: CarId) => number | null;
   onSelectColor: (colorIndex: number) => void;
   onSelectTrack: (trackId: TrackId) => void;
   onCreateRoom: () => void;
@@ -183,9 +185,15 @@ export default function MultiplayerLobbyScreen({
                         type="button"
                         className="btn btn-small"
                         data-active={id === selectedCarId}
-                        onClick={() => onSelectCar(id)}
+                        disabled={carLockLevel?.(id) != null}
+                        title={carLockLevel?.(id) != null ? `Terkunci: capai Level ${carLockLevel(id)}` : undefined}
+                        onClick={() => {
+                          if (carLockLevel?.(id) != null) return;
+                          onSelectCar(id);
+                        }}
                       >
                         {CARS[id].name}
+                        {carLockLevel?.(id) != null ? ` (Lv ${carLockLevel(id)})` : ''}
                       </button>
                     ))}
                   </div>
@@ -337,9 +345,15 @@ export default function MultiplayerLobbyScreen({
                         type="button"
                         className="btn btn-small"
                         data-active={id === selectedCarId}
-                        onClick={() => onSelectCar(id)}
+                        disabled={carLockLevel?.(id) != null}
+                        title={carLockLevel?.(id) != null ? `Terkunci: capai Level ${carLockLevel(id)}` : undefined}
+                        onClick={() => {
+                          if (carLockLevel?.(id) != null) return;
+                          onSelectCar(id);
+                        }}
                       >
                         {CARS[id].name}
+                        {carLockLevel?.(id) != null ? ` (Lv ${carLockLevel(id)})` : ''}
                       </button>
                     ))}
                   </div>

@@ -1,0 +1,149 @@
+/* Styles for the level / XP system. Uses CSS modules so it cannot collide with the global stylesheet. */
+
+.badge {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.badgeTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.levelChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 2px solid #ffd45a;
+  border-radius: 6px;
+  background: rgba(255, 212, 90, 0.14);
+  color: #ffd45a;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.levelChip small {
+  font-size: 0.7em;
+  opacity: 0.85;
+  text-transform: uppercase;
+}
+
+.xpText {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.bar {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffb347, #ffd45a);
+  transition: width 0.9s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+.xpPanel {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 212, 90, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 212, 90, 0.07);
+}
+
+.xpHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.xpTotal {
+  color: #ffd45a;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.rows {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.rows li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rows li span:last-child {
+  font-variant-numeric: tabular-nums;
+  color: #ffd45a;
+}
+
+.levelUp {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(86, 214, 120, 0.16);
+  border: 1px solid rgba(86, 214, 120, 0.55);
+  color: #8ff0a8;
+  font-weight: 700;
+}
+
+.unlockList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+/* Locked cars in the garage / lobby */
+.lockedCard {
+  opacity: 0.66;
+  filter: grayscale(0.6);
+  position: relative;
+}
+
+.lockTag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid #ffd45a;
+  color: #ffd45a;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.lockNote {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px dashed #ffd45a;
+  border-radius: 6px;
+  color: #ffd45a;
+  font-weight: 700;
+}
+
+.pillLocked {
+  opacity: 0.55;
+}

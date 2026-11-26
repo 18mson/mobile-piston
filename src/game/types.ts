@@ -177,6 +177,14 @@ export interface RaceResult {
   bestLapMs: number | null;
 }
 
+export interface RaceStats {
+  driftSeconds: number;
+  offroadSeconds: number;
+  hits: number;
+  cleanLaps: number;
+  lapsCompleted: number;
+}
+
 export interface RaceResults {
   results: RaceResult[];
   playerPosition: number;
@@ -184,6 +192,7 @@ export interface RaceResults {
   previousBestLapMs: number | null;
   isNewRecord: boolean;
   totalTimeMs: number;
+  stats?: RaceStats;
 }
 
 export type SavedCameraMode = 'top' | 'chase' | 'cockpit';
@@ -203,6 +212,7 @@ export interface SaveData {
   cameraMode?: SavedCameraMode;
   selectedColors?: Partial<Record<CarId, number>>;
   unlocks?: string[];
+  xp?: number;
 }
 
 export interface HudUpdate {

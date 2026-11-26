@@ -5,6 +5,7 @@ import { Renderer3D, type CameraMode } from './render3d/renderer3d';
 import { InputManager } from './input';
 import { GameAudio } from './audio';
 import { clamp } from './utils';
+import { RaceStatsTracker } from './raceStats';
 import { computeAiInput } from './ai';
 import { NetRaceSync, type NetDebugStats } from './net/sync';
 
@@ -50,6 +51,7 @@ export class GameEngine {
   private selectedCar: CarId = 'sirip';
   private previousBestLapMs: number | null = null;
   private impactSoundCooldown = 0;
+  private raceStats = new RaceStatsTracker();
   private motionQuery: MediaQueryList | null = null;
   private onlineSync: NetRaceSync | null = null;
   private netClient: NetTransport | null = null;
@@ -153,6 +155,7 @@ export class GameEngine {
     void this.audio.unlock();
     this.selectedCar = carId;
     this.previousBestLapMs = previousBestLapMs;
+    this.raceStats.reset();
     this.race = new RaceSim(this.track, carId, playerPalette);
     this.renderer.setRacers(this.race.racers, cameraMode);
     this.renderer.resetMarks();
@@ -209,6 +212,7 @@ export class GameEngine {
     this.selectedCar = this.race.player.carId;
     this.renderer.setRacers(this.race.racers, cameraMode, false);
     this.renderer.resetMarks();
+    this.raceStats.reset();
     this.mode = 'online';
     this.accumulator = 0;
     this.snapshotTimer = 0;
@@ -232,7 +236,7 @@ export class GameEngine {
     if (this.mode !== 'online') return;
     this.mode = 'finished';
     this.audio.updateEngine(0, 1, false, false, false);
-    this.callbacks.onFinished(results);
+    this.callbacks.onFinished({ ...results, stats: this.raceStats.result() });
   }
 
   pause(): void {
@@ -463,6 +467,7 @@ export class GameEngine {
       this.impactSoundCooldown = 0.16;
     }
     this.updateRaceAudio(this.race.player, true);
+    if (this.mode === 'racing') this.raceStats.update(dt, this.race.player);
 
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
     this.renderCurrentFrame(dt, alpha);
@@ -514,6 +519,7 @@ export class GameEngine {
       this.impactSoundCooldown = 0.16;
     }
     this.updateRaceAudio(renderPlayer, this.onlineSync.currentMode === 'racing');
+    if (this.onlineSync.currentMode === 'racing') this.raceStats.update(dt, renderPlayer);
 
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
     const snapshotMode = this.onlineSync.currentMode === 'countdown' ? 'countdown' : 'racing';
@@ -537,7 +543,7 @@ export class GameEngine {
   private finishRace(): void {
     if (!this.race) return;
     this.race.completeRace();
-    const results = this.race.results(this.previousBestLapMs);
+    const results = { ...this.race.results(this.previousBestLapMs), stats: this.raceStats.result() };
     this.mode = 'finished';
     this.audio.updateEngine(0, 1, false, false, false);
     this.emitSnapshot();

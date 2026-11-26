@@ -18,11 +18,17 @@ describe('saved progress', () => {
       selectedTrackId: 'mata-air',
       bestLapMs: { 'teluk-sore': 24123, 'mata-air': 13880, broken: -4, text: 'fast' },
       audioMuted: 'yes',
+      xp: 300,
     });
     expect(save.selectedCarId).toBe('kepik');
     expect(save.selectedTrackId).toBe('mata-air');
     expect(save.bestLapMs).toEqual({ 'teluk-sore': 24123, 'mata-air': 13880 });
     expect(save.audioMuted).toBe(false);
+    expect(save.xp).toBe(300);
+
+    // Locked car without enough XP falls back to default car
+    const locked = normalizeSave({ version: 2, selectedCarId: 'kepik', xp: 0 });
+    expect(locked.selectedCarId).toBe('sirip');
   });
 
   it('falls back to the default car and track when ids are unknown', () => {
