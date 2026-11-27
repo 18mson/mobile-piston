@@ -75,7 +75,7 @@ export async function listPublicRooms(): Promise<PublicRoomInfo[]> {
       trackId: (row.track_id as TrackId) ?? 'teluk-sore',
       totalLaps: (row.total_laps === 4 || row.total_laps === 5 ? row.total_laps : 3) as LapCount,
       playerCount: Number(row.player_count ?? 1),
-      maxPlayers: Number(row.max_players ?? 6),
+      maxPlayers: Number(row.max_players ?? 8),
       status: (row.status as PublicRoomInfo['status']) ?? 'lobby',
       updatedAt: String(row.updated_at),
     }));

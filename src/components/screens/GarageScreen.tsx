@@ -119,8 +119,9 @@ export default function GarageScreen({
                 </div>
 
                 <StatBars car={selected} />
-                {onSelectTire && <TirePicker selectedTire={selectedTire} xp={xp} unlocks={unlocks} onSelect={onSelectTire} />}
               </div>
+
+              {onSelectTire && <TirePicker selectedTire={selectedTire} xp={xp} unlocks={unlocks} onSelect={onSelectTire} />}
 
               {shownLockLevel != null && (
                 <p className={styles.lockNote} role="status">

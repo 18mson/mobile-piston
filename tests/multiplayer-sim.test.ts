@@ -4,7 +4,7 @@ import { RaceSim } from '../src/game/race';
 import type { PlayerInput } from '../src/game/types';
 
 describe('multiplayer simulation core', () => {
-  it('fills remaining slots with AI bots up to 6 racers', () => {
+  it('fills remaining slots with AI bots up to 8 racers', () => {
     const race = new RaceSim(TELUK_SORE, 'sirip', {
       participants: [
         { id: 'p1', label: 'Andi', carId: 'sirip', colorIndex: 1 },
@@ -14,11 +14,11 @@ describe('multiplayer simulation core', () => {
       fillWithAi: true,
     });
 
-    expect(race.racers).toHaveLength(6);
+    expect(race.racers).toHaveLength(8);
     const humans = race.racers.filter((r) => r.isHuman);
     const bots = race.racers.filter((r) => !r.isHuman);
     expect(humans).toHaveLength(2);
-    expect(bots).toHaveLength(4);
+    expect(bots).toHaveLength(6);
     expect(race.player.id).toBe('p1');
     expect(race.racers.find((r) => r.id === 'p2')?.isPlayer).toBe(false);
   });

@@ -278,7 +278,7 @@ export default function MultiplayerLobbyScreen({
                   Gabung
                 </button>
               </div>
-              <p className="detail-note">Sisa slot dari total 6 mobil otomatis diisi oleh Bot AI.</p>
+              <p className="detail-note">Sisa slot dari total 8 mobil otomatis diisi oleh Bot AI.</p>
             </div>
 
             <div className="panel mp-card mp-public-rooms">
@@ -355,9 +355,9 @@ export default function MultiplayerLobbyScreen({
                 )}
               </div>
 
-              <span className="label">Pembalap ({room.players.length}/6 Manusia)</span>
+              <span className="label">Pembalap ({room.players.length}/8 Manusia)</span>
               <ul className="mp-player-list">
-                {Array.from({ length: 6 }).map((_, slotIdx) => {
+                {Array.from({ length: 8 }).map((_, slotIdx) => {
                   const p = room.players[slotIdx];
                   if (!p) {
                     return (

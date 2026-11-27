@@ -743,7 +743,7 @@ export default function GameApp() {
         trackId: roomState.trackId,
         totalLaps: roomState.totalLaps ?? 3,
         playerCount: roomState.players.length,
-        maxPlayers: 6,
+        maxPlayers: 8,
         status: roomState.status,
       });
     };

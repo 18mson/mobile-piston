@@ -60,7 +60,7 @@ describe('multiplayer room manager', () => {
     const snap = room.getSnapshot();
     expect(snap).not.toBeNull();
     expect(snap!.mode).toBe('racing');
-    expect(snap!.racers).toHaveLength(6);
+    expect(snap!.racers).toHaveLength(8);
     expect(snap!.lastProcessedSeq.host1).toBeGreaterThanOrEqual(2);
     const hostCar = snap!.racers.find((r) => r.id === 'host1')!;
     expect(hostCar.nitroActive).toBe(true);

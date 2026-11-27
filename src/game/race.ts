@@ -96,9 +96,9 @@ export interface RaceOptions {
 
 /** AI tyre choices per weather mode. Mixed on purpose so the field is not all on the same gamble. */
 const AI_TIRES: Record<WeatherMode, TireId[]> = {
-  clear: ['standard', 'standard', 'grip', 'standard', 'standard'],
-  rain: ['rain', 'standard', 'rain', 'rain', 'standard'],
-  dynamic: ['standard', 'rain', 'standard', 'grip', 'standard'],
+  clear: ['standard', 'standard', 'grip', 'standard', 'standard', 'grip', 'standard'],
+  rain: ['rain', 'standard', 'rain', 'rain', 'standard', 'rain', 'standard'],
+  dynamic: ['standard', 'rain', 'standard', 'grip', 'standard', 'rain', 'grip'],
 };
 
 export class RaceSim {
@@ -127,7 +127,7 @@ export class RaceSim {
 
     if (opts.participants && opts.participants.length > 0) {
       const localId = opts.localPlayerId ?? opts.participants[0].id;
-      const humanConfigs: RacerConfig[] = opts.participants.slice(0, 6).map((p, idx) => ({
+      const humanConfigs: RacerConfig[] = opts.participants.slice(0, 8).map((p, idx) => ({
         id: p.id,
         label: p.label,
         carId: p.carId,
@@ -139,7 +139,7 @@ export class RaceSim {
       }));
 
       const fillWithAi = opts.fillWithAi ?? true;
-      const aiNeeded = fillWithAi ? Math.max(0, 6 - humanConfigs.length) : 0;
+      const aiNeeded = fillWithAi ? Math.max(0, 8 - humanConfigs.length) : 0;
       const aiConfigs: RacerConfig[] = AI_LIVERIES.slice(0, aiNeeded).map((livery) => ({
         ...livery,
         isPlayer: false,
@@ -187,22 +187,18 @@ export class RaceSim {
     const aiPool = AI_LIVERIES.filter((livery) => livery.carId !== playerConfig.carId);
     let trackHash = 0;
     for (const ch of track.id) trackHash = (trackHash * 31 + ch.charCodeAt(0)) >>> 0;
-    const aiConfigs = Array.from({ length: 5 }, (_, i) => {
+    const aiConfigs = Array.from({ length: 7 }, (_, i) => {
       const livery = aiPool[(trackHash + i) % aiPool.length];
       return { ...livery, isPlayer: false, isHuman: false, tire: AI_TIRES[this.weatherConfig.mode][i] };
     });
     playerConfig.tire = opts.playerTire ?? 'standard';
     const configurations: RacerConfig[] = [
-      aiConfigs[0],
-      aiConfigs[1],
-      aiConfigs[2],
-      aiConfigs[3],
-      aiConfigs[4],
+      ...aiConfigs,
       playerConfig,
     ];
-    const slots = [0, 1, 2, 3, 4, 5];
+    const slots = [0, 1, 2, 3, 4, 5, 6, 7];
     this.racers = configurations.map((config, index) => createRacer(config, track, slots[index]));
-    this.player = this.racers[5];
+    this.player = this.racers[7];
   }
 
   get playerFinished(): boolean {

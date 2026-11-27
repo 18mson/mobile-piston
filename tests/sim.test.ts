@@ -34,9 +34,9 @@ describe('track geometry', () => {
 });
 
 describe('race simulation', () => {
-  it('runs six cars through three laps without NaNs or stalls', () => {
+  it('runs eight cars through three laps without NaNs or stalls', () => {
     const race = new RaceSim(TELUK_SORE, 'sirip');
-    expect(race.racers).toHaveLength(6);
+    expect(race.racers).toHaveLength(8);
     let steps = 0;
     while (!race.playerFinished && steps < 120 * 180) {
       const autopilot = computeAiInput(race.player, race.racers, TELUK_SORE, race.elapsed);
@@ -56,9 +56,9 @@ describe('race simulation', () => {
     }
     race.completeRace();
     const results = race.results(null);
-    expect(results.results).toHaveLength(6);
+    expect(results.results).toHaveLength(8);
     expect(results.results.every((result) => result.timeMs != null)).toBe(true);
-    expect(new Set(results.results.map((result) => result.position)).size).toBe(6);
+    expect(new Set(results.results.map((result) => result.position)).size).toBe(8);
   });
 
   it('runs the Mata Air circuit through three timed laps', () => {
@@ -75,7 +75,7 @@ describe('race simulation', () => {
     expect(race.player.bestLapMs!).toBeGreaterThan(8000);
     race.completeRace();
     const results = race.results(null);
-    expect(results.results).toHaveLength(6);
+    expect(results.results).toHaveLength(8);
     expect(results.results.every((result) => result.timeMs != null)).toBe(true);
   });
 

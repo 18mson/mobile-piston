@@ -6,7 +6,7 @@ create table if not exists public.rooms (
   track_id text not null,
   total_laps smallint not null default 3,
   player_count smallint not null default 1,
-  max_players smallint not null default 6,
+  max_players smallint not null default 8,
   status text not null default 'lobby',
   updated_at timestamptz not null default now(),
   constraint rooms_code_format check (room_code ~ '^[A-Z0-9]{4,8}$'),

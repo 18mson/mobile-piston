@@ -24,8 +24,8 @@ describe('race outcomes', () => {
     expect(race.player.finishTime).not.toBeNull();
     race.completeRace();
     const results = race.results(null);
-    expect(results.results).toHaveLength(6);
-    expect(new Set(results.results.map((result) => result.position))).toEqual(new Set([1, 2, 3, 4, 5, 6]));
+    expect(results.results).toHaveLength(8);
+    expect(new Set(results.results.map((result) => result.position))).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8]));
     expect(results.results.filter((result) => result.isPlayer)).toHaveLength(1);
     expect(results.results.every((result) => result.timeMs != null && result.timeMs > 0)).toBe(true);
     expect(results.isNewRecord).toBe(true);

@@ -84,7 +84,7 @@ export default function TrackSelectScreen({
                   <span className="label">Rute {ROUTE_KIND[id] ?? 'khusus'}</span>
                   <strong>{track.name}</strong>
                   <span className="track-select-subtitle">{track.subtitle}</span>
-                  <span className="track-select-meta">{selectedLaps} putaran / 6 mobil / start P6</span>
+                  <span className="track-select-meta">{selectedLaps} putaran / 8 mobil / start P8</span>
                   <span className="track-select-record">
                     {lockLevel != null
                       ? `Terkunci - Terbuka di Level ${lockLevel}`

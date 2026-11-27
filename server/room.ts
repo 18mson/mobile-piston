@@ -13,7 +13,7 @@ import type {
   WorldSnapshot,
 } from '../src/game/types';
 
-export const MAX_ROOM_PLAYERS = 6;
+export const MAX_ROOM_PLAYERS = 8;
 export const RECONNECT_GRACE_MS = 15_000;
 const FIXED_STEP = 1 / 120;
 const SNAPSHOT_INTERVAL_SECONDS = 1 / 30; // 30 Hz network broadcast
