@@ -82,17 +82,17 @@ describe('cloud save merge & offline sync', () => {
   it('merges two browser saves taking minimum bestLapMs, union of unlocks, and newest car/color', () => {
     const localSave: SaveData = {
       ...defaultSave(),
-      selectedCarId: 'hachi',
-      selectedColors: { hachi: 2 },
+      selectedCarId: 'sally',
+      selectedColors: { sally: 2 },
       bestLapMs: { 'teluk-sore': 21500, 'mata-air': 18900 },
       unlocks: ['track-lereng'],
     };
     const remoteSave: SaveData = {
       ...defaultSave(),
-      selectedCarId: 'kart',
-      selectedColors: { kart: 1 },
+      selectedCarId: 'guido',
+      selectedColors: { guido: 1 },
       bestLapMs: { 'teluk-sore': 22400, 'lereng-kopi': 25100 },
-      unlocks: ['car-kart'],
+      unlocks: ['car-guido'],
     };
 
     const merged = mergeSaves(localSave, 1000, remoteSave, 2000);
@@ -101,9 +101,9 @@ describe('cloud save merge & offline sync', () => {
       'mata-air': 18900,
       'lereng-kopi': 25100,
     });
-    expect(merged.unlocks).toEqual(['track-lereng', 'car-kart']);
-    expect(merged.selectedCarId).toBe('kart');
-    expect(merged.selectedColors).toEqual({ kart: 1 });
+    expect(merged.unlocks).toEqual(['track-lereng', 'car-guido']);
+    expect(merged.selectedCarId).toBe('guido');
+    expect(merged.selectedColors).toEqual({ guido: 1 });
   });
 
   it('queues failed offline writes and flushes when back online', async () => {
@@ -128,11 +128,11 @@ describe('cloud save merge & offline sync', () => {
     } as unknown as SupabaseClient;
 
     const sync = new CloudSaveSync({ client: mockClient });
-    const save = { ...defaultSave(), selectedCarId: 'go' as const, bestLapMs: { 'teluk-sore': 20100 } };
+    const save = { ...defaultSave(), selectedCarId: 'luigi' as const, bestLapMs: { 'teluk-sore': 20100 } };
 
     // Guest or offline save still persists locally
     expect(sync.saveLocalAndSchedule(save, 'user-a')).toBe(true);
-    expect(loadSave().selectedCarId).toBe('go');
+    expect(loadSave().selectedCarId).toBe('luigi');
     expect(window.localStorage.getItem(PENDING_SYNC_KEY)).not.toBeNull();
 
     // Flush fails while offline, keeps pending queue intact
@@ -151,12 +151,12 @@ describe('cloud save merge & offline sync', () => {
   });
 
   it('clears account cache on logout so account progress never leaks to guest mode', async () => {
-    const guestSave: SaveData = { ...defaultSave(), selectedCarId: 'okra', bestLapMs: { 'teluk-sore': 29000 } };
+    const guestSave: SaveData = { ...defaultSave(), selectedCarId: 'sally', bestLapMs: { 'teluk-sore': 29000 } };
     persistSave(guestSave);
 
     const accountRemote: SaveData = {
       ...defaultSave(),
-      selectedCarId: 'bagas',
+      selectedCarId: 'doc',
       bestLapMs: { 'teluk-sore': 19500 },
       unlocks: ['vip'],
     };
@@ -182,10 +182,10 @@ describe('cloud save merge & offline sync', () => {
 
     // Logout restores guest save and removes account progress from SAVE_KEY
     const afterLogout = sync.handleLogout();
-    expect(afterLogout.selectedCarId).toBe('okra');
+    expect(afterLogout.selectedCarId).toBe('sally');
     expect(afterLogout.bestLapMs['teluk-sore']).toBe(29000);
     expect(afterLogout.unlocks).toBeUndefined();
-    expect(JSON.parse(window.localStorage.getItem(SAVE_KEY)!).selectedCarId).toBe('okra');
+    expect(JSON.parse(window.localStorage.getItem(SAVE_KEY)!).selectedCarId).toBe('sally');
     sync.dispose();
   });
 

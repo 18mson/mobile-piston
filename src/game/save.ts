@@ -9,10 +9,29 @@ export const SAVE_KEY = 'mobile-piston.save.v2';
 export const LEGACY_SAVE_KEY = 'mobile-piston.save.v1';
 const VALID_CAMERAS: SavedCameraMode[] = ['top', 'chase', 'cockpit'];
 
+const LEGACY_CAR_MAP: Record<string, CarId> = {
+  sirip: 'mcqueen',
+  go: 'luigi',
+  kart: 'guido',
+  hachi: 'sally',
+  kepik: 'chick',
+  okra: 'mater',
+  bagas: 'doc',
+  tanduk: 'cruz',
+  bima: 'francesco',
+  rota: 'storm',
+};
+
+function resolveCarId(rawId: unknown): CarId | null {
+  if (typeof rawId !== 'string') return null;
+  if (CAR_ORDER.includes(rawId as CarId)) return rawId as CarId;
+  return LEGACY_CAR_MAP[rawId] ?? null;
+}
+
 export function defaultSave(): SaveData {
   return {
     version: 2,
-    selectedCarId: 'sirip',
+    selectedCarId: 'mcqueen',
     selectedTrackId: 'teluk-sore',
     bestLapMs: {},
     audioMuted: false,
@@ -25,9 +44,7 @@ export function normalizeSave(raw: unknown): SaveData {
   const fallback = defaultSave();
   if (!raw || typeof raw !== 'object') return fallback;
   const data = raw as Partial<SaveData>;
-  let selectedCarId = CAR_ORDER.includes(data.selectedCarId as CarId)
-    ? (data.selectedCarId as CarId)
-    : fallback.selectedCarId;
+  let selectedCarId = resolveCarId(data.selectedCarId) ?? fallback.selectedCarId;
   let selectedTrackId = TRACK_ORDER.includes(data.selectedTrackId as TrackId)
     ? (data.selectedTrackId as TrackId)
     : fallback.selectedTrackId;
@@ -44,9 +61,9 @@ export function normalizeSave(raw: unknown): SaveData {
     : fallback.cameraMode;
   const selectedColors: Partial<Record<CarId, number>> = {};
   if (data.selectedColors && typeof data.selectedColors === 'object') {
-    for (const carId of CAR_ORDER) {
-      const idx = (data.selectedColors as Record<string, unknown>)[carId];
-      if (typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < 4) {
+    for (const [rawKey, idx] of Object.entries(data.selectedColors as Record<string, unknown>)) {
+      const carId = resolveCarId(rawKey);
+      if (carId && typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < 4) {
         selectedColors[carId] = idx;
       }
     }
@@ -54,7 +71,13 @@ export function normalizeSave(raw: unknown): SaveData {
   const unlocks = Array.isArray(data.unlocks)
     ? Array.from(
         new Set(
-          data.unlocks.filter((item): item is string => typeof item === 'string' && item.trim().length > 0),
+          data.unlocks
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .map((item) => {
+              if (!item.startsWith('car:')) return item;
+              const mapped = resolveCarId(item.slice(4));
+              return mapped ? `car:${mapped}` : item;
+            }),
         ),
       )
     : undefined;

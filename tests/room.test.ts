@@ -8,16 +8,16 @@ describe('multiplayer room manager', () => {
     const hostMsgs: ServerMessage[] = [];
     const guestMsgs: ServerMessage[] = [];
 
-    const room = manager.createRoom('p1', 'Andi', 'sirip', 0, 'teluk-sore', (m) => hostMsgs.push(m));
+    const room = manager.createRoom('p1', 'Andi', 'mcqueen', 0, 'teluk-sore', (m) => hostMsgs.push(m));
     expect(room.roomCode).toHaveLength(5);
     expect(room.hostId).toBe('p1');
     expect(room.memberCount).toBe(1);
 
-    const joinRes = manager.joinRoom(room.roomCode, 'p2', 'Budi', 'bagas', 1, (m) => guestMsgs.push(m));
+    const joinRes = manager.joinRoom(room.roomCode, 'p2', 'Budi', 'doc', 1, (m) => guestMsgs.push(m));
     expect(joinRes.ok).toBe(true);
     expect(room.memberCount).toBe(2);
 
-    const badJoin = manager.joinRoom('ZZZZZ', 'p3', 'Cici', 'okra', 0, () => {});
+    const badJoin = manager.joinRoom('ZZZZZ', 'p3', 'Cici', 'mater', 0, () => {});
     expect(badJoin.ok).toBe(false);
 
     // Host leaves -> Budi becomes host
@@ -33,8 +33,8 @@ describe('multiplayer room manager', () => {
   it('runs countdown, steps physics with clamped inputs, and broadcasts snapshots', () => {
     const room = new GameRoom('ABC12', 'teluk-sore', 'host1');
     const msgs: ServerMessage[] = [];
-    room.addMember('host1', 'Host', 'sirip', 0, (m) => msgs.push(m));
-    room.addMember('guest1', 'Guest', 'kepik', 2, () => {});
+    room.addMember('host1', 'Host', 'mcqueen', 0, (m) => msgs.push(m));
+    room.addMember('guest1', 'Guest', 'chick', 2, () => {});
 
     const started = room.startRace('host1', false);
     expect(started).toBe(true);
@@ -68,8 +68,8 @@ describe('multiplayer room manager', () => {
 
   it('allows disconnected racers to rejoin within grace window and evicts after timeout', () => {
     const manager = new RoomManager();
-    const room = manager.createRoom('p1', 'Host', 'sirip', 0, 'teluk-sore', () => {});
-    manager.joinRoom(room.roomCode, 'p2', 'Guest', 'bagas', 1, () => {});
+    const room = manager.createRoom('p1', 'Host', 'mcqueen', 0, 'teluk-sore', () => {});
+    manager.joinRoom(room.roomCode, 'p2', 'Guest', 'doc', 1, () => {});
     room.startRace('p1', false);
 
     // Guest disconnects mid-race: kept in room during grace window

@@ -1,14 +1,14 @@
 export type CarId =
-  | 'sirip'
-  | 'go'
-  | 'bagas'
-  | 'okra'
-  | 'kepik'
-  | 'hachi'
-  | 'kart'
-  | 'tanduk'
-  | 'bima'
-  | 'rota';
+  | 'mcqueen'
+  | 'luigi'
+  | 'guido'
+  | 'sally'
+  | 'chick'
+  | 'mater'
+  | 'doc'
+  | 'cruz'
+  | 'francesco'
+  | 'storm';
 export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan';
 export type TrackTheme = 'coast' | 'highland';
 export type TireId = 'standard' | 'grip' | 'rain' | 'terrain';
@@ -38,12 +38,20 @@ export interface CarPalette {
   wheel: string;
 }
 
+export interface CarCollision {
+  radius: number;
+  axleOffset: number;
+  circleRadius: number;
+}
+
 export interface CarSpec {
   id: CarId;
   name: string;
   kind: string;
   blurb: string;
+  number?: number;
   stats: CarStats;
+  collision?: CarCollision;
   palette: CarPalette;
 }
 

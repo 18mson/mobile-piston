@@ -74,14 +74,15 @@ export interface UnlockDef {
 }
 
 export const UNLOCKS: UnlockDef[] = [
-  { id: 'car:kepik', kind: 'car', refId: 'kepik', level: 3, label: 'Kepik' },
-  { id: 'car:tanduk', kind: 'car', refId: 'tanduk', level: 5, label: 'Tanduk' },
+  { id: 'car:chick', kind: 'car', refId: 'chick', level: 3, label: 'Chick' },
+  { id: 'car:mater', kind: 'car', refId: 'mater', level: 5, label: 'Mater' },
   { id: 'tire:grip', kind: 'tire', refId: 'grip', level: 5, label: 'Ban Grip' },
   { id: 'track:pelabuhan', kind: 'track', refId: 'pelabuhan', level: 5, label: 'Sirkuit Pelabuhan' },
-  { id: 'car:hachi', kind: 'car', refId: 'hachi', level: 7, label: 'Hachi' },
-  { id: 'car:bima', kind: 'car', refId: 'bima', level: 10, label: 'Bima' },
+  { id: 'car:doc', kind: 'car', refId: 'doc', level: 7, label: 'Doc' },
+  { id: 'car:cruz', kind: 'car', refId: 'cruz', level: 9, label: 'Cruz' },
+  { id: 'car:francesco', kind: 'car', refId: 'francesco', level: 10, label: 'Francesco' },
   { id: 'tire:rain', kind: 'tire', refId: 'rain', level: 10, label: 'Ban Hujan' },
-  { id: 'car:rota', kind: 'car', refId: 'rota', level: 12, label: 'Rota' },
+  { id: 'car:storm', kind: 'car', refId: 'storm', level: 12, label: 'Storm' },
   { id: 'tire:terrain', kind: 'tire', refId: 'terrain', level: 14, label: 'Ban Tanah' },
 ];
 

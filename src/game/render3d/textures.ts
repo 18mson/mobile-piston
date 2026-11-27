@@ -252,13 +252,142 @@ export function createStartBannerTexture(trackName: string): THREE.CanvasTexture
   ctx.fillStyle = '#f5ebd2';
   ctx.font = 'bold 18px monospace';
   ctx.textBaseline = 'middle';
-  ctx.fillText('PUTARAN 3 / 6 MOBIL', 42, 27);
+  ctx.fillText('PUTARAN 3 / 8 MOBIL', 42, 27);
   ctx.font = 'bold 52px monospace';
   ctx.fillText(trackName.toUpperCase(), 42, 62);
   ctx.fillStyle = '#ff8f3d';
   ctx.fillRect(942, 20, 46, 5);
   ctx.fillRect(942, 32, 32, 5);
   const texture = canvasTexture(canvas, 1, 1, true);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+export function createSideVinylTexture(
+  carId: string,
+  stripeColor: string,
+  highlightColor: string,
+  number: number,
+): THREE.CanvasTexture {
+  const canvas = makeCanvas(256, 96);
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  ctx.clearRect(0, 0, 256, 96);
+
+  if (carId === 'mcqueen') {
+    // Signature jagged lightning bolt + bold number
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(14, 62);
+    ctx.lineTo(132, 30);
+    ctx.lineTo(118, 48);
+    ctx.lineTo(242, 22);
+    ctx.lineTo(144, 68);
+    ctx.lineTo(158, 50);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#ff6a1a';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  } else if (carId === 'doc' || carId === 'chick') {
+    // Classic twin NASCAR/Hornet side stripes
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(10, 36, 236, 12);
+    ctx.fillStyle = highlightColor;
+    ctx.fillRect(10, 52, 236, 5);
+  } else if (carId === 'cruz' || carId === 'storm') {
+    // Swept modern angular aero streak
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(12, 66);
+    ctx.lineTo(160, 26);
+    ctx.lineTo(244, 26);
+    ctx.lineTo(222, 46);
+    ctx.lineTo(128, 46);
+    ctx.lineTo(42, 74);
+    ctx.closePath();
+    ctx.fill();
+  } else if (carId === 'luigi' || carId === 'francesco') {
+    // Italian tricolore racing stripe
+    ctx.fillStyle = '#2ea353';
+    ctx.fillRect(12, 34, 232, 8);
+    ctx.fillStyle = '#f5f2ea';
+    ctx.fillRect(12, 42, 232, 8);
+    ctx.fillStyle = '#d9322b';
+    ctx.fillRect(12, 50, 232, 8);
+  } else if (carId === 'mater') {
+    // Rust patina & tow service door emblem
+    ctx.fillStyle = 'rgba(72, 44, 28, 0.55)';
+    ctx.fillRect(18, 58, 72, 16);
+    ctx.fillRect(168, 54, 64, 18);
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(88, 32, 80, 32);
+  } else {
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(14, 42, 228, 12);
+  }
+
+  // Crisp racing number roundel on door
+  ctx.fillStyle = carId === 'mcqueen' ? '#e12b26' : 'rgba(20, 28, 38, 0.86)';
+  ctx.beginPath();
+  ctx.arc(128, 48, 25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = stripeColor;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.fillStyle = carId === 'mcqueen' ? stripeColor : '#ffffff';
+  ctx.font = 'bold 30px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(number), 128, 50);
+
+  const texture = canvasTexture(canvas, 1, 1, false);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+export function createHoodVinylTexture(
+  carId: string,
+  stripeColor: string,
+  highlightColor: string,
+): THREE.CanvasTexture {
+  const canvas = makeCanvas(128, 128);
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  ctx.clearRect(0, 0, 128, 128);
+
+  if (carId === 'mcqueen') {
+    // Hood emblem shield + twin speed hash
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.ellipse(64, 64, 34, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#c9231f';
+    ctx.beginPath();
+    ctx.ellipse(64, 64, 26, 17, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = stripeColor;
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('95', 64, 65);
+  } else if (carId === 'storm' || carId === 'cruz') {
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(16, 48, 96, 12);
+    ctx.fillRect(16, 68, 96, 12);
+  } else if (carId === 'doc' || carId === 'sally' || carId === 'chick') {
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(12, 42, 104, 16);
+    ctx.fillStyle = highlightColor;
+    ctx.fillRect(12, 70, 104, 16);
+  } else {
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(16, 54, 96, 20);
+  }
+
+  const texture = canvasTexture(canvas, 1, 1, false);
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;

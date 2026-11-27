@@ -83,7 +83,7 @@ export default function GarageScreen({
         <div className="garage-layout">
           <aside className="car-detail panel" aria-label={`Detail ${selected.name}`}>
             <div className={shownLockLevel != null ? `car-detail-visual ${styles.lockedPreview}` : 'car-detail-visual'}>
-              <CarThumb car={selected} scale={6} />
+              <CarThumb car={selected} number={selected.number ?? 1} scale={6} />
             </div>
 
             <div className="car-detail-info">
@@ -93,7 +93,7 @@ export default function GarageScreen({
                   <h3>{selected.name}</h3>
                   <p className="car-kind">{selected.kind}</p>
                 </div>
-                <span className="car-number">#{1}</span>
+                <span className="car-number">#{selected.number ?? 1}</span>
               </div>
 
               <div className="car-detail-specs">

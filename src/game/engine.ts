@@ -49,7 +49,7 @@ export class GameEngine {
   private raf = 0;
   private destroyed = false;
   private reducedMotion = false;
-  private selectedCar: CarId = 'sirip';
+  private selectedCar: CarId = 'mcqueen';
   private previousBestLapMs: number | null = null;
   private impactSoundCooldown = 0;
   private raceStats = new RaceStatsTracker();

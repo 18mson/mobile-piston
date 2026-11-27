@@ -673,18 +673,18 @@ export class Renderer3D {
       this.cockpitStripeMat.color.set(player.palette.stripe);
 
       const cid = player.carId;
-      const isOpen = cid === 'kart' || cid === 'kepik' || cid === 'bima';
+      const isOpen = cid === 'guido' || cid === 'francesco';
       this.cockpitClosedFrame.visible = !isOpen;
-      this.cockpitHoodGroup.visible = cid !== 'kart' && cid !== 'bima';
+      this.cockpitHoodGroup.visible = cid !== 'guido' && cid !== 'francesco';
       if (this.cockpitCenterHood) {
-        this.cockpitCenterHood.material = cid === 'hachi' ? this.cockpitStripeMat : this.cockpitHoodMat;
+        this.cockpitCenterHood.material = cid === 'sally' || cid === 'storm' ? this.cockpitStripeMat : this.cockpitHoodMat;
       }
       if (this.cockpitHoodScoop) {
-        this.cockpitHoodScoop.visible = cid === 'sirip' || cid === 'okra' || cid === 'tanduk' || cid === 'rota';
+        this.cockpitHoodScoop.visible = cid === 'mcqueen' || cid === 'cruz' || cid === 'storm';
       }
-      this.cockpitBlowerGroup.visible = cid === 'bagas';
-      this.cockpitPopUpsGroup.visible = cid === 'hachi';
-      this.cockpitRollCageGroup.visible = cid === 'kepik' || cid === 'tanduk';
+      this.cockpitBlowerGroup.visible = cid === 'mater';
+      this.cockpitPopUpsGroup.visible = cid === 'chick';
+      this.cockpitRollCageGroup.visible = cid === 'mcqueen' || cid === 'chick';
       this.cockpitOpenWheelsGroup.visible = isOpen;
 
       const speed = Math.hypot(player.vx, player.vy);

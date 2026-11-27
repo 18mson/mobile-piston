@@ -5,8 +5,8 @@ import type { WorldSnapshot } from '../src/game/types';
 
 describe('client netcode prediction & interpolation', () => {
   const participants = [
-    { id: 'p1', label: 'Host', carId: 'sirip' as const, colorIndex: 0 },
-    { id: 'p2', label: 'Guest', carId: 'bagas' as const, colorIndex: 1 },
+    { id: 'p1', label: 'Host', carId: 'mcqueen' as const, colorIndex: 0 },
+    { id: 'p2', label: 'Guest', carId: 'doc' as const, colorIndex: 1 },
   ];
 
   it('predicts local player movement immediately and reconciles against server snapshot', () => {

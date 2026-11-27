@@ -4,7 +4,7 @@ import { RaceSim } from '../src/game/race';
 import { computeAiInput } from '../src/game/ai';
 import { resolveRacerCollisions } from '../src/game/physics';
 
-function autopilotRace(car: 'sirip' | 'bagas' | 'okra' | 'kepik' = 'okra') {
+function autopilotRace(car: 'mcqueen' | 'doc' | 'mater' | 'chick' = 'mater') {
   const race = new RaceSim(TELUK_SORE, car);
   let steps = 0;
   while (!race.playerFinished && steps < 120 * 160) {
@@ -17,7 +17,7 @@ function autopilotRace(car: 'sirip' | 'bagas' | 'okra' | 'kepik' = 'okra') {
 
 describe('race outcomes', () => {
   it('records exactly three timed laps and a real finish order', () => {
-    const { race } = autopilotRace('kepik');
+    const { race } = autopilotRace('chick');
     expect(race.playerFinished).toBe(true);
     expect(race.player.lapTimes).toHaveLength(3);
     expect(race.player.bestLapMs).toBe(Math.min(...race.player.lapTimes));
@@ -32,7 +32,7 @@ describe('race outcomes', () => {
   });
 
   it('marks an improvement over a previous best as a new record only when faster', () => {
-    const { race } = autopilotRace('sirip');
+    const { race } = autopilotRace('mcqueen');
     const slower = race.results((race.player.bestLapMs ?? 0) - 1);
     expect(slower.isNewRecord).toBe(false);
     const faster = race.results((race.player.bestLapMs ?? 0) + 1);
@@ -40,7 +40,7 @@ describe('race outcomes', () => {
   });
 
   it('separates overlapping cars and keeps velocities finite', () => {
-    const race = new RaceSim(TELUK_SORE, 'bagas');
+    const race = new RaceSim(TELUK_SORE, 'doc');
     const a = race.racers[0];
     const b = race.racers[1];
     a.x = 1000;
@@ -58,7 +58,7 @@ describe('race outcomes', () => {
   });
 
   it('does not count an immediate start-line crossing as a completed lap', () => {
-    const race = new RaceSim(TELUK_SORE, 'sirip');
+    const race = new RaceSim(TELUK_SORE, 'mcqueen');
     for (let i = 0; i < 120 * 4; i += 1) {
       const input = computeAiInput(race.player, race.racers, TELUK_SORE, race.elapsed);
       race.update(1 / 120, input);
@@ -69,7 +69,7 @@ describe('race outcomes', () => {
 
   it('supports explore mode without resets, wrong-way flags, or race finish', () => {
     const sample = TELUK_SORE.samples[20];
-    const race = new RaceSim(TELUK_SORE, 'bagas', {
+    const race = new RaceSim(TELUK_SORE, 'doc', {
       explore: true,
       initialPose: {
         x: sample.x,
@@ -88,5 +88,33 @@ describe('race outcomes', () => {
     expect(race.player.stuckTime).toBe(0);
     expect(race.playerFinished).toBe(false);
     expect(race.snapshot('explore', null).mode).toBe('explore');
+  });
+
+  it('uses per-car collision bounds and mass asymmetry in collisions', () => {
+    const smallRace = new RaceSim(TELUK_SORE, 'guido');
+    const heavyRace = new RaceSim(TELUK_SORE, 'mater');
+    const guido = smallRace.player;
+    const mater = heavyRace.player;
+
+    guido.x = 1000;
+    guido.y = 1000;
+    guido.angle = 0;
+    guido.vx = 40;
+    guido.vy = 0;
+    guido.finished = false;
+
+    mater.x = 1009;
+    mater.y = 1000;
+    mater.angle = 0;
+    mater.vx = -20;
+    mater.vy = 0;
+    mater.finished = false;
+
+    const guidoStartX = guido.x;
+    const materStartX = mater.x;
+    resolveRacerCollisions([guido, mater]);
+    const guidoPush = Math.abs(guido.x - guidoStartX);
+    const materPush = Math.abs(mater.x - materStartX);
+    expect(guidoPush).toBeGreaterThan(materPush);
   });
 });

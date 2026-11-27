@@ -82,11 +82,11 @@ export function runHeadlessHarness(): HarnessMetrics {
   let guestRaceStarted: Extract<ServerMessage, { type: 'race_started' }> | null = null;
   const hostSnapQueue: WorldSnapshot[] = [];
 
-  room.addMember('host', 'Host', 'hachi', 0, (msg) => {
+  room.addMember('host', 'Host', 'sally', 0, (msg) => {
     if (msg.type === 'race_started') hostRaceStarted = msg;
     if (msg.type === 'snapshot') hostSnapQueue.push(msg.snapshot);
   });
-  room.addMember('guest1', 'Guest1', 'sirip', 1, (msg) => {
+  room.addMember('guest1', 'Guest1', 'mcqueen', 1, (msg) => {
     hostToGuest1.send(simNowMs, msg);
   });
 

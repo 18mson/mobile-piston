@@ -5,10 +5,10 @@ import type { PlayerInput } from '../src/game/types';
 
 describe('multiplayer simulation core', () => {
   it('fills remaining slots with AI bots up to 8 racers', () => {
-    const race = new RaceSim(TELUK_SORE, 'sirip', {
+    const race = new RaceSim(TELUK_SORE, 'mcqueen', {
       participants: [
-        { id: 'p1', label: 'Andi', carId: 'sirip', colorIndex: 1 },
-        { id: 'p2', label: 'Budi', carId: 'bagas', colorIndex: 2 },
+        { id: 'p1', label: 'Andi', carId: 'mcqueen', colorIndex: 1 },
+        { id: 'p2', label: 'Budi', carId: 'doc', colorIndex: 2 },
       ],
       localPlayerId: 'p1',
       fillWithAi: true,
@@ -25,12 +25,12 @@ describe('multiplayer simulation core', () => {
 
   it('steps multiple human players independently and deterministically', () => {
     const participants = [
-      { id: 'p1', label: 'Player 1', carId: 'sirip' as const, colorIndex: 0 },
-      { id: 'p2', label: 'Player 2', carId: 'okra' as const, colorIndex: 1 },
+      { id: 'p1', label: 'Player 1', carId: 'mcqueen' as const, colorIndex: 0 },
+      { id: 'p2', label: 'Player 2', carId: 'mater' as const, colorIndex: 1 },
     ];
 
-    const simA = new RaceSim(TELUK_SORE, 'sirip', { participants, localPlayerId: 'p1' });
-    const simB = new RaceSim(TELUK_SORE, 'sirip', { participants, localPlayerId: 'p2' });
+    const simA = new RaceSim(TELUK_SORE, 'mcqueen', { participants, localPlayerId: 'p1' });
+    const simB = new RaceSim(TELUK_SORE, 'mcqueen', { participants, localPlayerId: 'p2' });
 
     const inputs = new Map<string, PlayerInput>([
       ['p1', { steer: 0.4, brake: false, nitro: true, pause: false, gas: true }],
@@ -58,11 +58,11 @@ describe('multiplayer simulation core', () => {
 
   it('round-trips net state accurately via exportNetState and applyNetState', () => {
     const participants = [
-      { id: 'host', label: 'Host', carId: 'kepik' as const },
-      { id: 'guest', label: 'Guest', carId: 'bagas' as const },
+      { id: 'host', label: 'Host', carId: 'chick' as const },
+      { id: 'guest', label: 'Guest', carId: 'doc' as const },
     ];
-    const serverSim = new RaceSim(TELUK_SORE, 'kepik', { participants, localPlayerId: 'host' });
-    const clientSim = new RaceSim(TELUK_SORE, 'kepik', { participants, localPlayerId: 'guest' });
+    const serverSim = new RaceSim(TELUK_SORE, 'chick', { participants, localPlayerId: 'host' });
+    const clientSim = new RaceSim(TELUK_SORE, 'chick', { participants, localPlayerId: 'guest' });
 
     const inputs = new Map<string, PlayerInput>([
       ['host', { steer: 0.2, brake: false, nitro: true, pause: false, gas: true }],

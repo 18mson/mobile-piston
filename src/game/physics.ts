@@ -1,4 +1,4 @@
-import type { CarSpec, PlayerInput, RacerState, Track } from './types';
+import type { CarCollision, CarId, CarSpec, PlayerInput, RacerState, Track } from './types';
 import { getTire, tireGripMultiplier, type TireSpec } from './data/tires';
 import { getCar } from './data/cars';
 import { clamp } from './utils';
@@ -6,10 +6,15 @@ import { nearestOnTrack, sampleAtDistance } from './track/geometry';
 
 export const CAR_RADIUS = 7.6;
 
+export function getCarCollision(carId: CarId): CarCollision {
+  return getCar(carId).collision ?? { radius: CAR_RADIUS, axleOffset: 5.2, circleRadius: 6.6 };
+}
+
 function applyTrackPenalty(racer: RacerState, track: Track, spec: CarSpec, dt: number): void {
+  const carRadius = spec.collision?.radius ?? CAR_RADIUS;
   const hit = nearestOnTrack(track, racer.x, racer.y);
-  const hardLimit = track.width / 2 + track.shoulder - CAR_RADIUS;
-  const softLimit = track.width / 2 - CAR_RADIUS;
+  const hardLimit = track.width / 2 + track.shoulder - carRadius;
+  const softLimit = track.width / 2 - carRadius;
 
   if (hit.distance > hardLimit) {
     const side = hit.side >= 0 ? 1 : -1;
@@ -284,38 +289,38 @@ export function stepRacer(
 }
 
 export function resolveRacerCollisions(racers: RacerState[]): void {
-  const AXLE_OFFSET = 5.2;
-  const CIRCLE_RADIUS = 6.6;
-  const MIN_CIRCLE_DIST = CIRCLE_RADIUS * 2;
-  const MIN_CENTER_DIST = CAR_RADIUS * 2;
-
   for (let i = 0; i < racers.length; i += 1) {
     for (let j = i + 1; j < racers.length; j += 1) {
       const a = racers[i];
       const b = racers[j];
       if (a.finished || b.finished) continue;
 
+      const colA = getCarCollision(a.carId);
+      const colB = getCarCollision(b.carId);
+      const minCircleDist = colA.circleRadius + colB.circleRadius;
+      const minCenterDist = colA.radius + colB.radius;
+
       const cdx = b.x - a.x;
       const cdy = b.y - a.y;
       const cDist = Math.hypot(cdx, cdy);
-      // Fast broadphase cull: if cars are farther than diagonal extent, they cannot collide
-      if (cDist > 32) continue;
+      // Fast broadphase cull: if cars are farther than combined extents, they cannot collide
+      if (cDist > colA.axleOffset + colB.axleOffset + minCircleDist + 2) continue;
 
-      // Dual-circle capsule representation: front and rear collision centers
+      // Dual-circle capsule representation: front and rear collision centers sized per car
       const cosA = Math.cos(a.angle);
       const sinA = Math.sin(a.angle);
       const cosB = Math.cos(b.angle);
       const sinB = Math.sin(b.angle);
 
-      const afx = a.x + cosA * AXLE_OFFSET;
-      const afy = a.y + sinA * AXLE_OFFSET;
-      const arx = a.x - cosA * AXLE_OFFSET;
-      const ary = a.y - sinA * AXLE_OFFSET;
+      const afx = a.x + cosA * colA.axleOffset;
+      const afy = a.y + sinA * colA.axleOffset;
+      const arx = a.x - cosA * colA.axleOffset;
+      const ary = a.y - sinA * colA.axleOffset;
 
-      const bfx = b.x + cosB * AXLE_OFFSET;
-      const bfy = b.y + sinB * AXLE_OFFSET;
-      const brx = b.x - cosB * AXLE_OFFSET;
-      const bry = b.y - sinB * AXLE_OFFSET;
+      const bfx = b.x + cosB * colB.axleOffset;
+      const bfy = b.y + sinB * colB.axleOffset;
+      const brx = b.x - cosB * colB.axleOffset;
+      const bry = b.y - sinB * colB.axleOffset;
 
       let maxOverlap = 0;
       let nx = 0;
@@ -333,8 +338,8 @@ export function resolveRacerCollisions(racers: RacerState[]): void {
         const pdx = pbx - pax;
         const pdy = pby - pay;
         const pDist = Math.hypot(pdx, pdy);
-        if (pDist < MIN_CIRCLE_DIST && pDist > 0.0001) {
-          const overlap = MIN_CIRCLE_DIST - pDist;
+        if (pDist < minCircleDist && pDist > 0.0001) {
+          const overlap = minCircleDist - pDist;
           if (overlap > maxOverlap) {
             maxOverlap = overlap;
             nx = pdx / pDist;
@@ -343,9 +348,9 @@ export function resolveRacerCollisions(racers: RacerState[]): void {
         }
       }
 
-      // Also ensure center-to-center distance maintains at least MIN_CENTER_DIST
-      if (cDist < MIN_CENTER_DIST && cDist > 0.0001) {
-        const centerOverlap = MIN_CENTER_DIST - cDist;
+      // Also ensure center-to-center distance maintains at least minCenterDist
+      if (cDist < minCenterDist && cDist > 0.0001) {
+        const centerOverlap = minCenterDist - cDist;
         if (centerOverlap > maxOverlap) {
           maxOverlap = centerOverlap;
           nx = cdx / cDist;

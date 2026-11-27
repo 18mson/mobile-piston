@@ -35,7 +35,7 @@ describe('track geometry', () => {
 
 describe('race simulation', () => {
   it('runs eight cars through three laps without NaNs or stalls', () => {
-    const race = new RaceSim(TELUK_SORE, 'sirip');
+    const race = new RaceSim(TELUK_SORE, 'mcqueen');
     expect(race.racers).toHaveLength(8);
     let steps = 0;
     while (!race.playerFinished && steps < 120 * 180) {
@@ -62,7 +62,7 @@ describe('race simulation', () => {
   });
 
   it('runs the Mata Air circuit through three timed laps', () => {
-    const race = new RaceSim(MATA_AIR, 'bagas');
+    const race = new RaceSim(MATA_AIR, 'doc');
     let steps = 0;
     while (!race.playerFinished && steps < 120 * 150) {
       const autopilot = computeAiInput(race.player, race.racers, MATA_AIR, race.elapsed);
@@ -80,7 +80,7 @@ describe('race simulation', () => {
   });
 
   it('accelerates straight from the grid', () => {
-    const race = new RaceSim(TELUK_SORE, 'kepik');
+    const race = new RaceSim(TELUK_SORE, 'chick');
     for (let i = 0; i < 90; i += 1) {
       race.update(1 / 120, { steer: 0, brake: false, nitro: false, pause: false });
     }

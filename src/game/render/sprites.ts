@@ -241,9 +241,9 @@ function drawBaseCar(carId: CarId, palette: CarPalette, number: number): HTMLCan
   const canvas = makeCanvas(BASE_WIDTH, BASE_HEIGHT);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   ctx.imageSmoothingEnabled = false;
-  if (carId === 'bagas') drawBagas(ctx, palette, number);
-  else if (carId === 'okra') drawOkra(ctx, palette, number);
-  else if (carId === 'kepik') drawKepik(ctx, palette, number);
+  if (carId === 'doc' || carId === 'chick') drawBagas(ctx, palette, number);
+  else if (carId === 'mater') drawOkra(ctx, palette, number);
+  else if (carId === 'luigi' || carId === 'guido') drawKepik(ctx, palette, number);
   else drawSirip(ctx, palette, number);
   return canvas;
 }

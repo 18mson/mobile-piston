@@ -35,11 +35,14 @@ export default function TrackMinimap({
     const rot = -pAngle - Math.PI / 2;
     const cosR = Math.cos(rot);
     const sinR = Math.sin(rot);
-    // Zoomed radius: ~195 world units around player
-    const viewRange = 195;
+    // Zoomed-out radius with forward look-ahead so upcoming turns are easy to read
+    const viewRange = 340;
+    const lookAhead = 75;
+    const mapCx = px + Math.cos(pAngle) * lookAhead;
+    const mapCy = py + Math.sin(pAngle) * lookAhead;
     const scale = radarRadius / viewRange;
-    const roadWidthPx = Math.max(12, track.width * scale);
-    const shoulderWidthPx = Math.max(roadWidthPx + 4, (track.width + track.shoulder * 1.4) * scale);
+    const roadWidthPx = Math.max(9, track.width * scale);
+    const shoulderWidthPx = Math.max(roadWidthPx + 3, (track.width + track.shoulder * 1.4) * scale);
 
     // 1. Radar background with circular clipping (semi-transparent so 3D world peeks through)
     ctx.save();
@@ -144,8 +147,8 @@ export default function TrackMinimap({
     if (snapshot) {
       for (const racer of snapshot.racers) {
         if (racer.isPlayer) continue;
-        const rdx = racer.x - px;
-        const rdy = racer.y - py;
+        const rdx = racer.x - mapCx;
+        const rdy = racer.y - mapCy;
         if (Math.hypot(rdx, rdy) > maxRange) continue;
         const rrx = rdx * cosR - rdy * sinR;
         const rry = rdx * sinR + rdy * cosR;
@@ -159,17 +162,18 @@ export default function TrackMinimap({
       }
     }
 
-    // 4. Player car fixed at center, pointing straight UP
+    // 4. Player car arrow positioned slightly below center so road ahead is wider
+    const playerPy = cy + lookAhead * scale;
     ctx.fillStyle = '#ff8f3d';
     ctx.beginPath();
-    ctx.moveTo(cx, cy - 7);
-    ctx.lineTo(cx + 4.5, cy + 4.5);
-    ctx.lineTo(cx, cy + 2);
-    ctx.lineTo(cx - 4.5, cy + 4.5);
+    ctx.moveTo(cx, playerPy - 7);
+    ctx.lineTo(cx + 4.5, playerPy + 4.5);
+    ctx.lineTo(cx, playerPy + 2);
+    ctx.lineTo(cx - 4.5, playerPy + 4.5);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx - 1, cy - 2, 2, 2);
+    ctx.fillRect(cx - 1, playerPy - 2, 2, 2);
 
     ctx.restore();
 

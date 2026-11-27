@@ -421,7 +421,7 @@ export default function GameApp() {
     if (!engine) return;
     if (isTouch) void enterFullscreenLandscape();
     const requested = carId ?? saveRef.current.selectedCarId;
-    const id: CarId = isCarUnlocked(requested, saveRef.current) ? requested : 'sirip';
+    const id: CarId = isCarUnlocked(requested, saveRef.current) ? requested : 'mcqueen';
     const record = saveRef.current.bestLapMs[saveRef.current.selectedTrackId] ?? null;
     const savedCam = saveRef.current.cameraMode ?? 'top';
     const colorIdx = saveRef.current.selectedColors?.[id] ?? 0;

@@ -9,12 +9,14 @@ const cache = new Map<string, string>();
 let activeKey = '';
 let activeView: CarView | null = null;
 
+const PREVIEW_RES = 112;
+
 function createPreviewRenderer(): boolean {
   if (renderer) return true;
   try {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = PREVIEW_RES;
+    canvas.height = PREVIEW_RES;
     renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: true,
@@ -23,7 +25,7 @@ function createPreviewRenderer(): boolean {
       powerPreference: 'high-performance',
     });
     renderer.setPixelRatio(1);
-    renderer.setSize(256, 256, false);
+    renderer.setSize(PREVIEW_RES, PREVIEW_RES, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setClearColor(0x000000, 0);
     renderer.shadowMap.enabled = true;
@@ -119,6 +121,7 @@ export function renderCarPreview3D(
 
   const ctx = targetCanvas.getContext('2d');
   if (!ctx) return false;
+  ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
   ctx.drawImage(renderer.domElement, 0, 0, targetCanvas.width, targetCanvas.height);
   return true;

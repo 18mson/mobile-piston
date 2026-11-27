@@ -98,7 +98,7 @@ export class NetRaceSync {
     this.localPlayerId = localPlayerId;
     this.isSpectator = isSpectator;
     this.spectateTargetId = isSpectator ? (participants[0]?.id ?? localPlayerId) : localPlayerId;
-    this.sim = new RaceSim(track, participants[0]?.carId ?? 'sirip', {
+    this.sim = new RaceSim(track, participants[0]?.carId ?? 'mcqueen', {
       participants,
       localPlayerId,
       fillWithAi: false, // Server already provides the full 6-car participant list
