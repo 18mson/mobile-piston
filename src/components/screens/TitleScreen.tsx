@@ -4,12 +4,11 @@ import type { Track } from '../../game/types';
 import ProgressBadge from '../ProgressBadge';
 
 export default function TitleScreen({
-  track,
   onStart,
   onMultiplayer,
   xp = 0,
 }: {
-  track: Track;
+  track?: Track;
   xp?: number;
   onStart: () => void;
   onMultiplayer: () => void;
@@ -23,7 +22,6 @@ export default function TitleScreen({
 
       <div className="title-panel">
         <div className="title-copy">
-          <p className="eyebrow">Balap mobil mini</p>
           <div className="wordmark-wrap">
             <p className="wordmark" aria-hidden="true">
               <span className="wordmark-mobile">Mobile</span>
@@ -45,19 +43,6 @@ export default function TitleScreen({
                 </linearGradient>
               </defs>
             </svg>
-          </div>
-          <div className="title-tagline-card">
-            <p className="title-tagline">
-              {track.id === 'mata-air'
-                ? 'Tiga putaran mengelilingi danau. Belok, drifting, lalu tekan nitro pada momen yang tepat.'
-                : track.id === 'lereng-kopi'
-                  ? 'Tiga putaran menyusuri lereng kopi. Rem sebelum tikungan jepit, atau bersiap berputar.'
-                  : track.id === 'rimba-lumpur'
-                    ? 'Tiga putaran menembus rimba. Aspal, tanah berlumpur, dan genangan air bergantian, jadi pilih ban dengan cermat.'
-                    : track.id === 'pelabuhan'
-                      ? 'Tiga putaran di pelabuhan. Lurusan panjang menggoda, tapi rem tetap wajib di chicane kontainer.'
-                      : 'Tiga putaran di pesisir Teluk Sore. Belok, drifting, lalu tekan nitro pada momen yang tepat.'}
-            </p>
           </div>
         </div>
 
