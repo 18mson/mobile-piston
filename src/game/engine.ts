@@ -451,8 +451,10 @@ export class GameEngine {
         this.updateRace(frameDt);
       } else if (this.mode === 'online') {
         this.updateOnline(frameDt);
-      } else if (this.mode === 'paused' || this.mode === 'finished') {
+      } else if (this.mode === 'paused') {
         this.renderCurrentFrame(0);
+      } else if (this.mode === 'finished') {
+        this.updateFinished(frameDt);
       }
     } catch (error) {
       console.error(error);
@@ -487,6 +489,26 @@ export class GameEngine {
       this.emitSnapshot();
     }
     this.audio.updateEngine(0, 1, false, false, false);
+  }
+
+  private updateFinished(dt: number): void {
+    if (!this.race) {
+      this.renderCurrentFrame(0);
+      return;
+    }
+    this.accumulator += dt;
+    let steps = 0;
+    while (this.accumulator >= FIXED_STEP && steps < 16) {
+      this.race.stepPostFinish(FIXED_STEP);
+      this.accumulator -= FIXED_STEP;
+      steps += 1;
+    }
+    const weather = this.onlineSync
+      ? this.onlineWeather.at(this.race.elapsed)
+      : this.race.currentWeather;
+    this.applyWeather(weather, dt, false);
+    const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);
+    this.renderCurrentFrame(dt, alpha);
   }
 
   private updateRace(dt: number): void {

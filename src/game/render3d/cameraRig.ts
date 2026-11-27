@@ -46,6 +46,7 @@ export class CameraRig {
   private shake = 0;
   private fovKick = 0;
   private reducedMotion = false;
+  private celebrationTime = 0;
 
   constructor(aspect: number) {
     this.camera = new THREE.PerspectiveCamera(46, aspect, 0.1, 1600);
@@ -205,7 +206,56 @@ export class CameraRig {
     return { pos, look };
   }
 
-  update(player: RacerState, dt: number, impact: number): void {
+  private computeCelebrationTarget(player: RacerState): { pos: THREE.Vector3; look: THREE.Vector3; fov: number } {
+    const carPos = new THREE.Vector3(toSceneX(player.x), ROAD_Y, toSceneZ(player.y));
+    const t = this.celebrationTime;
+    const phase = Math.floor(t / 4.5) % 4;
+    const phaseT = t % 4.5;
+    const carHeading = player.angle;
+
+    let orbitAngle = carHeading + Math.PI + t * 0.55;
+    let radius = 15.5;
+    let height = 5.8;
+    let fov = 54;
+    let lookAhead = 2.0;
+
+    if (phase === 1) {
+      // Front-quarter hero angle sweeping across the nose
+      orbitAngle = carHeading + 0.38 + (phaseT / 4.5 - 0.5) * 0.55;
+      radius = 14.2;
+      height = 3.8;
+      fov = 50;
+      lookAhead = 0.8;
+    } else if (phase === 2) {
+      // Low side-to-rear dynamic chase sweep
+      orbitAngle = carHeading + Math.PI + Math.sin(t * 0.9) * 0.95;
+      radius = 14.5;
+      height = 4.2;
+      fov = 58;
+      lookAhead = 4.5;
+    } else if (phase === 3) {
+      // High sweeping crane / helicopter orbit
+      orbitAngle = carHeading + Math.PI * 0.65 + phaseT * 0.48;
+      radius = 24.0;
+      height = 16.5;
+      fov = 48;
+      lookAhead = 3.0;
+    }
+
+    const pos = new THREE.Vector3(
+      carPos.x + Math.cos(orbitAngle) * radius,
+      carPos.y + height,
+      carPos.z + Math.sin(orbitAngle) * radius,
+    );
+    const look = new THREE.Vector3(
+      carPos.x + Math.cos(carHeading) * lookAhead,
+      carPos.y + 1.35,
+      carPos.z + Math.sin(carHeading) * lookAhead,
+    );
+    return { pos, look, fov };
+  }
+
+  update(player: RacerState, dt: number, impact: number, celebrate = false): void {
     const speed = Math.hypot(player.vx, player.vy);
     const nitroActive = player.nitroActive;
 
@@ -214,11 +264,18 @@ export class CameraRig {
     this.fovKick = THREE.MathUtils.lerp(this.fovKick, targetFovKick, Math.min(1, dt * 8));
 
     this.updateHeading(player, dt);
-    const targetModeWorld = this.computeTargetWorld(player, this.currentMode);
+    if (celebrate) {
+      this.celebrationTime += dt;
+    } else {
+      this.celebrationTime = 0;
+    }
+    const celebration = celebrate ? this.computeCelebrationTarget(player) : null;
+    const targetModeWorld = celebration ?? this.computeTargetWorld(player, this.currentMode);
     const targetParams = this.getBaseParams(this.currentMode);
 
     let desiredPos = targetModeWorld.pos;
     let desiredLook = targetModeWorld.look;
+    const desiredFov = celebration ? celebration.fov : targetParams.fov;
 
     if (this.isTransitioning) {
       this.transitionTimer += dt;
@@ -228,14 +285,14 @@ export class CameraRig {
       this.transitionAlpha = ease;
 
       // Blend FOV
-      this.activeFov = THREE.MathUtils.lerp(this.fromFov, targetParams.fov, ease);
+      this.activeFov = THREE.MathUtils.lerp(this.fromFov, desiredFov, ease);
 
       if (progress >= 1) {
         this.isTransitioning = false;
         this.transitionAlpha = 1.0;
       }
     } else {
-      this.activeFov = targetParams.fov;
+      this.activeFov = THREE.MathUtils.lerp(this.activeFov, desiredFov, celebrate ? Math.min(1, dt * 3) : 1);
       this.transitionAlpha = 1.0;
     }
 
@@ -245,7 +302,7 @@ export class CameraRig {
       this.currentCamTarget.copy(desiredLook);
       this.initialized = true;
     } else {
-      const followRate = this.isTransitioning ? 14.0 : targetParams.followLag;
+      const followRate = this.isTransitioning ? 14.0 : celebrate ? 3.8 : targetParams.followLag;
       const alpha = 1 - Math.exp(-dt * followRate);
       this.currentCamPos.lerp(desiredPos, alpha);
       this.currentCamTarget.lerp(desiredLook, alpha * 0.94);

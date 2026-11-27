@@ -314,6 +314,32 @@ export class RaceSim {
     }
   }
 
+  /** Advances all cars under bot control for post-finish victory laps without altering race results. */
+  stepPostFinish(dt: number): void {
+    this.elapsed += dt;
+    const weather = this.weather.at(this.elapsed);
+    const wetness = weather.wetness;
+    const finishedFlags = this.racers.map((r) => r.finished);
+
+    for (const racer of this.racers) {
+      racer.prevX = racer.x;
+      racer.prevY = racer.y;
+      racer.prevAngle = racer.angle;
+      racer.finished = false;
+      const input = computeAiInput(racer, this.racers, this.track, this.elapsed);
+      const spec = getCar(racer.carId);
+      const env: PhysicsEnv = { wetness, tire: getTire(racer.tire) };
+      stepRacer(racer, spec, this.track, input, dt, env);
+      racer.s = nearestOnTrack(this.track, racer.x, racer.y).s;
+    }
+
+    resolveRacerCollisions(this.racers);
+
+    for (let i = 0; i < this.racers.length; i += 1) {
+      this.racers[i].finished = finishedFlags[i];
+    }
+  }
+
   completeRace(): void {
     let simulated = 0;
     const maxSimulation = 90;

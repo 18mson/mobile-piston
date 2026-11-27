@@ -109,12 +109,13 @@ export function stepRacer(
   // Special road surfaces (dirt sections, puddles): worse grip, more drag. The right tyre softens the penalty:
   // the Terrain tyre copes with dirt (offroadPenalty), the Rain tyre with standing water (wetLoss).
   const onRoad = hitBefore.distance <= track.width / 2 + 4;
-  const surf = track.surfaces && onRoad ? surfaceAt(track, hitBefore.s, hitBefore.side) : null;
+  const surf = track.surfaces && onRoad ? surfaceAt(track, hitBefore.s, hitBefore.side, wetness) : null;
   const dirtK = surf?.dirt ?? 0;
   const puddleK = surf?.puddle ?? 0;
   racer.surface = puddleK > 0.3 ? 'puddle' : dirtK > 0.3 ? 'dirt' : null;
   const dirtPenalty = clamp(tire.offroadPenalty, 0.45, 1.25);
-  const dirtGrip = 1 - dirtK * 0.27 * dirtPenalty;
+  const dirtMud = 1 + wetness * 0.65;
+  const dirtGrip = 1 - dirtK * 0.27 * dirtPenalty * dirtMud;
   const wetRelative = tire.wetLoss / 0.3; // standard tyre = 1
   const aquaplane = 0.8 + 0.4 * clamp(speedRatio, 0, 1); // faster = floats more
   const puddleGrip = 1 - puddleK * 0.34 * (0.35 + 0.65 * wetRelative) * aquaplane;

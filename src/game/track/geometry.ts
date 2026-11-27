@@ -301,11 +301,12 @@ export function nearestOnTrack(track: Track, x: number, y: number): TrackHit {
 }
 
 /** How much of each special surface is under a point of the road (0..1): `s` along the track, `side` = lateral offset. */
-export function surfaceAt(track: Track, s: number, side: number): { dirt: number; puddle: number } {
+export function surfaceAt(track: Track, s: number, side: number, wetness = 0): { dirt: number; puddle: number } {
   let dirt = 0;
   let puddle = 0;
   const zones = track.surfaces;
   if (!zones) return { dirt, puddle };
+  const puddleScale = 0.42 + 0.58 * clamp(wetness, 0, 1);
   for (const zone of zones) {
     const rel = mod(s - zone.start, track.length);
     if (rel > zone.length) continue;
@@ -314,8 +315,8 @@ export function surfaceAt(track: Track, s: number, side: number): { dirt: number
       const edge = clamp(Math.min(rel, zone.length - rel) / 26, 0, 1);
       dirt = Math.max(dirt, edge * edge * (3 - 2 * edge));
     } else {
-      const u = (rel - zone.length / 2) / (zone.length / 2);
-      const v = (side - zone.lateral) / zone.halfWidth;
+      const u = (rel - zone.length / 2) / ((zone.length / 2) * puddleScale);
+      const v = (side - zone.lateral) / (zone.halfWidth * puddleScale);
       const e = u * u + v * v;
       if (e < 1) puddle = Math.max(puddle, clamp((1 - e) * 2.4, 0, 1));
     }

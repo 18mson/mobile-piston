@@ -525,10 +525,12 @@ function createSurfaceRibbon(
   return mesh;
 }
 
-/** Irregular puddle outline (a noisy ellipse in track space) turned into a flat fan on the road. */
+/** Irregular puddle outline (a noisy ellipse in local XZ around center) turned into a flat fan on the road. */
 function createPuddleMesh(
   track: Track,
   zone: SurfaceZone,
+  cx: number,
+  cz: number,
   y: number,
   scale: number,
   material: THREE.Material,
@@ -540,10 +542,9 @@ function createPuddleMesh(
   const indices: number[] = [];
   const toScene = (s: number, lateral: number): [number, number] => {
     const p = sampleAt(track, s);
-    return [toSceneX(p.x + p.nx * lateral), toSceneZ(p.y + p.ny * lateral)];
+    return [toSceneX(p.x + p.nx * lateral) - cx, toSceneZ(p.y + p.ny * lateral) - cz];
   };
-  const [cx, cz] = toScene(midS, zone.lateral);
-  positions.push(cx, y, cz);
+  positions.push(0, y, 0);
   for (let i = 0; i < segments; i += 1) {
     const a = (i / segments) * Math.PI * 2;
     const wobble = 1 + 0.1 * Math.sin(3 * a + seed) + 0.07 * Math.sin(5 * a + seed * 2.3) + 0.04 * Math.sin(9 * a + seed);
@@ -565,11 +566,15 @@ function createPuddleMesh(
   return mesh;
 }
 
-/** Dirt sections and puddles drawn over the asphalt. Returns the puddle highlight materials (they shimmer). */
-function addSurfaces(group: THREE.Group, track: Track): THREE.MeshBasicMaterial[] {
+/** Dirt sections and puddles drawn over the asphalt. Returns puddle shimmer materials and scalable puddle groups. */
+function addSurfaces(
+  group: THREE.Group,
+  track: Track,
+): { shimmer: THREE.MeshBasicMaterial[]; puddles: THREE.Group[] } {
   const shimmer: THREE.MeshBasicMaterial[] = [];
+  const puddles: THREE.Group[] = [];
   const zones = track.surfaces ?? [];
-  if (zones.length === 0) return shimmer;
+  if (zones.length === 0) return { shimmer, puddles };
 
   const dirtMaterial = new THREE.MeshLambertMaterial({
     map: createDirtTexture(),
@@ -612,12 +617,21 @@ function addSurfaces(group: THREE.Group, track: Track): THREE.MeshBasicMaterial[
     if (zone.kind !== 'puddle') continue;
     index += 1;
     const seed = index * 1.7;
-    const rim = createPuddleMesh(track, zone, ROAD_Y + 0.05, 1.1, rimMaterial, seed);
+    const midS = zone.start + zone.length / 2;
+    const midPt = sampleAt(track, midS);
+    const cx = toSceneX(midPt.x + midPt.nx * zone.lateral);
+    const cz = toSceneZ(midPt.y + midPt.ny * zone.lateral);
+
+    const puddleGroup = new THREE.Group();
+    puddleGroup.position.set(cx, 0, cz);
+    puddleGroup.scale.set(0.42, 1, 0.42);
+
+    const rim = createPuddleMesh(track, zone, cx, cz, ROAD_Y + 0.05, 1.1, rimMaterial, seed);
     rim.renderOrder = 2;
-    group.add(rim);
-    const water = createPuddleMesh(track, zone, ROAD_Y + 0.06, 1, waterMaterial, seed);
+    puddleGroup.add(rim);
+    const water = createPuddleMesh(track, zone, cx, cz, ROAD_Y + 0.06, 1, waterMaterial, seed);
     water.renderOrder = 3;
-    group.add(water);
+    puddleGroup.add(water);
     const shine = new THREE.MeshBasicMaterial({
       color: '#d3f1f6',
       transparent: true,
@@ -628,14 +642,17 @@ function addSurfaces(group: THREE.Group, track: Track): THREE.MeshBasicMaterial[
       polygonOffsetFactor: -5,
       polygonOffsetUnits: -5,
     });
-    const highlight = createPuddleMesh(track, zone, ROAD_Y + 0.07, 0.5, shine, seed + 4);
+    const highlight = createPuddleMesh(track, zone, cx, cz, ROAD_Y + 0.07, 0.5, shine, seed + 4);
     highlight.renderOrder = 4;
     highlight.position.x += 0.12;
     highlight.position.z -= 0.1;
-    group.add(highlight);
+    puddleGroup.add(highlight);
+
+    group.add(puddleGroup);
     shimmer.push(shine);
+    puddles.push(puddleGroup);
   }
-  return shimmer;
+  return { shimmer, puddles };
 }
 
 function sampleAt(track: Track, distance: number) {
@@ -1108,7 +1125,7 @@ export function createWorld(track: Track): World3D {
   const water = createWater(track, root);
   root.add(buildTerrain(track));
   addRoad(root, track);
-  const puddleShimmer = addSurfaces(root, track);
+  const { shimmer: puddleShimmer, puddles } = addSurfaces(root, track);
   const racingLine = createDynamicRacingLine(track);
   root.add(racingLine.mesh);
   if (track.theme !== 'highland' && track.theme !== 'wetland') addCoastFoam(root);
@@ -1342,6 +1359,10 @@ export function createWorld(track: Track): World3D {
       const material = cloud.material as THREE.SpriteMaterial;
       material.color.copy(tint);
       material.opacity = 0.82 + 0.15 * r;
+    }
+    const puddleScale = 0.42 + 0.58 * w;
+    for (const puddle of puddles) {
+      puddle.scale.set(puddleScale, 1, puddleScale);
     }
   };
 

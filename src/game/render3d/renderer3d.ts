@@ -66,12 +66,20 @@ export class Renderer3D {
   private readonly stormBackdrop = new THREE.Color('#6b7985');
   private readonly weatherColor = new THREE.Color();
 
-  // Dirt tire tracks left when cars drive offroad on soil/grass
+  // Dirt tire tracks left when cars drive offroad on soil/grass or dirt road sections (kept for the match)
   private dirtMesh: THREE.InstancedMesh;
   private dirtDummy = new THREE.Object3D();
   private dirtIndex = 0;
-  private maxDirts = 1000;
+  private maxDirts = 4000;
   private lastDirtPos = new Map<string, { x: number; y: number }>();
+
+  // Expanding water ripple rings when cars splash through puddles
+  private wakeMesh: THREE.InstancedMesh;
+  private wakeDummy = new THREE.Object3D();
+  private wakes: { x: number; z: number; life: number; maxLife: number }[] = [];
+  private wakeIndex = 0;
+  private maxWakes = 96;
+  private lastWakePos = new Map<string, { x: number; y: number }>();
 
   // Attract camera smoothing
   private attractCamPos = new THREE.Vector3();
@@ -139,14 +147,17 @@ export class Renderer3D {
     this.skidMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(this.skidMesh);
 
-    // Dirt tire tracks on offroad ground
+    // Dirt tire tracks on offroad ground & dirt road sections
     const dirtGeo = new THREE.PlaneGeometry(0.44, 0.92);
     dirtGeo.rotateX(-Math.PI / 2);
     const dirtMat = new THREE.MeshBasicMaterial({
-      color: 0x5c4028,
+      color: 0x4b331e,
       transparent: true,
-      opacity: 0.68,
+      opacity: 0.72,
       depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -3,
+      polygonOffsetUnits: -3,
     });
     this.dirtMesh = new THREE.InstancedMesh(dirtGeo, dirtMat, this.maxDirts);
     this.dirtMesh.frustumCulled = false;
@@ -158,6 +169,30 @@ export class Renderer3D {
     }
     this.dirtMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(this.dirtMesh);
+
+    // Expanding water ripples when cars drive through puddles
+    const wakeGeo = new THREE.RingGeometry(0.45, 0.72, 14);
+    wakeGeo.rotateX(-Math.PI / 2);
+    const wakeMat = new THREE.MeshBasicMaterial({
+      color: 0xdcf6fc,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -6,
+      polygonOffsetUnits: -6,
+    });
+    this.wakeMesh = new THREE.InstancedMesh(wakeGeo, wakeMat, this.maxWakes);
+    this.wakeMesh.frustumCulled = false;
+    for (let i = 0; i < this.maxWakes; i += 1) {
+      this.wakeDummy.position.set(0, -999, 0);
+      this.wakeDummy.scale.set(0, 0, 0);
+      this.wakeDummy.updateMatrix();
+      this.wakeMesh.setMatrixAt(i, this.wakeDummy.matrix);
+      this.wakes.push({ x: 0, z: -999, life: 0, maxLife: 0.48 });
+    }
+    this.wakeMesh.instanceMatrix.needsUpdate = true;
+    this.scene.add(this.wakeMesh);
     this.scene.add(this.fx.mesh);
     this.scene.add(this.weatherFx.mesh);
   }
@@ -470,6 +505,15 @@ export class Renderer3D {
       this.dirtMesh.setMatrixAt(i, this.dirtDummy.matrix);
     }
     this.dirtMesh.instanceMatrix.needsUpdate = true;
+    this.lastWakePos.clear();
+    for (let i = 0; i < this.maxWakes; i += 1) {
+      this.wakes[i].life = 0;
+      this.wakeDummy.position.set(0, -999, 0);
+      this.wakeDummy.scale.set(0, 0, 0);
+      this.wakeDummy.updateMatrix();
+      this.wakeMesh.setMatrixAt(i, this.wakeDummy.matrix);
+    }
+    this.wakeMesh.instanceMatrix.needsUpdate = true;
     this.fx.clear();
     this.weatherFx.clear();
   }
@@ -591,12 +635,12 @@ export class Renderer3D {
       const offroad = trackHit.distance > this.track.width / 2 + this.track.shoulder * 0.45;
       this.cars.get(racer.id)?.update(src, effectiveDt, interpX, interpY, interpAngle, offroad);
 
-      // Deposit tire skid marks on road surface when drifting, or dirt tracks when driving offroad
+      // Deposit permanent tire ruts on offroad soil/grass and muddy dirt road sections
       const speed = Math.hypot(src.vx, src.vy);
-      if (offroad && speed > 12 && !isPaused) {
+      if ((offroad || src.surface === 'dirt') && speed > 12 && !isPaused) {
         const lastDirt = this.lastDirtPos.get(racer.id);
         const dirtDist = lastDirt ? Math.hypot(interpX - lastDirt.x, interpY - lastDirt.y) : 999;
-        if (dirtDist >= 0.62) {
+        if (dirtDist >= 0.56) {
           this.lastDirtPos.set(racer.id, { x: interpX, y: interpY });
 
           const sceneX = toSceneX(interpX);
@@ -604,10 +648,11 @@ export class Renderer3D {
           const cosA = Math.cos(interpAngle);
           const sinA = Math.sin(interpAngle);
           const rearX = -0.95;
+          const trackY = src.surface === 'dirt' ? ROAD_Y + 0.036 : ROAD_Y + 0.022;
           for (const side of [-1.22, 1.22]) {
             const markX = sceneX + rearX * cosA - side * sinA;
             const markZ = sceneZ + rearX * sinA + side * cosA;
-            this.dirtDummy.position.set(markX, ROAD_Y + 0.022, markZ);
+            this.dirtDummy.position.set(markX, trackY, markZ);
             this.dirtDummy.rotation.set(0, -interpAngle, 0);
             this.dirtDummy.scale.set(1, 1, 1);
             this.dirtDummy.updateMatrix();
@@ -618,6 +663,28 @@ export class Renderer3D {
         }
       } else {
         this.lastDirtPos.delete(racer.id);
+      }
+
+      // Expanding water ripples when driving through puddles
+      if (src.surface === 'puddle' && speed > 10 && !isPaused) {
+        const lastWake = this.lastWakePos.get(racer.id);
+        const wakeDist = lastWake ? Math.hypot(interpX - lastWake.x, interpY - lastWake.y) : 999;
+        if (wakeDist >= 1.45) {
+          this.lastWakePos.set(racer.id, { x: interpX, y: interpY });
+          const sceneX = toSceneX(interpX);
+          const sceneZ = toSceneZ(interpY);
+          const cosA = Math.cos(interpAngle);
+          const sinA = Math.sin(interpAngle);
+          for (const side of [-1.15, 1.15]) {
+            const w = this.wakes[this.wakeIndex];
+            w.x = sceneX - 0.35 * cosA - side * sinA;
+            w.z = sceneZ - 0.35 * sinA + side * cosA;
+            w.life = w.maxLife;
+            this.wakeIndex = (this.wakeIndex + 1) % this.maxWakes;
+          }
+        }
+      } else {
+        this.lastWakePos.delete(racer.id);
       }
 
       if (src.drifting && speed > 32 && !isPaused) {
@@ -658,6 +725,29 @@ export class Renderer3D {
     }
     this.fx.update(this.reducedMotion ? 0 : effectiveDt);
 
+    if (!isPaused) {
+      let wakeDirty = false;
+      for (let i = 0; i < this.maxWakes; i += 1) {
+        const w = this.wakes[i];
+        if (w.life <= 0) continue;
+        w.life = Math.max(0, w.life - effectiveDt);
+        const progress = 1 - w.life / w.maxLife;
+        if (w.life <= 0) {
+          this.wakeDummy.position.set(0, -999, 0);
+          this.wakeDummy.scale.set(0, 0, 0);
+        } else {
+          const s = 0.65 + progress * 2.1;
+          this.wakeDummy.position.set(w.x, ROAD_Y + 0.072, w.z);
+          this.wakeDummy.rotation.set(0, 0, 0);
+          this.wakeDummy.scale.set(s, 1, s);
+        }
+        this.wakeDummy.updateMatrix();
+        this.wakeMesh.setMatrixAt(i, this.wakeDummy.matrix);
+        wakeDirty = true;
+      }
+      if (wakeDirty) this.wakeMesh.instanceMatrix.needsUpdate = true;
+    }
+
     const playerSpeed = Math.hypot(player.vx, player.vy);
     this.world.updateRacingLine(player.s, playerSpeed, true);
 
@@ -665,8 +755,9 @@ export class Renderer3D {
     this.playerCar = playerView ?? null;
 
     // Cockpit visibility & clipping handling:
-    // Only switch to driver interior when the camera rig actually arrives inside
-    const isCockpit = this.cameraRig.inCockpit;
+    // Only switch to driver interior when the camera rig actually arrives inside (disabled on post-finish orbit)
+    const isFinished = mode === 'finished';
+    const isCockpit = this.cameraRig.inCockpit && !isFinished;
     if (this.playerCar) {
       // Hide player's full body mesh only when fully seated in cockpit to prevent eye clipping
       // When flying in from outside, the car body remains visible as the camera enters
@@ -725,8 +816,8 @@ export class Renderer3D {
     this.world.update(time, effectiveDt, focus, this.reducedMotion);
     this.weatherFx.update(effectiveDt, focus, this.reducedMotion ? 0 : this.rainLevel);
 
-    // Update unified camera rig with smoothly interpolated player
-    this.cameraRig.update(interpPlayer, effectiveDt, impact);
+    // Update unified camera rig with smoothly interpolated player (orbiting dynamic angles after finish)
+    this.cameraRig.update(interpPlayer, effectiveDt, impact, isFinished);
 
     this.renderer.render(this.scene, this.cameraRig.camera);
   }

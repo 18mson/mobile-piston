@@ -178,30 +178,33 @@ export class ParticleFx {
       this.accumSmoke.delete(id);
     }
 
-    // --- water spray behind the wheels on a wet road
+    // --- water spray & puddle splashes behind/beside the wheels
     const inPuddle = racer.surface === 'puddle';
     const sprayWet = inPuddle ? 1 : wetness;
-    if (sprayWet > 0.25 && !racer.offroad && speed > (inPuddle ? 30 : 55)) {
-      const rate = sprayWet * clamp(speed / 100, 0.5, 2.2) * 48 * (inPuddle ? 2.2 : 1);
+    if (sprayWet > 0.25 && !racer.offroad && speed > (inPuddle ? 20 : 55)) {
+      const rate = sprayWet * clamp(speed / 100, 0.5, 2.2) * 48 * (inPuddle ? 3.0 : 1);
       let acc = (this.accumSpray.get(id) ?? 0) + rate * dt;
       while (acc >= 1) {
         acc -= 1;
         const side = Math.random() < 0.5 ? -1 : 1;
-        const back = -1.3 + (Math.random() - 0.5) * 0.3;
+        const back = inPuddle ? (Math.random() < 0.5 ? 0.9 : -1.1) : -1.3 + (Math.random() - 0.5) * 0.3;
         const lat = side * (1.1 + Math.random() * 0.3);
         const x = sceneX + back * cosA - lat * sinA;
         const z = sceneZ + back * sinA + lat * cosA;
+        const outward = inPuddle ? 2.4 + Math.random() * 2.2 : 0;
+        const sideVx = -sinA * side * outward;
+        const sideVz = cosA * side * outward;
         this.spawn(
           SMOKE,
           x,
           ROAD_Y + 0.2,
           z,
-          carVx * 0.18 - cosA * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.6,
-          1.6 + Math.random() * 2.4,
-          carVz * 0.18 - sinA * (1 + Math.random() * 2) + (Math.random() - 0.5) * 1.6,
-          0.38 + Math.random() * 0.3,
-          0.25,
-          0.9 + Math.random() * 0.5,
+          carVx * 0.18 - cosA * (1 + Math.random() * 2) + sideVx + (Math.random() - 0.5) * 1.4,
+          (inPuddle ? 2.6 : 1.6) + Math.random() * 2.4,
+          carVz * 0.18 - sinA * (1 + Math.random() * 2) + sideVz + (Math.random() - 0.5) * 1.4,
+          (inPuddle ? 0.52 : 0.38) + Math.random() * 0.3,
+          inPuddle ? 0.32 : 0.25,
+          (inPuddle ? 1.15 : 0.9) + Math.random() * 0.5,
           SPRAY_COLORS[(Math.random() * SPRAY_COLORS.length) | 0],
         );
       }
