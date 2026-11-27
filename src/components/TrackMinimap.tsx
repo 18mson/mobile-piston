@@ -75,8 +75,8 @@ export default function TrackMinimap({
     const sampleCount = track.samples.length;
     for (let i = 0; i <= sampleCount; i += 1) {
       const sample = track.samples[i % sampleCount];
-      const dx = sample.x - px;
-      const dy = sample.y - py;
+      const dx = sample.x - mapCx;
+      const dy = sample.y - mapCy;
       const dist = Math.hypot(dx, dy);
 
       if (dist <= maxRange) {
@@ -125,8 +125,8 @@ export default function TrackMinimap({
 
     // Start / finish gate tick if nearby
     const s0 = track.samples[0];
-    const s0dx = s0.x - px;
-    const s0dy = s0.y - py;
+    const s0dx = s0.x - mapCx;
+    const s0dy = s0.y - mapCy;
     if (Math.hypot(s0dx, s0dy) <= maxRange) {
       const s0rx = s0dx * cosR - s0dy * sinR;
       const s0ry = s0dx * sinR + s0dy * cosR;

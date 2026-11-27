@@ -579,8 +579,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.7, 0.54, length * 0.29, side * (width / 2 + 0.02), true, palette.wheel, palette.body);
-        this.addWheel(0.74, 0.58, -length * 0.29, side * (width / 2 + 0.02), false, palette.wheel, palette.body);
+        this.addWheel(0.62, 0.44, length * 0.29, side * (width / 2 - 0.3), true, palette.wheel, palette.body);
+        this.addWheel(0.65, 0.48, -length * 0.29, side * (width / 2 - 0.3), false, palette.wheel, palette.body);
       }
       this.addFlames(-length / 2 - 0.24, 0);
 
@@ -641,8 +641,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.56, 0.4, length * 0.31, side * (width / 2 - 0.04), true, palette.wheel, '#ece6d8', true);
-        this.addWheel(0.58, 0.42, -length * 0.31, side * (width / 2 - 0.04), false, palette.wheel, '#ece6d8', true);
+        this.addWheel(0.46, 0.32, length * 0.31, side * (width / 2 - 0.26), true, palette.wheel, '#ece6d8', true);
+        this.addWheel(0.48, 0.34, -length * 0.31, side * (width / 2 - 0.26), false, palette.wheel, '#ece6d8', true);
       }
       this.addFlames(-length / 2 - 0.2, 0);
 
@@ -700,8 +700,8 @@ export class CarView {
       this.addBox([0.1, 0.16, 1.16], [1.7, 0.62, 0], darkTrimMat, true, true, 0.025);
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.52, 0.42, 1.05, side * (width / 2 - 0.06), true, palette.wheel, '#d6dde4');
-        this.addWheel(0.46, 0.38, -1.12, side * (width / 2 - 0.1), false, palette.wheel, '#d6dde4');
+        this.addWheel(0.44, 0.34, 1.05, side * (width / 2 - 0.34), true, palette.wheel, '#d6dde4');
+        this.addWheel(0.38, 0.3, -1.12, side * (width / 2 - 0.4), false, palette.wheel, '#d6dde4');
       }
       this.addFlames(-length / 2 - 0.2, 0);
 
@@ -763,8 +763,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.66, 0.48, length * 0.3, side * (width / 2 - 0.02), true, palette.wheel, '#d6dde4');
-        this.addWheel(0.7, 0.54, -length * 0.29, side * (width / 2 - 0.02), false, palette.wheel, '#d6dde4');
+        this.addWheel(0.58, 0.4, length * 0.3, side * (width / 2 - 0.28), true, palette.wheel, '#d6dde4');
+        this.addWheel(0.62, 0.46, -length * 0.29, side * (width / 2 - 0.28), false, palette.wheel, '#d6dde4');
       }
       this.addFlames(-length / 2 - 0.22, 0);
 
@@ -821,8 +821,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.72, 0.56, length * 0.29, side * (width / 2 + 0.04), true, palette.wheel, palette.stripe);
-        this.addWheel(0.76, 0.62, -length * 0.29, side * (width / 2 + 0.04), false, palette.wheel, palette.stripe);
+        this.addWheel(0.62, 0.44, length * 0.29, side * (width / 2 - 0.32), true, palette.wheel, palette.stripe);
+        this.addWheel(0.65, 0.48, -length * 0.29, side * (width / 2 - 0.34), false, palette.wheel, palette.stripe);
       }
       this.addFlames(-length / 2 - 0.22, 0);
 
@@ -904,8 +904,8 @@ export class CarView {
       this.addTube([-0.68, 1.08, -1.24], [-0.68, 2.38, -1.24], 0.09, chromeMat);
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.76, 0.56, length * 0.3, side * (width / 2 + 0.04), true, palette.wheel, palette.stripe);
-        this.addWheel(0.84, 0.68, -length * 0.29, side * (width / 2 + 0.06), false, palette.wheel, palette.stripe);
+        this.addWheel(0.66, 0.46, length * 0.3, side * (width / 2 - 0.38), true, palette.wheel, palette.stripe);
+        this.addWheel(0.78, 0.62, -length * 0.29, side * (width / 2 - 0.22), false, palette.wheel, palette.stripe);
       }
       this.addFlames(-length / 2 - 0.22, 0);
 
@@ -966,8 +966,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.72, 0.52, length * 0.3, side * (width / 2 + 0.02), true, palette.wheel, '#d9dfe6', true);
-        this.addWheel(0.74, 0.56, -length * 0.29, side * (width / 2 + 0.02), false, palette.wheel, '#d9dfe6', true);
+        this.addWheel(0.62, 0.42, length * 0.3, side * (width / 2 - 0.32), true, palette.wheel, '#d9dfe6', true);
+        this.addWheel(0.64, 0.44, -length * 0.29, side * (width / 2 - 0.34), false, palette.wheel, '#d9dfe6', true);
       }
       this.addFlames(-length / 2 - 0.24, 0);
 
@@ -1028,8 +1028,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.7, 0.52, length * 0.29, side * (width / 2 + 0.02), true, palette.wheel, '#d6dde4');
-        this.addWheel(0.72, 0.56, -length * 0.29, side * (width / 2 + 0.02), false, palette.wheel, '#d6dde4');
+        this.addWheel(0.6, 0.42, length * 0.29, side * (width / 2 - 0.3), true, palette.wheel, '#d6dde4');
+        this.addWheel(0.63, 0.46, -length * 0.29, side * (width / 2 - 0.32), false, palette.wheel, '#d6dde4');
       }
       this.addFlames(-length / 2 - 0.24, 0);
 
@@ -1167,8 +1167,8 @@ export class CarView {
       }
 
       for (const side of [-1, 1]) {
-        this.addWheel(0.7, 0.54, length * 0.29, side * (width / 2 + 0.02), true, palette.wheel, palette.stripe);
-        this.addWheel(0.74, 0.6, -length * 0.29, side * (width / 2 + 0.02), false, palette.wheel, palette.stripe);
+        this.addWheel(0.62, 0.46, length * 0.29, side * (width / 2 - 0.34), true, palette.wheel, palette.stripe);
+        this.addWheel(0.65, 0.5, -length * 0.29, side * (width / 2 - 0.36), false, palette.wheel, palette.stripe);
       }
       this.addFlames(-length / 2 - 0.22, 0);
     }

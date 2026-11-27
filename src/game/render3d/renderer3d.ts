@@ -472,6 +472,7 @@ export class Renderer3D {
     this.carRoot.visible = false;
     this.attractRoot.visible = true;
     this.cockpitRoot.visible = false;
+    this.world.updateRacingLine(0, 0, false);
 
     const clock = this.reducedMotion ? 0 : time;
     const baseDistance = this.track.length * this.track.attract.fraction + clock * 36;
@@ -650,6 +651,9 @@ export class Renderer3D {
       }
     }
     this.fx.update(this.reducedMotion ? 0 : effectiveDt);
+
+    const playerSpeed = Math.hypot(player.vx, player.vy);
+    this.world.updateRacingLine(player.s, playerSpeed, true);
 
     const playerView = this.cars.get(player.id);
     this.playerCar = playerView ?? null;

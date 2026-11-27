@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Track } from '../types';
 import { COASTLINE } from '../track/telukSore';
+import { curvatureAt } from '../track/geometry';
 import { mulberry32, hash2d } from '../utils';
 import {
   POND,
@@ -42,6 +43,8 @@ export interface World3D {
   update: (time: number, dt: number, focus: THREE.Vector3, reducedMotion: boolean) => void;
   /** rain intensity and road wetness, both 0..1: darkens the sky/lights/clouds and wets the road */
   setWeather: (rain: number, wetness: number) => void;
+  /** updates the dynamic racing line colors based on player progress and current speed */
+  updateRacingLine: (playerS: number, playerSpeed: number, visible: boolean) => void;
 }
 
 function makeCanvas(width: number, height: number): HTMLCanvasElement {
@@ -240,6 +243,116 @@ function createRibbon(
   const mesh = new THREE.Mesh(geometry, material);
   mesh.receiveShadow = true;
   return mesh;
+}
+
+function createDynamicRacingLine(track: Track): {
+  mesh: THREE.Mesh;
+  update: (playerS: number, playerSpeed: number, visible: boolean) => void;
+} {
+  const count = track.samples.length;
+  const halfWidth = 0.24;
+  const y = ROAD_Y + 0.018;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+
+  // Precompute safe cornering speed + braking lookahead at each track sample
+  const cornerLimit = new Float32Array(count);
+  for (let i = 0; i < count; i += 1) {
+    const curve = Math.abs(curvatureAt(track, track.samples[i].dist, 56));
+    cornerLimit[i] = curve < 1e-4 ? 280 : Math.max(72, Math.min(280, Math.sqrt(185 / curve)));
+  }
+
+  const targetSpeed = new Float32Array(count);
+  const brakeDecel = 235;
+  for (let i = 0; i < count; i += 1) {
+    let limit = cornerLimit[i];
+    const s0 = track.samples[i].dist;
+    for (let step = 1; step <= 28; step += 1) {
+      const j = (i + step) % count;
+      const ahead = (track.samples[j].dist - s0 + track.length) % track.length;
+      if (ahead > 240) break;
+      const safeEntry = Math.sqrt(cornerLimit[j] * cornerLimit[j] + 2 * brakeDecel * ahead);
+      if (safeEntry < limit) limit = safeEntry;
+    }
+    targetSpeed[i] = limit;
+  }
+
+  for (let i = 0; i < count; i += 1) {
+    const sample = track.samples[i];
+    const cx = toSceneX(sample.x);
+    const cz = toSceneZ(sample.y);
+    const nx = sample.nx;
+    const nz = sample.ny;
+    positions.push(cx - nx * halfWidth, y, cz - nz * halfWidth);
+    positions.push(cx + nx * halfWidth, y, cz + nz * halfWidth);
+    colors.push(0.18, 0.9, 0.43, 0.18, 0.9, 0.43);
+
+    const next = (i + 1) % count;
+    const a = i * 2;
+    const b = i * 2 + 1;
+    const c = next * 2;
+    const d = next * 2 + 1;
+    indices.push(a, b, c, b, d, c);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const colorAttr = new THREE.Float32BufferAttribute(colors, 3);
+  geometry.setAttribute('color', colorAttr);
+  geometry.setIndex(indices);
+
+  const material = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'racing-line';
+
+  const green = new THREE.Color('#2ee66d');
+  const amber = new THREE.Color('#ffca28');
+  const red = new THREE.Color('#ff2e24');
+  const tmp = new THREE.Color();
+
+  const update = (playerS: number, playerSpeed: number, visible: boolean) => {
+    mesh.visible = visible;
+    if (!visible) return;
+
+    const effectiveSpeed = Math.max(playerSpeed, 95);
+    const arr = colorAttr.array as Float32Array;
+    for (let i = 0; i < count; i += 1) {
+      const ahead = (track.samples[i].dist - playerS + track.length) % track.length;
+      const ratio = effectiveSpeed / targetSpeed[i];
+      if (ratio <= 0.86) {
+        tmp.copy(green);
+      } else if (ratio < 1.04) {
+        const t = (ratio - 0.86) / 0.18;
+        tmp.copy(green).lerp(amber, t);
+      } else {
+        const t = Math.min(1, (ratio - 1.04) / 0.16);
+        tmp.copy(amber).lerp(red, t);
+      }
+
+      // Highlight the active lookahead window ahead of the player
+      const dim = ahead <= 420 ? 1 : 0.45;
+      const r = tmp.r * dim;
+      const g = tmp.g * dim;
+      const b = tmp.b * dim;
+      const idx = i * 6;
+      arr[idx] = r;
+      arr[idx + 1] = g;
+      arr[idx + 2] = b;
+      arr[idx + 3] = r;
+      arr[idx + 4] = g;
+      arr[idx + 5] = b;
+    }
+    colorAttr.needsUpdate = true;
+  };
+
+  return { mesh, update };
 }
 
 function addRoad(group: THREE.Group, track: Track): void {
@@ -825,6 +938,8 @@ export function createWorld(track: Track): World3D {
   const water = createWater(track, root);
   root.add(buildTerrain(track));
   addRoad(root, track);
+  const racingLine = createDynamicRacingLine(track);
+  root.add(racingLine.mesh);
   if (track.theme !== 'highland') addCoastFoam(root);
 
   const terrainPlacements: TerrainPlacement[] = [];
@@ -1056,5 +1171,5 @@ export function createWorld(track: Track): World3D {
     }
   };
 
-  return { root, sun, update, setWeather };
+  return { root, sun, update, setWeather, updateRacingLine: racingLine.update };
 }

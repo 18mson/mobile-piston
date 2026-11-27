@@ -627,24 +627,71 @@ p {
   min-height: calc(100dvh - 210px);
 }
 
-.car-grid {
+.car-carousel {
   position: sticky;
   bottom: max(10px, env(safe-area-inset-bottom));
   z-index: 4;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
   padding: 10px;
   border: 1px solid var(--line);
   background: rgba(10, 20, 28, 0.94);
 }
 
+.car-grid {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  gap: 10px;
+}
+
+.car-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.car-carousel-btn {
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  background: rgba(20, 38, 48, 0.96);
+  color: var(--bone);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease;
+}
+
+.car-carousel-btn:hover:not(:disabled) {
+  border-color: var(--orange);
+  background: var(--ink-soft);
+  color: var(--orange);
+}
+
+.car-carousel-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .car-card {
   display: flex;
+  flex: 0 0 156px;
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
   min-width: 0;
+  scroll-snap-align: start;
   padding: 10px;
   border: 2px solid var(--line);
   border-radius: 0;
@@ -2005,6 +2052,17 @@ kbd {
     gap: 12px;
   }
 
+  .car-carousel {
+    position: static;
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .car-carousel-btn {
+    flex: 0 0 32px;
+    font-size: 14px;
+  }
+
   .car-grid {
     position: static;
     display: flex;
@@ -2013,8 +2071,8 @@ kbd {
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     gap: 8px;
-    padding: 8px;
-    scrollbar-width: thin;
+    padding: 0;
+    scrollbar-width: none;
   }
 
   .car-card {
@@ -2663,6 +2721,12 @@ kbd {
     display: none;
   }
 
+  .car-carousel {
+    position: static;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
   .car-grid {
     position: static;
     display: flex;
@@ -2671,7 +2735,7 @@ kbd {
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     gap: 8px;
-    padding: 6px 8px;
+    padding: 0;
   }
 
   .car-card {
