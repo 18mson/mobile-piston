@@ -115,4 +115,33 @@ describe('client netcode prediction & interpolation', () => {
     const afterDecay = sync.getRenderPlayer();
     expect(Math.abs(afterDecay.angle - (origAngle + 0.25))).toBeLessThan(0.02);
   });
+
+  it('prevents rendered local player from visually passing through remote racers', () => {
+    const sync = new NetRaceSync(TELUK_SORE, participants, 'p1');
+    const racers = sync.sim.exportNetState();
+    const p1State = racers.find((r) => r.id === 'p1')!;
+    const p2State = racers.find((r) => r.id === 'p2')!;
+    const cos = Math.cos(p1State.angle);
+    const sin = Math.sin(p1State.angle);
+    // Place p2 directly ahead of p1 at bumper-overlapping distance
+    p2State.x = p1State.x + cos * 19;
+    p2State.y = p1State.y + sin * 19;
+    p2State.vx = 0;
+    p2State.vy = 0;
+
+    sync.applyServerSnapshot(
+      { tick: 1, elapsed: 0.1, mode: 'racing', countdown: null, lastProcessedSeq: { p1: 0 }, racers },
+      1000,
+    );
+
+    // Advance p1 forward into p2 locally, then run visual update
+    sync.sim.player.x = p1State.x + cos * 3;
+    sync.sim.player.y = p1State.y + sin * 3;
+    sync.updateVisuals(1 / 60, 1016);
+
+    const rendered = sync.getRenderPlayer();
+    const remoteP2 = sync.sim.racers.find((r) => r.id === 'p2')!;
+    const dist = Math.hypot(remoteP2.x - rendered.x, remoteP2.y - rendered.y);
+    expect(dist).toBeGreaterThanOrEqual(21);
+  });
 });

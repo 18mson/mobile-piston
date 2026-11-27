@@ -288,109 +288,164 @@ export function stepRacer(
   return racer;
 }
 
-export function resolveRacerCollisions(racers: RacerState[]): void {
-  for (let i = 0; i < racers.length; i += 1) {
-    for (let j = i + 1; j < racers.length; j += 1) {
-      const a = racers[i];
-      const b = racers[j];
-      if (a.finished || b.finished) continue;
+function findCarOverlap(
+  ax: number,
+  ay: number,
+  aAngle: number,
+  aCarId: CarId,
+  bx: number,
+  by: number,
+  bAngle: number,
+  bCarId: CarId,
+): { maxOverlap: number; nx: number; ny: number } | null {
+  const colA = getCarCollision(aCarId);
+  const colB = getCarCollision(bCarId);
+  const minCircleDist = colA.circleRadius + colB.circleRadius;
+  const minCenterDist = colA.radius + colB.radius;
 
-      const colA = getCarCollision(a.carId);
-      const colB = getCarCollision(b.carId);
-      const minCircleDist = colA.circleRadius + colB.circleRadius;
-      const minCenterDist = colA.radius + colB.radius;
+  const cdx = bx - ax;
+  const cdy = by - ay;
+  const cDist = Math.hypot(cdx, cdy);
+  // Fast broadphase cull: if cars are farther than combined extents, they cannot collide
+  if (cDist > colA.axleOffset + colB.axleOffset + minCircleDist + 2) return null;
 
-      const cdx = b.x - a.x;
-      const cdy = b.y - a.y;
-      const cDist = Math.hypot(cdx, cdy);
-      // Fast broadphase cull: if cars are farther than combined extents, they cannot collide
-      if (cDist > colA.axleOffset + colB.axleOffset + minCircleDist + 2) continue;
+  // Dual-circle capsule representation: front and rear collision centers sized per car
+  const cosA = Math.cos(aAngle);
+  const sinA = Math.sin(aAngle);
+  const cosB = Math.cos(bAngle);
+  const sinB = Math.sin(bAngle);
 
-      // Dual-circle capsule representation: front and rear collision centers sized per car
-      const cosA = Math.cos(a.angle);
-      const sinA = Math.sin(a.angle);
-      const cosB = Math.cos(b.angle);
-      const sinB = Math.sin(b.angle);
+  const afx = ax + cosA * colA.axleOffset;
+  const afy = ay + sinA * colA.axleOffset;
+  const arx = ax - cosA * colA.axleOffset;
+  const ary = ay - sinA * colA.axleOffset;
 
-      const afx = a.x + cosA * colA.axleOffset;
-      const afy = a.y + sinA * colA.axleOffset;
-      const arx = a.x - cosA * colA.axleOffset;
-      const ary = a.y - sinA * colA.axleOffset;
+  const bfx = bx + cosB * colB.axleOffset;
+  const bfy = by + sinB * colB.axleOffset;
+  const brx = bx - cosB * colB.axleOffset;
+  const bry = by - sinB * colB.axleOffset;
 
-      const bfx = b.x + cosB * colB.axleOffset;
-      const bfy = b.y + sinB * colB.axleOffset;
-      const brx = b.x - cosB * colB.axleOffset;
-      const bry = b.y - sinB * colB.axleOffset;
+  let maxOverlap = 0;
+  let nx = 0;
+  let ny = 0;
 
-      let maxOverlap = 0;
-      let nx = 0;
-      let ny = 0;
+  // Check all 4 front/rear circle pairings to prevent bumper/corner clipping
+  const pairs: [number, number, number, number][] = [
+    [afx, afy, bfx, bfy],
+    [afx, afy, brx, bry],
+    [arx, ary, bfx, bfy],
+    [arx, ary, brx, bry],
+  ];
 
-      // Check all 4 front/rear circle pairings to prevent bumper/corner clipping
-      const pairs: [number, number, number, number][] = [
-        [afx, afy, bfx, bfy],
-        [afx, afy, brx, bry],
-        [arx, ary, bfx, bfy],
-        [arx, ary, brx, bry],
-      ];
-
-      for (const [pax, pay, pbx, pby] of pairs) {
-        const pdx = pbx - pax;
-        const pdy = pby - pay;
-        const pDist = Math.hypot(pdx, pdy);
-        if (pDist < minCircleDist && pDist > 0.0001) {
-          const overlap = minCircleDist - pDist;
-          if (overlap > maxOverlap) {
-            maxOverlap = overlap;
-            nx = pdx / pDist;
-            ny = pdy / pDist;
-          }
-        }
-      }
-
-      // Also ensure center-to-center distance maintains at least minCenterDist
-      if (cDist < minCenterDist && cDist > 0.0001) {
-        const centerOverlap = minCenterDist - cDist;
-        if (centerOverlap > maxOverlap) {
-          maxOverlap = centerOverlap;
-          nx = cdx / cDist;
-          ny = cdy / cDist;
-        }
-      }
-
-      if (maxOverlap <= 0.0001) continue;
-
-      const massA = getCar(a.carId).stats.mass;
-      const massB = getCar(b.carId).stats.mass;
-      const totalMass = massA + massB;
-
-      a.x -= nx * maxOverlap * (massB / totalMass);
-      a.y -= ny * maxOverlap * (massB / totalMass);
-      b.x += nx * maxOverlap * (massA / totalMass);
-      b.y += ny * maxOverlap * (massA / totalMass);
-
-      const relativeX = b.vx - a.vx;
-      const relativeY = b.vy - a.vy;
-      const approach = relativeX * nx + relativeY * ny;
-      if (approach < 0) {
-        const impulse = (-approach * 1.25) / totalMass;
-        a.vx -= nx * impulse * massB;
-        a.vy -= ny * impulse * massB;
-        b.vx += nx * impulse * massA;
-        b.vy += ny * impulse * massA;
-        const strength = Math.min(1, Math.abs(approach) / 100);
-        // Circuit Superstars collision slowdown: kinetic energy dissipation
-        const slowdown = 1.0 - Math.min(0.42, strength * 0.36);
-        a.vx *= slowdown;
-        a.vy *= slowdown;
-        b.vx *= slowdown;
-        b.vy *= slowdown;
-        a.impact = Math.max(a.impact, strength);
-        b.impact = Math.max(b.impact, strength);
-        a.impactKind = 'car';
-        b.impactKind = 'car';
+  for (const [pax, pay, pbx, pby] of pairs) {
+    const pdx = pbx - pax;
+    const pdy = pby - pay;
+    const pDist = Math.hypot(pdx, pdy);
+    if (pDist < minCircleDist && pDist > 0.0001) {
+      const overlap = minCircleDist - pDist;
+      if (overlap > maxOverlap) {
+        maxOverlap = overlap;
+        nx = pdx / pDist;
+        ny = pdy / pDist;
       }
     }
   }
+
+  // Also ensure center-to-center distance maintains at least minCenterDist
+  if (cDist < minCenterDist && cDist > 0.0001) {
+    const centerOverlap = minCenterDist - cDist;
+    if (centerOverlap > maxOverlap) {
+      maxOverlap = centerOverlap;
+      nx = cdx / cDist;
+      ny = cdy / cDist;
+    }
+  }
+
+  return maxOverlap > 0.0001 ? { maxOverlap, nx, ny } : null;
+}
+
+function resolvePairCollision(a: RacerState, b: RacerState, pushAOnly = false): void {
+  if (a.finished || b.finished) return;
+  const hit = findCarOverlap(a.x, a.y, a.angle, a.carId, b.x, b.y, b.angle, b.carId);
+  if (!hit) return;
+
+  const { maxOverlap, nx, ny } = hit;
+  const massA = getCar(a.carId).stats.mass;
+  const massB = getCar(b.carId).stats.mass;
+  const totalMass = massA + massB;
+
+  if (pushAOnly) {
+    a.x -= nx * maxOverlap;
+    a.y -= ny * maxOverlap;
+  } else {
+    a.x -= nx * maxOverlap * (massB / totalMass);
+    a.y -= ny * maxOverlap * (massB / totalMass);
+    b.x += nx * maxOverlap * (massA / totalMass);
+    b.y += ny * maxOverlap * (massA / totalMass);
+  }
+
+  const relativeX = b.vx - a.vx;
+  const relativeY = b.vy - a.vy;
+  const approach = relativeX * nx + relativeY * ny;
+  if (approach < 0) {
+    const impulse = (-approach * 1.25) / totalMass;
+    a.vx -= nx * impulse * massB;
+    a.vy -= ny * impulse * massB;
+    if (!pushAOnly) {
+      b.vx += nx * impulse * massA;
+      b.vy += ny * impulse * massA;
+    }
+    const strength = Math.min(1, Math.abs(approach) / 100);
+    // Circuit Superstars collision slowdown: kinetic energy dissipation
+    const slowdown = 1.0 - Math.min(0.42, strength * 0.36);
+    a.vx *= slowdown;
+    a.vy *= slowdown;
+    a.impact = Math.max(a.impact, strength);
+    a.impactKind = 'car';
+    if (!pushAOnly) {
+      b.vx *= slowdown;
+      b.vy *= slowdown;
+      b.impact = Math.max(b.impact, strength);
+      b.impactKind = 'car';
+    }
+  }
+}
+
+export function resolveRacerCollisions(racers: RacerState[]): void {
+  for (let i = 0; i < racers.length; i += 1) {
+    for (let j = i + 1; j < racers.length; j += 1) {
+      resolvePairCollision(racers[i], racers[j], false);
+    }
+  }
+}
+
+/** Resolves predicted local player collisions against remote racers without mutating remote state. */
+export function resolveLocalAgainstRemotes(player: RacerState, racers: RacerState[]): void {
+  for (const other of racers) {
+    if (other.id === player.id) continue;
+    resolvePairCollision(player, other, true);
+  }
+}
+
+/** Pushes a rendered position out of overlap with other racers so visual smoothing never ghosts through cars. */
+export function clampVisualCarOverlap(
+  x: number,
+  y: number,
+  angle: number,
+  carId: CarId,
+  localId: string,
+  racers: RacerState[],
+): { x: number; y: number } {
+  let rx = x;
+  let ry = y;
+  for (const other of racers) {
+    if (other.id === localId || other.finished) continue;
+    const hit = findCarOverlap(rx, ry, angle, carId, other.x, other.y, other.angle, other.carId);
+    if (hit) {
+      rx -= hit.nx * hit.maxOverlap;
+      ry -= hit.ny * hit.maxOverlap;
+    }
+  }
+  return { x: rx, y: ry };
 }
 

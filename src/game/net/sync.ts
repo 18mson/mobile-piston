@@ -1,5 +1,5 @@
 import { getCar } from '../data/cars';
-import { stepRacer } from '../physics';
+import { clampVisualCarOverlap, stepRacer } from '../physics';
 import { RaceSim, type RaceParticipant } from '../race';
 import { nearestOnTrack } from '../track/geometry';
 import type {
@@ -497,6 +497,20 @@ export class NetRaceSync {
 
     // P0-1: Lock prev = current for all remote racers so fixed-step renderer alpha is a no-op
     this.lockRemotePrevToCurrent();
+
+    if (!this.isSpectator && !this.sim.player.finished) {
+      const p = this.sim.player;
+      const clamped = clampVisualCarOverlap(
+        p.x + this.errorOffsetX,
+        p.y + this.errorOffsetY,
+        p.angle + this.errorOffsetAngle,
+        p.carId,
+        this.localPlayerId,
+        this.sim.racers,
+      );
+      this.errorOffsetX = clamped.x - p.x;
+      this.errorOffsetY = clamped.y - p.y;
+    }
   }
 
   private lockRemotePrevToCurrent(): void {
