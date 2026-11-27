@@ -69,6 +69,21 @@ export function terrainHeightAt(
     if (distance < roadClear) height = Math.min(height, ROAD_Y - 0.14);
     return { height, kind: height > 11.5 ? 'rock' : 'grass', trackDistance: distance };
   }
+  if (track.theme === 'wetland') {
+    // Jungle flats: low, gently rolling ground between the lanes (so the road stays visible),
+    // a raised tree-line berm around the edge of the map. No sea, no pond.
+    const distance = Math.min(9999, nearestDistance(track, worldX, worldY));
+    const bank = smoothstep(roadClear, roadClear + 40, distance) * 0.55;
+    const rise = smoothstep(roadClear + 40, roadClear + 225, distance);
+    const rolling =
+      (Math.sin(worldX * 0.008) * 0.5 + Math.sin(worldY * 0.011 + 0.8) * 0.4 + Math.sin((worldX - worldY) * 0.006) * 0.35 + 1.2) *
+      1.5;
+    const edge = Math.min(worldX, 2400 - worldX, worldY, 1600 - worldY);
+    const edgeRise = smoothstep(150, 20, edge) * 5.5;
+    let height = 0.55 + bank + rolling * rise + edgeRise;
+    if (distance < roadClear) height = Math.min(height, ROAD_Y - 0.14);
+    return { height, kind: 'grass', trackDistance: distance };
+  }
   const coast = coastYAt(worldX, coastline);
   if (worldY < coast - 2) {
     return { height: -1.4, kind: 'sea', trackDistance: 9999 };

@@ -14,6 +14,7 @@ const ROUTE_KIND: Record<string, string> = {
   'mata-air': 'danau',
   'lereng-kopi': 'pegunungan',
   pelabuhan: 'pelabuhan',
+  'rimba-lumpur': 'hutan',
 };
 
 export default function TrackSelectScreen({

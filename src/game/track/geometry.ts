@@ -1,4 +1,4 @@
-import type { Track, TrackId, TrackSample, TrackTheme } from '../types';
+import type { SurfaceKind, SurfaceZone, Track, TrackId, TrackSample, TrackTheme } from '../types';
 import { clamp, mod } from '../utils';
 
 interface Vec2 {
@@ -43,6 +43,19 @@ export interface BuildTrackOptions {
   startHeading: number;
   gridSlots: { distance: number; lateral: number }[];
   boostPadFractions: { fraction: number; lateral: number; length: number }[];
+  /** Boost pads placed by world position (resolved to the nearest point of the road) */
+  boostPadAnchors?: { x: number; y: number; lateral: number; length: number }[];
+  /**
+   * Dirt sections and puddles, placed by world position: `from`/`to` are points on (or next to) the road,
+   * in driving direction. Puddles use the middle of the range as their centre.
+   */
+  surfaces?: {
+    kind: SurfaceKind;
+    from: Vec2;
+    to: Vec2;
+    lateral?: number;
+    halfWidth?: number;
+  }[];
   attract: { fraction: number; offsetX: number; offsetY: number };
   light?: { color: string; alpha: number } | null;
 }
@@ -148,6 +161,29 @@ export function buildTrack(options: BuildTrackOptions): Track {
   }
 
   const length = samples.length * uniformStep;
+  const distanceOf = (point: Vec2): number => {
+    let best = Number.POSITIVE_INFINITY;
+    let bestDist = 0;
+    for (const sample of samples) {
+      const d = (sample.x - point.x) ** 2 + (sample.y - point.y) ** 2;
+      if (d < best) {
+        best = d;
+        bestDist = sample.dist;
+      }
+    }
+    return bestDist;
+  };
+  const surfaces: SurfaceZone[] = (options.surfaces ?? []).map((zone) => {
+    const a = distanceOf(zone.from);
+    const b = distanceOf(zone.to);
+    return {
+      kind: zone.kind,
+      start: a,
+      length: Math.max(8, mod(b - a, length)),
+      lateral: zone.lateral ?? 0,
+      halfWidth: zone.halfWidth ?? options.width / 2 + options.shoulder,
+    };
+  });
   const track: Track = {
     id: options.id,
     theme: options.theme ?? 'coast',
@@ -161,11 +197,19 @@ export function buildTrack(options: BuildTrackOptions): Track {
     length,
     startPoint: { x: samples[0].x, y: samples[0].y },
     startHeading: Math.atan2(samples[0].ty, samples[0].tx),
-    boostPads: options.boostPadFractions.map((pad) => ({
-      distance: pad.fraction * length,
-      lateral: pad.lateral,
-      length: pad.length,
-    })),
+    boostPads: [
+      ...options.boostPadFractions.map((pad) => ({
+        distance: pad.fraction * length,
+        lateral: pad.lateral,
+        length: pad.length,
+      })),
+      ...(options.boostPadAnchors ?? []).map((pad) => ({
+        distance: distanceOf(pad),
+        lateral: pad.lateral,
+        length: pad.length,
+      })),
+    ],
+    ...(surfaces.length > 0 ? { surfaces } : {}),
     gridSlots: options.gridSlots,
     attract: options.attract,
     light: options.light ?? null,
@@ -254,6 +298,29 @@ export function nearestOnTrack(track: Track, x: number, y: number): TrackHit {
   }
 
   return best as TrackHit;
+}
+
+/** How much of each special surface is under a point of the road (0..1): `s` along the track, `side` = lateral offset. */
+export function surfaceAt(track: Track, s: number, side: number): { dirt: number; puddle: number } {
+  let dirt = 0;
+  let puddle = 0;
+  const zones = track.surfaces;
+  if (!zones) return { dirt, puddle };
+  for (const zone of zones) {
+    const rel = mod(s - zone.start, track.length);
+    if (rel > zone.length) continue;
+    if (zone.kind === 'dirt') {
+      // soft edges so the road does not change grip like a switch
+      const edge = clamp(Math.min(rel, zone.length - rel) / 26, 0, 1);
+      dirt = Math.max(dirt, edge * edge * (3 - 2 * edge));
+    } else {
+      const u = (rel - zone.length / 2) / (zone.length / 2);
+      const v = (side - zone.lateral) / zone.halfWidth;
+      const e = u * u + v * v;
+      if (e < 1) puddle = Math.max(puddle, clamp((1 - e) * 2.4, 0, 1));
+    }
+  }
+  return { dirt, puddle };
 }
 
 export function curvatureAt(track: Track, distance: number, lookAhead = 48): number {

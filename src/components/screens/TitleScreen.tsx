@@ -33,7 +33,9 @@ export default function TitleScreen({
               ? 'Tiga putaran mengelilingi danau. Belok, drifting, lalu tekan nitro pada momen yang tepat.'
               : track.id === 'lereng-kopi'
                 ? 'Tiga putaran menyusuri lereng kopi. Rem sebelum tikungan jepit, atau bersiap berputar.'
-                : track.id === 'pelabuhan'
+                : track.id === 'rimba-lumpur'
+                  ? 'Tiga putaran menembus rimba. Aspal, tanah berlumpur, dan genangan air bergantian, jadi pilih ban dengan cermat.'
+                  : track.id === 'pelabuhan'
                   ? 'Tiga putaran di pelabuhan. Lurusan panjang menggoda, tapi rem tetap wajib di chicane kontainer.'
                   : 'Tiga putaran di pesisir Teluk Sore. Belok, drifting, lalu tekan nitro pada momen yang tepat.'}
           </p>

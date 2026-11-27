@@ -78,6 +78,7 @@ export const UNLOCKS: UnlockDef[] = [
   { id: 'car:mater', kind: 'car', refId: 'mater', level: 5, label: 'Mater' },
   { id: 'tire:grip', kind: 'tire', refId: 'grip', level: 5, label: 'Ban Grip' },
   { id: 'track:pelabuhan', kind: 'track', refId: 'pelabuhan', level: 5, label: 'Sirkuit Pelabuhan' },
+  { id: 'track:rimba-lumpur', kind: 'track', refId: 'rimba-lumpur', level: 8, label: 'Rimba Lumpur' },
   { id: 'car:doc', kind: 'car', refId: 'doc', level: 7, label: 'Doc' },
   { id: 'car:cruz', kind: 'car', refId: 'cruz', level: 9, label: 'Cruz' },
   { id: 'car:francesco', kind: 'car', refId: 'francesco', level: 10, label: 'Francesco' },

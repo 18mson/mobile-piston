@@ -1,7 +1,7 @@
 import type { PlayerInput, RacerState, Track } from './types';
 import { getCar } from './data/cars';
 import { clamp, shortestAngle } from './utils';
-import { curvatureAt, pointAtDistance } from './track/geometry';
+import { curvatureAt, pointAtDistance, surfaceAt } from './track/geometry';
 import { lateralGripAt, maxSteerAngle } from './physics';
 
 const AI_WHEELBASE = 14.5;
@@ -55,6 +55,15 @@ export function computeAiInput(
   const speedFactor = skill * (1 + catchUp);
 
   let targetSpeed = Math.min(spec.stats.topSpeed * speedFactor, gripLimitedSpeed(track, racer.s, spec, skill, speed, racer.gripMul ?? 1));
+  if (track.surfaces) {
+    // ease off before dirt and puddles (the grip loss itself is already in racer.gripMul once we are on them)
+    let worst = 0;
+    for (let d = 0; d <= 150; d += 30) {
+      const ahead = surfaceAt(track, racer.s + d, 0);
+      worst = Math.max(worst, ahead.dirt * 0.12, ahead.puddle * 0.2);
+    }
+    targetSpeed *= 1 - worst * (0.7 + 0.3 * (1 - skill));
+  }
   targetSpeed = Math.max(68, targetSpeed);
 
   const lookAhead = clamp(42 + speed * 0.55, 54, 142);

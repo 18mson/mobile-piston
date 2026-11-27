@@ -2,7 +2,7 @@ import type { CarCollision, CarId, CarSpec, PlayerInput, RacerState, Track } fro
 import { getTire, tireGripMultiplier, type TireSpec } from './data/tires';
 import { getCar } from './data/cars';
 import { clamp } from './utils';
-import { nearestOnTrack, sampleAtDistance } from './track/geometry';
+import { nearestOnTrack, sampleAtDistance, surfaceAt } from './track/geometry';
 
 export const CAR_RADIUS = 7.6;
 
@@ -99,13 +99,27 @@ export function stepRacer(
   const wetness = clamp(env?.wetness ?? 0, 0, 1);
   const wetFactor = 1 - tire.wetLoss * wetness;
   const gripMul = tireGripMultiplier(tire, wetness);
-  racer.gripMul = gripMul;
   const speed = Math.hypot(racer.vx, racer.vy);
   const speedRatio = clamp(speed / spec.stats.topSpeed, 0, 1.2);
 
   const hitBefore = nearestOnTrack(track, racer.x, racer.y);
   const offroadRatio = clamp((hitBefore.distance - (track.width / 2 - 2)) / (CAR_RADIUS * 2.2), 0, 1);
   racer.offroad = offroadRatio > 0.15;
+
+  // Special road surfaces (dirt sections, puddles): worse grip, more drag. The right tyre softens the penalty:
+  // the Terrain tyre copes with dirt (offroadPenalty), the Rain tyre with standing water (wetLoss).
+  const onRoad = hitBefore.distance <= track.width / 2 + 4;
+  const surf = track.surfaces && onRoad ? surfaceAt(track, hitBefore.s, hitBefore.side) : null;
+  const dirtK = surf?.dirt ?? 0;
+  const puddleK = surf?.puddle ?? 0;
+  racer.surface = puddleK > 0.3 ? 'puddle' : dirtK > 0.3 ? 'dirt' : null;
+  const dirtPenalty = clamp(tire.offroadPenalty, 0.45, 1.25);
+  const dirtGrip = 1 - dirtK * 0.27 * dirtPenalty;
+  const wetRelative = tire.wetLoss / 0.3; // standard tyre = 1
+  const aquaplane = 0.8 + 0.4 * clamp(speedRatio, 0, 1); // faster = floats more
+  const puddleGrip = 1 - puddleK * 0.34 * (0.35 + 0.65 * wetRelative) * aquaplane;
+  const gripMulEff = gripMul * dirtGrip * puddleGrip;
+  racer.gripMul = gripMulEff;
   const wantNitro = input.nitro && racer.nitro > 0.5 && !racer.finished;
 
   racer.nitroActive = wantNitro;
@@ -131,7 +145,11 @@ export function stepRacer(
 
   // 2. Longitudinal: engine / brake / coast / drag (progressive slowdown as more tires touch dirt)
   // wheelspin on a wet road costs a little traction; the right tyre also copes better off the asphalt
-  const engineFactor = (1 - offroadRatio * 0.22 * tire.offroadPenalty) * (0.8 + 0.2 * wetFactor);
+  const engineFactor =
+    (1 - offroadRatio * 0.22 * tire.offroadPenalty) *
+    (0.8 + 0.2 * wetFactor) *
+    (1 - dirtK * 0.1 * dirtPenalty) *
+    (1 - puddleK * 0.14);
   const speedFraction = clamp(forward / topSpeed, 0, 1);
   const powerCurve = Math.max(0.18, 1.0 - Math.pow(speedFraction, 1.3));
   const effectiveAcceleration = acceleration * powerCurve * engineFactor;
@@ -155,7 +173,11 @@ export function stepRacer(
       forward *= 1 - 0.75 * dt;
     }
   }
-  const drag = 0.05 + offroadRatio * 0.95 * tire.offroadPenalty;
+  const drag =
+    0.05 +
+    offroadRatio * 0.95 * tire.offroadPenalty +
+    dirtK * 0.28 * dirtPenalty +
+    puddleK * 0.65 * (0.4 + 0.6 * wetRelative);
   forward *= 1 - drag * dt;
 
   // 3. Weight transfer (smoothed longitudinal acceleration). Braking / lift-off -> front is loaded.
@@ -166,7 +188,7 @@ export function stepRacer(
   const loadShift = clamp(-smoothedAccel / 2800, -0.06, 0.1) + liftOff; // + = more on the front
 
   // 4. Per-axle lateral grip budget
-  const gripBudget = lateralGripAt(spec, speed) * (1 - offroadRatio * 0.32 * tire.offroadPenalty) * gripMul;
+  const gripBudget = lateralGripAt(spec, speed) * (1 - offroadRatio * 0.32 * tire.offroadPenalty) * gripMulEff;
   const throttleLoss = onThrottle ? (0.07 + 0.11 * clamp(speedRatio, 0, 1)) * (wantNitro ? 1.25 : 1) : 0;
   const brakeLoss = isBraking ? 0.04 : 0;
   const frontCap = gripBudget * (0.5 + loadShift);

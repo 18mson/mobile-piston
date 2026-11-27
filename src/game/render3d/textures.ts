@@ -392,3 +392,34 @@ export function createHoodVinylTexture(
   texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
 }
+
+/** Muddy dirt road with two darker wheel ruts (u across the road, v along it). */
+export function createDirtTexture(): THREE.CanvasTexture {
+  const size = 64;
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  const rng = mulberry32(9137);
+  ctx.fillStyle = '#7b5a39';
+  ctx.fillRect(0, 0, size, size);
+  // wheel ruts
+  for (const cx of [0.3, 0.7]) {
+    ctx.fillStyle = '#5f4429';
+    ctx.fillRect(Math.round(size * cx) - 4, 0, 8, size);
+    ctx.fillStyle = '#6c4f30';
+    ctx.fillRect(Math.round(size * cx) - 6, 0, 2, size);
+    ctx.fillRect(Math.round(size * cx) + 4, 0, 2, size);
+  }
+  for (let i = 0; i < 520; i += 1) {
+    const x = Math.floor(rng() * size);
+    const y = Math.floor(rng() * size);
+    const roll = rng();
+    ctx.fillStyle = roll > 0.62 ? '#9a7647' : roll > 0.3 ? '#5a4128' : '#8b6a43';
+    ctx.fillRect(x, y, 1 + (rng() > 0.88 ? 1 : 0), 1 + (rng() > 0.92 ? 1 : 0));
+  }
+  // a few small stones
+  for (let i = 0; i < 14; i += 1) {
+    ctx.fillStyle = rng() > 0.5 ? '#a8a08e' : '#847c6c';
+    ctx.fillRect(Math.floor(rng() * size), Math.floor(rng() * size), 2, 1);
+  }
+  return canvasTexture(canvas, 1, 1, true);
+}

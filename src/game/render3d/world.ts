@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Track } from '../types';
+import type { SurfaceZone, Track } from '../types';
 import { COASTLINE } from '../track/telukSore';
 import { curvatureAt } from '../track/geometry';
 import { mulberry32, hash2d } from '../utils';
@@ -20,6 +20,7 @@ import {
   createCheckerTexture,
   createCloudTexture,
   createCurbTexture,
+  createDirtTexture,
   createGridTexture,
   createShoulderTexture,
   createStartBannerTexture,
@@ -119,6 +120,10 @@ function buildTerrain(track: Track): THREE.Mesh {
   const teaA = color('#2f7a3a');
   const teaB = color('#3d8d44');
   const teaDark = color('#1f5a35');
+  const swampA = color('#3c6a37');
+  const swampB = color('#50763a');
+  const swampDark = color('#2a4d2e');
+  const mudPatch = color('#6a5a3a');
 
   for (let iy = 0; iy <= depth; iy += 1) {
     const wy = iy * stepY;
@@ -135,7 +140,12 @@ function buildTerrain(track: Track): THREE.Mesh {
       else {
         const value = hash2d(ix, iy, 31);
         const patch = Math.sin(wx * 0.005) * Math.cos(wy * 0.007 + 0.6);
-        if (track.theme === 'highland') {
+        if (track.theme === 'wetland') {
+          // jungle floor: mossy greens with muddy patches and dark undergrowth
+          const swampPatch = Math.sin(wx * 0.011 + 1.3) * Math.cos(wy * 0.009 - 0.4);
+          c = swampPatch > 0.45 ? mudPatch : swampPatch < -0.25 ? swampDark : value > 0.6 ? swampB : swampA;
+          if (value > 0.9) c = swampDark;
+        } else if (track.theme === 'highland') {
           // contour-line terraces, like tea / coffee plantation steps on a hillside
           const band = Math.floor(info.height * 1.6) % 2 === 0;
           c = info.height < 2.4 ? teaFlat : band ? teaA : teaB;
@@ -472,6 +482,162 @@ function addRoad(group: THREE.Group, track: Track): void {
   }
 }
 
+/** A strip of road between two distances (width tapers in at both ends so dirt "creeps" onto the asphalt). */
+function createSurfaceRibbon(
+  track: Track,
+  start: number,
+  length: number,
+  halfWidth: number,
+  y: number,
+  material: THREE.Material,
+  taperLength = 40,
+): THREE.Mesh {
+  const step = track.length / track.samples.length;
+  const count = Math.max(2, Math.ceil(length / step));
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  for (let k = 0; k <= count; k += 1) {
+    const along = Math.min(length, k * step);
+    const point = sampleAt(track, start + along);
+    const edge = Math.min(along, length - along) / taperLength;
+    const grow = Math.min(1, Math.max(0, edge));
+    const w = halfWidth * WORLD_SCALE * (0.3 + 0.7 * grow);
+    const x = toSceneX(point.x);
+    const z = toSceneZ(point.y);
+    positions.push(x + point.nx * w, y, z + point.ny * w, x - point.nx * w, y, z - point.ny * w);
+    normals.push(0, 1, 0, 0, 1, 0);
+    const v = ((start + along) * WORLD_SCALE) / 6;
+    uvs.push(0, v, 1, v);
+    if (k < count) {
+      const a = k * 2;
+      indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/** Irregular puddle outline (a noisy ellipse in track space) turned into a flat fan on the road. */
+function createPuddleMesh(
+  track: Track,
+  zone: SurfaceZone,
+  y: number,
+  scale: number,
+  material: THREE.Material,
+  seed: number,
+): THREE.Mesh {
+  const segments = 30;
+  const midS = zone.start + zone.length / 2;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const toScene = (s: number, lateral: number): [number, number] => {
+    const p = sampleAt(track, s);
+    return [toSceneX(p.x + p.nx * lateral), toSceneZ(p.y + p.ny * lateral)];
+  };
+  const [cx, cz] = toScene(midS, zone.lateral);
+  positions.push(cx, y, cz);
+  for (let i = 0; i < segments; i += 1) {
+    const a = (i / segments) * Math.PI * 2;
+    const wobble = 1 + 0.1 * Math.sin(3 * a + seed) + 0.07 * Math.sin(5 * a + seed * 2.3) + 0.04 * Math.sin(9 * a + seed);
+    const [x, z] = toScene(
+      midS + Math.cos(a) * (zone.length / 2) * wobble * scale,
+      zone.lateral + Math.sin(a) * zone.halfWidth * wobble * scale,
+    );
+    positions.push(x, y, z);
+  }
+  for (let i = 0; i < segments; i += 1) {
+    indices.push(0, 1 + i, 1 + ((i + 1) % segments));
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/** Dirt sections and puddles drawn over the asphalt. Returns the puddle highlight materials (they shimmer). */
+function addSurfaces(group: THREE.Group, track: Track): THREE.MeshBasicMaterial[] {
+  const shimmer: THREE.MeshBasicMaterial[] = [];
+  const zones = track.surfaces ?? [];
+  if (zones.length === 0) return shimmer;
+
+  const dirtMaterial = new THREE.MeshLambertMaterial({
+    map: createDirtTexture(),
+    color: '#ffffff',
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const dirtHalfWidth = track.width / 2 + track.shoulder * 0.45;
+  zones.forEach((zone) => {
+    if (zone.kind !== 'dirt') return;
+    const dirt = createSurfaceRibbon(track, zone.start, zone.length, dirtHalfWidth, ROAD_Y + 0.03, dirtMaterial);
+    dirt.name = 'dirt';
+    group.add(dirt);
+  });
+
+  const rimMaterial = new THREE.MeshBasicMaterial({
+    color: '#3b2d1f',
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3,
+  });
+  const waterMaterial = new THREE.MeshBasicMaterial({
+    color: '#4f8798',
+    transparent: true,
+    opacity: 0.8,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+  });
+  let index = 0;
+  for (const zone of zones) {
+    if (zone.kind !== 'puddle') continue;
+    index += 1;
+    const seed = index * 1.7;
+    const rim = createPuddleMesh(track, zone, ROAD_Y + 0.05, 1.1, rimMaterial, seed);
+    rim.renderOrder = 2;
+    group.add(rim);
+    const water = createPuddleMesh(track, zone, ROAD_Y + 0.06, 1, waterMaterial, seed);
+    water.renderOrder = 3;
+    group.add(water);
+    const shine = new THREE.MeshBasicMaterial({
+      color: '#d3f1f6',
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -5,
+      polygonOffsetUnits: -5,
+    });
+    const highlight = createPuddleMesh(track, zone, ROAD_Y + 0.07, 0.5, shine, seed + 4);
+    highlight.renderOrder = 4;
+    highlight.position.x += 0.12;
+    highlight.position.z -= 0.1;
+    group.add(highlight);
+    shimmer.push(shine);
+  }
+  return shimmer;
+}
+
 function sampleAt(track: Track, distance: number) {
   const length = track.samples.length;
   const step = track.length / length;
@@ -495,8 +661,8 @@ function sampleAt(track: Track, distance: number) {
 }
 
 function createWater(track: Track, group: THREE.Group): { texture: THREE.Texture; mesh: THREE.Mesh } {
-  if (track.theme === 'highland') {
-    // no sea or pond on the mountain; keep a harmless placeholder so the update loop stays the same
+  if (track.theme === 'highland' || track.theme === 'wetland') {
+    // no sea or pond inland; keep a harmless placeholder so the update loop stays the same
     return { texture: new THREE.Texture(), mesh: new THREE.Mesh() };
   }
   const texture = createWaterTexture();
@@ -942,9 +1108,10 @@ export function createWorld(track: Track): World3D {
   const water = createWater(track, root);
   root.add(buildTerrain(track));
   addRoad(root, track);
+  const puddleShimmer = addSurfaces(root, track);
   const racingLine = createDynamicRacingLine(track);
   root.add(racingLine.mesh);
-  if (track.theme !== 'highland') addCoastFoam(root);
+  if (track.theme !== 'highland' && track.theme !== 'wetland') addCoastFoam(root);
 
   const terrainPlacements: TerrainPlacement[] = [];
   const roadMargin = track.width / 2 + track.shoulder;
@@ -1060,7 +1227,7 @@ export function createWorld(track: Track): World3D {
     const hut = createHut(x, y, info.height, angle);
     root.add(hut);
   }
-  if (track.theme !== 'highland') {
+  if (track.theme !== 'highland' && track.theme !== 'wetland') {
     const lighthouse = createLighthouse(1670, 480, terrainHeightAt(track, COAST, 1670, 480).height);
     root.add(lighthouse);
   }
@@ -1142,6 +1309,9 @@ export function createWorld(track: Track): World3D {
         const baseX = cloud.userData.baseX as number;
         const speed = cloud.userData.speed as number;
         cloud.position.x = baseX + (time * speed) % 1200;
+      }
+      for (let i = 0; i < puddleShimmer.length; i += 1) {
+        puddleShimmer[i].opacity = 0.26 + 0.1 * Math.sin(time * 1.6 + i * 1.9);
       }
     }
     sun.position.set(focus.x + 55, focus.y + 90, focus.z + 45);

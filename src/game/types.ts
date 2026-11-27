@@ -9,8 +9,10 @@ export type CarId =
   | 'cruz'
   | 'francesco'
   | 'storm';
-export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan';
-export type TrackTheme = 'coast' | 'highland';
+export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan' | 'rimba-lumpur';
+export type TrackTheme = 'coast' | 'highland' | 'wetland';
+/** Road surfaces other than asphalt. Puddles can sit on top of dirt (mud puddles). */
+export type SurfaceKind = 'dirt' | 'puddle';
 export type TireId = 'standard' | 'grip' | 'rain' | 'terrain';
 export type WeatherMode = 'clear' | 'rain' | 'dynamic';
 
@@ -77,6 +79,19 @@ export interface TrackSample {
   dist: number;
 }
 
+/**
+ * A stretch of non-asphalt road. `start`/`length` are distances along the track (wraps around the lap).
+ * dirt: covers the whole road width. puddle: an ellipse centred `lateral` units off the centre line,
+ * `length` long and `halfWidth` wide on each side.
+ */
+export interface SurfaceZone {
+  kind: SurfaceKind;
+  start: number;
+  length: number;
+  lateral: number;
+  halfWidth: number;
+}
+
 export interface BoostPad {
   distance: number;
   lateral: number;
@@ -97,6 +112,8 @@ export interface Track {
   startPoint: { x: number; y: number };
   startHeading: number;
   boostPads: BoostPad[];
+  /** Dirt sections and puddles on the road (absent on tracks that are pure asphalt) */
+  surfaces?: SurfaceZone[];
   gridSlots: { distance: number; lateral: number }[];
   attract: { fraction: number; offsetX: number; offsetY: number };
   light: { color: string; alpha: number } | null;
@@ -149,6 +166,8 @@ export interface RacerState {
   gripMul?: number;
   /** True while the tyres are off the asphalt (dirt/grass). Optional, local-only. */
   offroad?: boolean;
+  /** Special road surface under the car this step (dirt section / puddle). Optional, local-only. */
+  surface?: SurfaceKind | null;
   padCooldown: number;
   prevX: number;
   prevY: number;

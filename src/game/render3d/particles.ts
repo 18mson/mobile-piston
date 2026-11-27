@@ -115,8 +115,9 @@ export class ParticleFx {
     const carVx = racer.vx * 0.25; // world -> scene velocity
     const carVz = racer.vy * 0.25;
 
-    // --- dirt kicked up by the rear tyres while off the asphalt
-    if (racer.offroad && speed > 28) {
+    // --- dirt kicked up by the rear tyres while off the asphalt (or on a dirt section of the road)
+    const kickingDirt = Boolean(racer.offroad || racer.surface === 'dirt');
+    if (kickingDirt && speed > 28) {
       const rate = clamp(speed / 55, 0.4, 4) * 22; // particles / second
       let acc = (this.accumDirt.get(id) ?? 0) + rate * dt;
       while (acc >= 1) {
@@ -157,7 +158,7 @@ export class ParticleFx {
         const lat = side * 1.2;
         const x = sceneX + back * cosA - lat * sinA;
         const z = sceneZ + back * sinA + lat * cosA;
-        const color = racer.offroad ? DIRT_COLORS[1] : SMOKE_COLORS[(Math.random() * SMOKE_COLORS.length) | 0];
+        const color = kickingDirt ? DIRT_COLORS[1] : SMOKE_COLORS[(Math.random() * SMOKE_COLORS.length) | 0];
         this.spawn(
           SMOKE,
           x,
@@ -178,8 +179,10 @@ export class ParticleFx {
     }
 
     // --- water spray behind the wheels on a wet road
-    if (wetness > 0.25 && !racer.offroad && speed > 55) {
-      const rate = wetness * clamp(speed / 100, 0.5, 2.2) * 48;
+    const inPuddle = racer.surface === 'puddle';
+    const sprayWet = inPuddle ? 1 : wetness;
+    if (sprayWet > 0.25 && !racer.offroad && speed > (inPuddle ? 30 : 55)) {
+      const rate = sprayWet * clamp(speed / 100, 0.5, 2.2) * 48 * (inPuddle ? 2.2 : 1);
       let acc = (this.accumSpray.get(id) ?? 0) + rate * dt;
       while (acc >= 1) {
         acc -= 1;
