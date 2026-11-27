@@ -162,6 +162,7 @@ export default function GarageScreen({
         <div className="garage-layout">
           <aside className="car-detail panel" aria-label={`Detail ${selected.name}`}>
             <div className={shownLockLevel != null ? `car-detail-visual ${styles.lockedPreview}` : 'car-detail-visual'}>
+              <span className="car-stage-number" aria-hidden="true">#{selected.number ?? 1}</span>
               <CarThumb car={selected} number={selected.number ?? 1} scale={6} />
             </div>
 
@@ -208,7 +209,6 @@ export default function GarageScreen({
                 </p>
               )}
               <p className="car-blurb">{selected.blurb}</p>
-              <p className="detail-note">Drift mengisi meter nitro. Variasi warna tidak memengaruhi stat.</p>
             </div>
           </aside>
 
@@ -257,14 +257,15 @@ export default function GarageScreen({
                     }}
                     data-nav
                   >
-                    {needLevel != null && <span className={styles.lockTag}>Level {needLevel}</span>}
+                    <span className="car-card-visual">
+                      <CarThumb car={car} number={car.number ?? 1} scale={3} staticView />
+                    </span>
                     <span className="car-card-top">
                       <strong>{car.name}</strong>
-                      <span>{car.kind}</span>
+                      <span>#{car.number ?? 1}</span>
                     </span>
-                    <StatBars car={car} compact />
                     <span className="car-card-state">
-                      {needLevel != null ? `Terkunci: Level ${needLevel}` : selectedCard ? 'Mobil terpilih' : 'Pilih mobil'}
+                      {needLevel != null ? `Level ${needLevel}` : selectedCard ? 'Terpilih' : car.kind}
                     </span>
                   </button>
                 );

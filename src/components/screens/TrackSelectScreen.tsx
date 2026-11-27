@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { LapCount, Track, TrackId, WeatherMode } from '../../game/types';
 import { WEATHER_LABELS, WEATHER_MODES } from '../../game/weather';
 import { isTrackUnlocked, trackUnlockDef } from '../../game/progression';
@@ -71,7 +72,12 @@ export default function TrackSelectScreen({
   xp?: number;
   unlocks?: string[];
 }) {
-  const selected: Track = getTrack(selectedTrackId);
+  const [previewId, setPreviewId] = useState<TrackId | null>(null);
+  const shownId: TrackId = previewId ?? selectedTrackId;
+  const shown: Track = getTrack(shownId);
+  const shownUnlocked = isTrackUnlocked(shownId, { xp, unlocks });
+  const shownLockLevel = shownUnlocked ? null : (trackUnlockDef(shownId)?.level ?? null);
+  const shownRecord = bestLapMs[shownId] ?? null;
 
   return (
     <section className="screen track-select-screen" data-menu-scope="active" aria-labelledby="track-select-heading">
@@ -84,99 +90,151 @@ export default function TrackSelectScreen({
             <p className="eyebrow">Langkah 2 / 2</p>
             <h2 id="track-select-heading">Pilih lintasan</h2>
           </div>
+          <button
+            className="btn btn-primary screen-heading-cta"
+            type="button"
+            disabled={shownLockLevel != null}
+            title={shownLockLevel != null ? `Capai Level ${shownLockLevel} untuk membuka ${shown.name}` : undefined}
+            onClick={() => {
+              if (shownLockLevel != null) return;
+              onStart();
+            }}
+            data-nav
+          >
+            Balapan di {shown.name}
+          </button>
         </div>
 
-        <div className="track-select-grid">
-          {TRACK_ORDER.map((id) => {
-            const track = getTrack(id);
-            const isSelected = id === selectedTrackId;
-            const record = bestLapMs[id] ?? null;
-            const unlocked = isTrackUnlocked(id, { xp, unlocks });
-            const lockLevel = unlocked ? null : (trackUnlockDef(id)?.level ?? null);
-            return (
-              <button
-                key={id}
-                type="button"
-                className="track-select-card"
-                data-selected={isSelected}
-                data-locked={lockLevel != null}
-                aria-pressed={isSelected}
-                aria-disabled={lockLevel != null}
-                onFocus={() => {
-                  if (unlocked && !isSelected) onSelect(id);
-                }}
-                onClick={() => onSelect(id)}
-                data-nav
-              >
-                <span className="track-select-visual">
-                  <TrackPreview track={track} />
-                </span>
-                <span className="track-select-copy">
-                  <span className="label">Rute {ROUTE_KIND[id] ?? 'khusus'}</span>
-                  <strong>{track.name}</strong>
-                  <span className="track-select-subtitle">{track.subtitle}</span>
-                  <span className="track-select-meta">{selectedLaps} putaran / 8 mobil / start P8</span>
-                  <span className="track-select-record">
-                    {lockLevel != null
-                      ? `Terkunci - Terbuka di Level ${lockLevel}`
-                      : `Rekor: ${record == null ? 'Belum ada' : formatTime(record)}`}
+        <div className="garage-layout">
+          <aside className="track-detail panel" aria-label={`Detail ${shown.name}`}>
+            <div className={shownLockLevel != null ? `track-detail-visual ${styles.lockedPreview}` : 'track-detail-visual'}>
+              <span className="track-stage-kind" aria-hidden="true">
+                {ROUTE_KIND[shownId] ?? 'sirkuit'}
+              </span>
+              <TrackPreview track={shown} />
+            </div>
+
+            <div className="track-detail-info">
+              <div className="car-detail-heading">
+                <div>
+                  <span className="label">
+                    {shownLockLevel == null ? `Rute ${ROUTE_KIND[shownId] ?? 'khusus'}` : 'Pratinjau (terkunci)'}
                   </span>
+                  <h3>{shown.name}</h3>
+                </div>
+                <span className="track-detail-record">
+                  {shownLockLevel != null
+                    ? `Level ${shownLockLevel}`
+                    : `Rekor: ${shownRecord == null ? 'Belum ada' : formatTime(shownRecord)}`}
                 </span>
-              </button>
-            );
-          })}
-        </div>
+              </div>
 
-        <div className="track-select-footer panel">
-          {(onSelectLaps || onSelectWeather) && (
-            <div className="track-select-options">
-              {onSelectLaps && (
-                <div className="lap-picker" role="group" aria-label="Jumlah putaran">
-                  <span className="label">Putaran</span>
-                  <div className="lap-pills">
-                    {LAP_OPTIONS.map((laps) => (
-                      <button
-                        key={laps}
-                        type="button"
-                        className="btn btn-small lap-pill"
-                        data-active={selectedLaps === laps}
-                        aria-pressed={selectedLaps === laps}
-                        onClick={() => onSelectLaps(laps)}
-                        data-nav
-                      >
-                        {laps}
-                      </button>
-                    ))}
-                  </div>
+              <p className="car-blurb">{shown.subtitle}</p>
+              <p className="track-select-meta">
+                {selectedLaps} putaran / 8 mobil / start P8{tireName ? ` / Ban ${tireName}` : ''}
+              </p>
+
+              {(onSelectLaps || onSelectWeather) && (
+                <div className="track-select-options">
+                  {onSelectLaps && (
+                    <div className="lap-picker" role="group" aria-label="Jumlah putaran">
+                      <span className="label">Putaran</span>
+                      <div className="lap-pills">
+                        {LAP_OPTIONS.map((laps) => (
+                          <button
+                            key={laps}
+                            type="button"
+                            className="btn btn-small lap-pill"
+                            data-active={selectedLaps === laps}
+                            aria-pressed={selectedLaps === laps}
+                            onClick={() => onSelectLaps(laps)}
+                            data-nav
+                          >
+                            {laps}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {onSelectWeather && (
+                    <div className="lap-picker" role="group" aria-label="Cuaca balapan">
+                      <span className="label">Cuaca</span>
+                      <div className="lap-pills">
+                        {WEATHER_MODES.map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            className="btn btn-small lap-pill weather-icon-pill"
+                            data-active={mode === weather}
+                            aria-pressed={mode === weather}
+                            aria-label={`${WEATHER_LABELS[mode].name}: ${WEATHER_LABELS[mode].blurb}`}
+                            title={`${WEATHER_LABELS[mode].name}: ${WEATHER_LABELS[mode].blurb}`}
+                            onClick={() => onSelectWeather(mode)}
+                            data-nav
+                          >
+                            <WeatherIcon mode={mode} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-              {onSelectWeather && (
-                <div className="lap-picker" role="group" aria-label="Cuaca balapan">
-                  <span className="label">Cuaca</span>
-                  <div className="lap-pills">
-                    {WEATHER_MODES.map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        className="btn btn-small lap-pill weather-icon-pill"
-                        data-active={mode === weather}
-                        aria-pressed={mode === weather}
-                        aria-label={`${WEATHER_LABELS[mode].name}: ${WEATHER_LABELS[mode].blurb}`}
-                        title={`${WEATHER_LABELS[mode].name}: ${WEATHER_LABELS[mode].blurb}`}
-                        onClick={() => onSelectWeather(mode)}
-                        data-nav
-                      >
-                        <WeatherIcon mode={mode} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
+              {shownLockLevel != null && (
+                <p className={styles.lockNote} role="status">
+                  Terkunci. Capai Level {shownLockLevel} untuk membuka {shown.name}.
+                </p>
               )}
             </div>
-          )}
-          <button className="btn btn-primary" type="button" onClick={onStart} data-nav>
-            Balapan di {selected.name}
-          </button>
+          </aside>
+
+          <div className="track-select-grid" role="group" aria-label="Daftar lintasan">
+            {TRACK_ORDER.map((id) => {
+              const track = getTrack(id);
+              const unlocked = isTrackUnlocked(id, { xp, unlocks });
+              const lockLevel = unlocked ? null : (trackUnlockDef(id)?.level ?? null);
+              const isSelected = id === selectedTrackId && previewId == null;
+              const isPreview = id === previewId;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={lockLevel == null ? 'track-select-card' : `track-select-card ${styles.lockedCard}`}
+                  data-selected={isSelected || isPreview}
+                  data-locked={lockLevel != null}
+                  aria-pressed={isSelected}
+                  onFocus={() => {
+                    if (unlocked) {
+                      setPreviewId(null);
+                      if (id !== selectedTrackId) onSelect(id);
+                    } else {
+                      setPreviewId(id);
+                    }
+                  }}
+                  onClick={() => {
+                    if (!unlocked) {
+                      setPreviewId(id);
+                      return;
+                    }
+                    setPreviewId(null);
+                    onSelect(id);
+                  }}
+                  data-nav
+                >
+                  <span className="track-select-copy">
+                    <span className="track-card-head">
+                      <strong>{track.name}</strong>
+                      <span className="track-card-badge">
+                        {lockLevel != null ? `Lv ${lockLevel}` : isSelected ? 'Terpilih' : ROUTE_KIND[id] ?? 'khusus'}
+                      </span>
+                    </span>
+                    <span className="track-select-subtitle">{track.subtitle}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

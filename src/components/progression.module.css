@@ -240,23 +240,32 @@
   display: grid;
   gap: 2px;
   padding: 8px 6px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(46, 230, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(14, 28, 44, 0.72);
   color: inherit;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   text-align: center;
   cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+
+.tireBtn:hover {
+  border-color: var(--cyan);
+  background: rgba(22, 46, 70, 0.88);
 }
 
 .tireBtn strong {
-  letter-spacing: 0.04em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .tireBtn[data-selected='true'] {
-  border-color: #ffd45a;
-  background: rgba(255, 212, 90, 0.16);
+  border-color: var(--orange);
+  background: rgba(255, 143, 61, 0.16);
+  color: #ffffff;
 }
 
 .tireBtn[data-locked='true'] {

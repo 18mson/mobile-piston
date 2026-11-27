@@ -481,11 +481,12 @@ export class CarView {
 
       const hull = this.hullAt(wx);
       if (hull) {
-        const wellK = 1.16;
+        const wellK = 1.24;
         const topG = hull.yTop * ySc;
-        // Shrink the tyre if the arch would not fit under the fender top (never below 78% of the original)
-        const maxR = (topG - 0.1) / (0.95 + wellK);
-        r = Math.max(radius * 0.78, Math.min(radius, maxR));
+        const targetR = radius * 0.84;
+        // Shrink the tyre if the arch would not fit under the fender top
+        const maxR = (topG - 0.14) / (0.95 + wellK);
+        r = Math.max(targetR * 0.76, Math.min(targetR, maxR));
         const cy = r * 0.95;
         const wall = Math.max(hull.wMid, hull.wBot);
         const sgn = z >= 0 ? 1 : -1;

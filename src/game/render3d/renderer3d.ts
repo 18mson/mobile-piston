@@ -45,8 +45,11 @@ export class Renderer3D {
   private cockpitOpenWheelsGroup = new THREE.Group();
   private cockpitPopUpsGroup = new THREE.Group();
   private cockpitCenterHood: THREE.Mesh | null = null;
-  private cockpitDriverRig = new THREE.Group();
   private cockpitConsoleGroup = new THREE.Group();
+  private cockpitDashDeck: THREE.Mesh | null = null;
+  private cockpitDashTrim: THREE.Mesh | null = null;
+  /** true = centred seat (F1, Guido), false = right-hand driver seat, null = not applied yet */
+  private seatLayoutOpen: boolean | null = null;
 
   // Skid marks on road surface when drifting or slipping
   private skidMesh: THREE.InstancedMesh;
@@ -210,36 +213,32 @@ export class Renderer3D {
     const gloveDarkMat = new THREE.MeshLambertMaterial({ color: '#1b2128', flatShading: true });
     const gloveYellowMat = new THREE.MeshLambertMaterial({ color: '#f5c518', flatShading: true });
 
-    // 1. Windshield frame: roof header bar and left/right A-pillars (hidden on open-cockpit cars)
-    const roofBar = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.14, 0.22), interiorDarkMat);
-    roofBar.position.set(0, 0.46, -0.65);
+    // 1. Right-hand driver seat: the camera sits right of the car's centre line, so only the right A-pillar,
+    //    the roof header and the right door are close; the windshield simply runs off the left edge of the screen.
+    const roofBar = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.16, 0.22), interiorDarkMat);
+    roofBar.position.set(-0.2, 0.52, -0.65);
     this.cockpitClosedFrame.add(roofBar);
 
-    const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.78, 0.18), interiorDarkMat);
-    leftPillar.position.set(-0.76, 0.10, -0.66);
-    leftPillar.rotation.z = -0.34;
-    this.cockpitClosedFrame.add(leftPillar);
-
-    const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.78, 0.18), interiorDarkMat);
-    rightPillar.position.set(0.76, 0.10, -0.66);
-    rightPillar.rotation.z = 0.34;
+    const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.0, 0.2), interiorDarkMat);
+    rightPillar.position.set(0.74, 0.1, -0.62);
+    rightPillar.rotation.z = 0.2;
     this.cockpitClosedFrame.add(rightPillar);
 
-    // 2. Symmetric left & right side mirrors (outside A-pillars, matching car body color)
-    for (const side of [-1, 1]) {
-      const sideMirrorArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.04), interiorDarkMat);
-      sideMirrorArm.position.set(side * 0.70, -0.09, -0.72);
-      const sideMirrorHousing = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.075, 0.05), this.cockpitHoodMat);
-      sideMirrorHousing.position.set(side * 0.78, -0.07, -0.73);
-      const sideMirrorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.105, 0.055), mirrorGlassMat);
-      sideMirrorGlass.position.set(side * 0.78, -0.07, -0.703);
-      this.cockpitClosedFrame.add(sideMirrorArm, sideMirrorHousing, sideMirrorGlass);
-    }
+    // Right door: window sill + door top, beyond the pillar
+    const doorSill = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.2, 0.5), interiorDarkMat);
+    doorSill.position.set(1.18, -0.3, -0.56);
+    this.cockpitClosedFrame.add(doorSill);
+    const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.03, 0.5), this.cockpitShadeMat);
+    doorTrim.position.set(1.18, -0.195, -0.56);
+    this.cockpitClosedFrame.add(doorTrim);
+    const sideMirror = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.09, 0.05), this.cockpitHoodMat);
+    sideMirror.position.set(1.08, -0.1, -0.78);
+    this.cockpitClosedFrame.add(sideMirror);
 
-    // 3. Rearview mirror (centered symmetrically at upper windshield)
+    // 3. Rear-view mirror: on the car's centre line, i.e. at the left edge of the screen
     const mirrorGroup = new THREE.Group();
-    mirrorGroup.position.set(0, 0.30, -0.70);
-    mirrorGroup.rotation.y = 0;
+    mirrorGroup.position.set(-0.64, 0.31, -0.70);
+    mirrorGroup.rotation.y = -0.2;
 
     const mirrorStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 4), interiorDarkMat);
     mirrorStem.position.set(0, 0.08, -0.01);
@@ -319,13 +318,15 @@ export class Renderer3D {
     // 5. Sculpted Dashboard & Center Console
     const dashDeck = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.18, 0.42), dashMat);
     dashDeck.position.set(0, -0.39, -0.68);
+    this.cockpitDashDeck = dashDeck;
     this.cockpitRoot.add(dashDeck);
 
     const dashTrim = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.025, 0.04), trimAccentMat);
     dashTrim.position.set(0, -0.31, -0.50);
+    this.cockpitDashTrim = dashTrim;
     this.cockpitRoot.add(dashTrim);
 
-    // Center console stack on right side (hidden on single-seater F1 cockpit)
+    // Centre console (sits between the seats: left of a right-hand driver)
     const consoleStack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.32, 0.22), interiorDarkMat);
     consoleStack.position.set(0.28, -0.44, -0.62);
     const consoleScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.10), screenMat);
@@ -335,13 +336,12 @@ export class Renderer3D {
     this.cockpitConsoleGroup.add(consoleStack, consoleScreen, consoleGlow);
     this.cockpitRoot.add(this.cockpitConsoleGroup);
 
-    // 6. Instrument Binnacle & Digital Gauge Cluster behind wheel (shifted to center on F1)
-    this.cockpitRoot.add(this.cockpitDriverRig);
+    // 6. Instrument Binnacle & Digital Gauge Cluster behind wheel
     const binnacleHood = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.20), interiorDarkMat);
     binnacleHood.position.set(-0.06, -0.22, -0.60);
     const clusterBack = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.12), screenMat);
     clusterBack.position.set(-0.06, -0.22, -0.498);
-    this.cockpitDriverRig.add(binnacleHood, clusterBack);
+    this.cockpitRoot.add(binnacleHood, clusterBack);
 
     // Rev indicator LEDs inside cluster
     this.cockpitRevLeds = [];
@@ -353,7 +353,7 @@ export class Renderer3D {
       );
       led.position.set(-0.15 + i * 0.032, -0.185, -0.495);
       led.visible = false;
-      this.cockpitDriverRig.add(led);
+      this.cockpitRoot.add(led);
       this.cockpitRevLeds.push(led);
     }
 
@@ -363,13 +363,13 @@ export class Renderer3D {
       new THREE.MeshBasicMaterial({ color: '#ff8f3d', side: THREE.DoubleSide }),
     );
     clusterRing.position.set(-0.06, -0.23, -0.495);
-    this.cockpitDriverRig.add(clusterRing);
+    this.cockpitRoot.add(clusterRing);
 
     // 7. Steering Column & Racing Wheel with Gloved Hands
     const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.22, 6), interiorDarkMat);
     steeringColumn.position.set(-0.06, -0.34, -0.52);
     steeringColumn.rotation.x = Math.PI / 5;
-    this.cockpitDriverRig.add(steeringColumn);
+    this.cockpitRoot.add(steeringColumn);
 
     const wheelGroup = new THREE.Group();
     wheelGroup.position.set(-0.06, -0.28, -0.43);
@@ -404,9 +404,26 @@ export class Renderer3D {
       wheelGroup.add(sleeve);
     }
 
-    this.cockpitDriverRig.add(wheelGroup);
+    this.cockpitRoot.add(wheelGroup);
     this.steeringWheel = wheelGroup;
     this.cockpitRoot.visible = false;
+  }
+
+  /** Moves the centre-line parts of the cockpit: right-hand driver seat for two-seaters, centred for F1 / Guido. */
+  private applySeatLayout(isOpen: boolean): void {
+    if (this.seatLayoutOpen === isOpen) return;
+    this.seatLayoutOpen = isOpen;
+    const shift = isOpen ? 0 : -0.34;
+    this.cockpitHoodGroup.position.x = shift;
+    this.cockpitBlowerGroup.position.x = shift;
+    this.cockpitPopUpsGroup.position.x = shift;
+    this.cockpitRollCageGroup.position.x = shift;
+    this.cockpitConsoleGroup.position.x = isOpen ? 0 : -0.84;
+    for (const part of [this.cockpitDashDeck, this.cockpitDashTrim]) {
+      if (!part) continue;
+      part.position.x = isOpen ? 0 : -0.3;
+      part.scale.x = isOpen ? 1 : 1.35;
+    }
   }
 
   setReducedMotion(reduced: boolean): void {
@@ -438,6 +455,7 @@ export class Renderer3D {
       if (racer.isPlayer) {
         this.playerCar = view;
         this.player = racer;
+        this.cameraRig.setSeatOffset(racer.carId === 'guido' || racer.carId === 'francesco' ? 0 : 0.5);
       }
     }
     const mode = cameraMode ?? this.cameraRig.mode;
@@ -776,6 +794,7 @@ export class Renderer3D {
       const cid = player.carId;
       const isOpen = cid === 'guido' || cid === 'francesco';
       this.cockpitClosedFrame.visible = !isOpen;
+      this.applySeatLayout(isOpen);
       this.cockpitHoodGroup.visible = cid !== 'guido' && cid !== 'francesco';
       if (this.cockpitCenterHood) {
         this.cockpitCenterHood.material = cid === 'sally' || cid === 'storm' ? this.cockpitStripeMat : this.cockpitHoodMat;
@@ -787,8 +806,6 @@ export class Renderer3D {
       this.cockpitPopUpsGroup.visible = cid === 'chick';
       this.cockpitRollCageGroup.visible = cid === 'mcqueen' || cid === 'chick';
       this.cockpitOpenWheelsGroup.visible = isOpen;
-      this.cockpitDriverRig.position.x = cid === 'francesco' ? 0.06 : 0;
-      this.cockpitConsoleGroup.visible = cid !== 'francesco';
 
       const speed = Math.hypot(player.vx, player.vy);
       const revRatio = Math.min(1, speed / 220);

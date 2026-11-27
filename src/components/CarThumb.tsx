@@ -11,20 +11,33 @@ export default function CarThumb({
   number = 1,
   scale = 4,
   className = '',
+  staticView = false,
 }: {
   car: CarSpec;
   number?: number;
   scale?: number;
   className?: string;
+  staticView?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const yawRef = useRef(0.35);
-  const pitchRef = useRef(0.38);
+  const yawRef = useRef(staticView ? 1.42 : 0.35);
+  const pitchRef = useRef(staticView ? 0.22 : 0.38);
   const draggingRef = useRef(false);
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+
+    if (staticView) {
+      const ok = renderCarPreview3D(canvas, car, number, 1.42, 0.22);
+      if (!ok) {
+        drawCarPreview(canvas, car.id, car.palette, number, scale);
+      }
+      return;
+    }
+
     let raf = 0;
     let lastTime = performance.now();
     let webglOk = true;
@@ -35,14 +48,12 @@ export default function CarThumb({
       if (!draggingRef.current) {
         yawRef.current += dt * 0.65;
       }
-      const canvas = ref.current;
-      if (canvas) {
-        if (webglOk) {
-          const ok = renderCarPreview3D(canvas, car, number, yawRef.current, pitchRef.current);
-          if (!ok) {
-            webglOk = false;
-            drawCarPreview(canvas, car.id, car.palette, number, scale);
-          }
+      const currentCanvas = ref.current;
+      if (currentCanvas && webglOk) {
+        const ok = renderCarPreview3D(currentCanvas, car, number, yawRef.current, pitchRef.current);
+        if (!ok) {
+          webglOk = false;
+          drawCarPreview(currentCanvas, car.id, car.palette, number, scale);
         }
       }
       if (webglOk) {
@@ -52,7 +63,7 @@ export default function CarThumb({
 
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [car, number, scale]);
+  }, [car, number, scale, staticView]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
@@ -83,20 +94,24 @@ export default function CarThumb({
   return (
     <canvas
       ref={ref}
-      className={`car-thumb car-thumb-3d ${className}`}
+      className={staticView ? `car-thumb ${className}` : `car-thumb car-thumb-3d ${className}`}
       width={256}
       height={256}
       data-dragging={dragging}
-      aria-label={`Preview 3D ${car.name}, geser untuk memutar`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={stopDrag}
-      onPointerCancel={stopDrag}
-      onLostPointerCapture={() => {
-        draggingRef.current = false;
-        lastPointerRef.current = null;
-        setDragging(false);
-      }}
+      aria-label={staticView ? `Tampak samping ${car.name}` : `Preview 3D ${car.name}, geser untuk memutar`}
+      onPointerDown={staticView ? undefined : handlePointerDown}
+      onPointerMove={staticView ? undefined : handlePointerMove}
+      onPointerUp={staticView ? undefined : stopDrag}
+      onPointerCancel={staticView ? undefined : stopDrag}
+      onLostPointerCapture={
+        staticView
+          ? undefined
+          : () => {
+              draggingRef.current = false;
+              lastPointerRef.current = null;
+              setDragging(false);
+            }
+      }
     />
   );
 }

@@ -47,6 +47,8 @@ export class CameraRig {
   private fovKick = 0;
   private reducedMotion = false;
   private celebrationTime = 0;
+  /** Sideways eye position in the cockpit (+ = right of the car's centre line). Two-seaters: right-hand driver. */
+  private seatOffset = 0;
 
   constructor(aspect: number) {
     this.camera = new THREE.PerspectiveCamera(46, aspect, 0.1, 1600);
@@ -99,6 +101,10 @@ export class CameraRig {
     this.shake = Math.max(this.shake, Math.min(1.2, intensity));
   }
 
+  setSeatOffset(offset: number): void {
+    this.seatOffset = offset;
+  }
+
   reset(): void {
     this.initialized = false;
   }
@@ -121,8 +127,8 @@ export class CameraRig {
         };
       case 'cockpit':
         return {
-          posOffset: new THREE.Vector3(0.42, 2.05, 0.0), // Elevated driver view for wide open road visibility
-          targetOffset: new THREE.Vector3(30.0, 1.85, 0.0), // Looking forward along track
+          posOffset: new THREE.Vector3(0.42, 2.05, this.seatOffset), // Elevated driver view for wide open road visibility
+          targetOffset: new THREE.Vector3(30.0, 1.85, this.seatOffset), // Looking straight ahead from the seat
           fov: 70,
           followLag: 16.0,
           isWorldRelative: false,
