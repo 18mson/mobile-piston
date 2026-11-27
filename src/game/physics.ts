@@ -146,7 +146,7 @@ export function stepRacer(
       forward = Math.max(-56, forward - 140 * dt);
     }
   } else if (isCoasting) {
-    forward *= 1 - 0.55 * dt;
+    forward *= 1 - 0.14 * dt;
   } else if (!racer.finished) {
     if (forward < topSpeed) {
       forward += effectiveAcceleration * dt;
