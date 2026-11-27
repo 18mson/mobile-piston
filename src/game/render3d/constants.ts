@@ -50,11 +50,13 @@ export function terrainHeightAt(
   worldX: number,
   worldY: number,
 ): { height: number; kind: 'sea' | 'sand' | 'grass' | 'rock' | 'pond'; trackDistance: number } {
+  const roadClear = track.width / 2 + track.shoulder + 22;
+
   if (track.theme === 'highland') {
     // Mountain slopes: no sea, no pond. Flat corridor around the road, rolling ridges further out.
     const distance = Math.min(9999, nearestDistance(track, worldX, worldY));
-    const bank = smoothstep(60, 100, distance) * 0.8;
-    const flat = 1 - smoothstep(96, 250, distance);
+    const bank = smoothstep(roadClear, roadClear + 40, distance) * 0.8;
+    const flat = 1 - smoothstep(roadClear + 36, roadClear + 185, distance);
     const ridges =
       (Math.sin(worldX * 0.009) * 0.7 +
         Math.sin(worldY * 0.011 + 1.1) * 0.5 +
@@ -63,7 +65,8 @@ export function terrainHeightAt(
         1.2) *
       7.2;
     const edgeRise = smoothstep(180, 420, Math.min(worldX, 2400 - worldX, worldY, 1600 - worldY) * -1 + 420) * 5;
-    const height = 0.6 + bank + ridges * (1 - flat) + edgeRise;
+    let height = 0.6 + bank + ridges * (1 - flat) + edgeRise;
+    if (distance < roadClear) height = Math.min(height, ROAD_Y - 0.14);
     return { height, kind: height > 11.5 ? 'rock' : 'grass', trackDistance: distance };
   }
   const coast = coastYAt(worldX, coastline);
@@ -83,8 +86,8 @@ export function terrainHeightAt(
     height = height * (1 - blend) + (-0.25 * blend);
     kind = 'pond';
   } else {
-    const bank = smoothstep(60, 92, trackDistance) * 0.75;
-    const flat = 1 - smoothstep(88, 205, trackDistance);
+    const bank = smoothstep(roadClear, roadClear + 36, trackDistance) * 0.75;
+    const flat = 1 - smoothstep(roadClear + 32, roadClear + 150, trackDistance);
     const hillMask = 1 - flat;
     const hill =
       (Math.sin(worldX * 0.012) * 0.62 +
@@ -93,6 +96,7 @@ export function terrainHeightAt(
         0.72) *
       4.2;
     height += bank + hill * hillMask;
+    if (trackDistance < roadClear) height = Math.min(height, ROAD_Y - 0.14);
     kind = height > 6.6 ? 'rock' : worldY - coast < 26 ? 'sand' : 'grass';
   }
   return { height, kind, trackDistance };

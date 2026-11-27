@@ -59,6 +59,11 @@ export class CarView {
   private spin = 0;
   private nitroPulse = 0;
   private carId: CarId;
+  private hulls: LoftStation[][] = [];
+  private openWheel = false;
+  private wellMat: THREE.Material = new THREE.MeshToonMaterial({ color: '#262c34', gradientMap: getToonRamp() });
+  private lipMat: THREE.Material = new THREE.MeshToonMaterial({ color: '#c83228', gradientMap: getToonRamp() });
+  private rearLipMat: THREE.Material | null = null;
   private outlineMat = new THREE.MeshBasicMaterial({ color: OUTLINE_COLOR, side: THREE.BackSide });
 
   constructor(carId: CarId, palette: CarPalette, number: number, isPlayer: boolean) {
@@ -68,6 +73,7 @@ export class CarView {
     // Sleek automotive proportion so curves read like pixel-art 3D from all 360 angles
     this.body.scale.set(1.0, 1.14, 1.0);
 
+    this.openWheel = carId === 'francesco';
     this.addDropShadow(carId);
     this.build(carId, palette, number);
     this.buildSparks();
@@ -188,6 +194,9 @@ export class CarView {
     outlineThickness = 0.065,
     cast = true,
   ): THREE.Mesh {
+    // Remember lower-body lofts so wheel wells can follow the real fender surface
+    if (stations.length >= 2 && stations[0].yBot <= 0.62) this.hulls.push(stations);
+
     const ringSize = 8;
     const positions: number[] = [];
     const indices: number[] = [];
@@ -355,6 +364,98 @@ export class CarView {
     return mesh;
   }
 
+  /** Body surface at longitudinal position x: fender top height + max half-width, from the lower-body lofts. */
+  private hullAt(x: number): { yBot: number; yTop: number; wBot: number; wMid: number; wTop: number } | null {
+    let best: { yBot: number; yTop: number; wBot: number; wMid: number; wTop: number } | null = null;
+    for (const st of this.hulls) {
+      for (let i = 0; i < st.length - 1; i += 1) {
+        const a = st[i];
+        const b = st[i + 1];
+        const hi = Math.max(a.x, b.x);
+        const lo = Math.min(a.x, b.x);
+        if (x > hi || x < lo) continue;
+        const t = (x - a.x) / (b.x - a.x || 1);
+        const lerp = (u: number, v: number) => u + (v - u) * t;
+        const cur = {
+          yBot: lerp(a.yBot, b.yBot),
+          yTop: lerp(a.yTop, b.yTop),
+          wBot: lerp(a.wBot, b.wBot),
+          wMid: lerp(a.wMid, b.wMid),
+          wTop: lerp(a.wTop, b.wTop),
+        };
+        if (!best || cur.wMid > best.wMid) best = cur;
+      }
+    }
+    return best;
+  }
+
+  private hullXRange(): [number, number] {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const st of this.hulls) {
+      for (const s of st) {
+        lo = Math.min(lo, s.x);
+        hi = Math.max(hi, s.x);
+      }
+    }
+    return [lo, hi];
+  }
+
+  /**
+   * Carves a dark wheel arch into the body side: a black wedge (clipped to the body's
+   * underside / fender top) plus a raised fender lip, so the tyre sits inside the bodywork.
+   */
+  private addWheelWell(
+    x: number,
+    cy: number,
+    rw: number,
+    wallZ: number,
+    sgn: number,
+    yBotG: number,
+    yTopG: number,
+    front: boolean,
+  ): void {
+    const ySc = this.body.scale.y;
+    const dLow = THREE.MathUtils.clamp(yBotG - cy, -rw * 0.98, rw * 0.98);
+    const dHigh = THREE.MathUtils.clamp(yTopG - 0.03 - cy, dLow + 0.2, rw);
+    const aL = Math.asin(dLow / rw);
+    const aH = Math.asin(Math.min(1, dHigh / rw));
+
+    const shape = new THREE.Shape();
+    shape.moveTo(rw * Math.cos(aL), rw * Math.sin(aL));
+    shape.absarc(0, 0, rw, aL, aH, false);
+    shape.lineTo(rw * Math.cos(Math.PI - aH), rw * Math.sin(Math.PI - aH));
+    shape.absarc(0, 0, rw, Math.PI - aH, Math.PI - aL, false);
+    shape.closePath();
+
+    const depth = 0.75;
+    const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 14 });
+    geo.translate(0, 0, -depth);
+    geo.scale(1, 1 / ySc, 1);
+    const well = new THREE.Mesh(geo, this.wellMat);
+    well.position.set(x, cy / ySc, sgn * wallZ);
+    if (sgn < 0) well.rotation.y = Math.PI;
+    this.body.add(well);
+
+    // Body-colored fender lip around the arch (matching Cars film silhouettes)
+    const lipMat = !front && this.rearLipMat ? this.rearLipMat : this.lipMat;
+    const lipR = rw + 0.02;
+    const addLip = (from: number, to: number): void => {
+      if (to - from < 0.05) return;
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(lipR, 0.05, 6, 18, to - from), lipMat);
+      lip.geometry.scale(1, 1 / ySc, 1);
+      lip.rotation.z = from;
+      lip.position.set(x, cy / ySc, sgn * (wallZ + 0.01));
+      this.body.add(lip);
+    };
+    if (aH > Math.PI / 2 - 0.02) {
+      addLip(aL, Math.PI - aL);
+    } else {
+      addLip(aL, aH);
+      addLip(Math.PI - aH, Math.PI - aL);
+    }
+  }
+
   private addWheel(
     radius: number,
     width: number,
@@ -365,10 +466,45 @@ export class CarView {
     rimColor: string,
     whitewall = false,
   ): void {
-    const pivot = new THREE.Group();
-    pivot.position.set(x, radius * 0.95, z);
+    const ySc = this.body.scale.y;
+    let r = radius;
+    let wx = x;
+    let wz = z;
+    let well: { cy: number; rw: number; wallZ: number; sgn: number; yBotG: number; yTopG: number } | null = null;
 
-    const tireGeo = new THREE.CylinderGeometry(radius, radius, width, 24);
+    if (!this.openWheel && this.hulls.length > 0) {
+      // Push the axles slightly toward the corners (sportier stance like the reference), keep inside the body
+      const [lo, hi] = this.hullXRange();
+      wx = x * 1.1;
+      const margin = radius * 0.8 + 0.2;
+      wx = THREE.MathUtils.clamp(wx, lo + margin, hi - margin);
+
+      const hull = this.hullAt(wx);
+      if (hull) {
+        const wellK = 1.16;
+        const topG = hull.yTop * ySc;
+        // Shrink the tyre if the arch would not fit under the fender top (never below 78% of the original)
+        const maxR = (topG - 0.1) / (0.95 + wellK);
+        r = Math.max(radius * 0.78, Math.min(radius, maxR));
+        const cy = r * 0.95;
+        const wall = Math.max(hull.wMid, hull.wBot);
+        const sgn = z >= 0 ? 1 : -1;
+        wz = sgn * (wall + 0.1 - width / 2);
+        well = {
+          cy,
+          rw: r * wellK,
+          wallZ: wall + 0.03,
+          sgn,
+          yBotG: hull.yBot * ySc,
+          yTopG: topG,
+        };
+      }
+    }
+
+    const pivot = new THREE.Group();
+    pivot.position.set(wx, r * 0.95, wz);
+
+    const tireGeo = new THREE.CylinderGeometry(r, r, width, 24);
     tireGeo.rotateX(Math.PI / 2);
     const tire = new THREE.Mesh(tireGeo, this.material(tireColor));
     tire.castShadow = true;
@@ -376,13 +512,13 @@ export class CarView {
     pivot.add(tire);
 
     if (whitewall) {
-      const wallGeo = new THREE.CylinderGeometry(radius * 0.78, radius * 0.78, width + 0.03, 20);
+      const wallGeo = new THREE.CylinderGeometry(r * 0.78, r * 0.78, width + 0.03, 20);
       wallGeo.rotateX(Math.PI / 2);
       const wall = new THREE.Mesh(wallGeo, this.material('#ece6d8'));
       tire.add(wall);
     }
 
-    const rimRadius = radius * 0.58;
+    const rimRadius = r * 0.58;
     const rimWidth = width + 0.06;
     const rimGeo = new THREE.CylinderGeometry(rimRadius, rimRadius, rimWidth, 16);
     rimGeo.rotateX(Math.PI / 2);
@@ -397,6 +533,10 @@ export class CarView {
 
     this.group.add(pivot);
     this.wheels.push({ pivot, mesh: tire, front });
+
+    if (well) {
+      this.addWheelWell(wx, well.cy, well.rw, well.wallZ, well.sgn, well.yBotG, well.yTopG, front);
+    }
   }
 
   private addSideMirrors(x: number, y: number, z: number, mat: THREE.Material): void {
@@ -483,6 +623,10 @@ export class CarView {
   private build(carId: CarId, palette: CarPalette, number: number): void {
     const bodyMat = this.material(palette.body);
     const shadeMat = this.material(palette.shade);
+    const wellColor = new THREE.Color(palette.wheel).lerp(new THREE.Color('#14181f'), 0.28);
+    this.wellMat = new THREE.MeshToonMaterial({ color: wellColor, gradientMap: getToonRamp() });
+    this.lipMat = bodyMat;
+    this.rearLipMat = carId === 'mater' ? shadeMat : null;
     const highlightMat = this.material(palette.highlight);
     const glassMat = this.material(palette.glass);
     const stripeMat = this.material(palette.stripe);

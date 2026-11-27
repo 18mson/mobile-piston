@@ -178,6 +178,24 @@ function buildTerrain(track: Track): THREE.Mesh {
   return mesh;
 }
 
+function ribbonLateral(track: Track, i: number, nominalLateral: number): { latPos: number; latNeg: number } {
+  const count = track.samples.length;
+  const prev = track.samples[(i - 2 + count) % count];
+  const next = track.samples[(i + 2) % count];
+  const cross = prev.tx * next.ty - prev.ty * next.tx;
+  const dotVal = Math.max(-1, Math.min(1, prev.tx * next.tx + prev.ty * next.ty));
+  const dTheta = Math.abs(Math.atan2(cross, dotVal));
+  const ds = Math.max(0.1, (next.dist - prev.dist + track.length) % track.length);
+  const localR = dTheta > 0.001 ? (ds / dTheta) * WORLD_SCALE : 9999;
+
+  // Only clamp when the inner edge would cross past the curve center (prevents bowtie flip without shrinking hairpins)
+  const maxInner = Math.max(3.0, localR * 0.98);
+  return {
+    latPos: cross > 0 ? Math.min(nominalLateral, maxInner) : nominalLateral,
+    latNeg: cross < 0 ? Math.min(nominalLateral, maxInner) : nominalLateral,
+  };
+}
+
 function createRibbon(
   track: Track,
   halfWidth: number,
@@ -194,22 +212,7 @@ function createRibbon(
 
   for (let i = 0; i < count; i += 1) {
     const sample = track.samples[i];
-    const prev = track.samples[(i - 1 + count) % count];
-    const next = track.samples[(i + 1) % count];
-
-    // Compute local curvature to prevent inner-edge self-intersection on sharp bends
-    const cross = prev.tx * next.ty - prev.ty * next.tx;
-    const dotVal = Math.max(-1, Math.min(1, prev.tx * next.tx + prev.ty * next.ty));
-    const dTheta = Math.abs(Math.atan2(cross, dotVal));
-    const ds = Math.max(0.1, (sample.dist - prev.dist + track.length) % track.length);
-    const localR = dTheta > 0.001 ? (ds / dTheta) * WORLD_SCALE : 9999;
-
-    // Inside edge limit: keep inner vertex from flipping past curve center
-    const maxInner = Math.max(3.0, localR * 0.85);
-
-    // If cross > 0, track turns left (positive lateral is inside). If cross < 0, turns right (negative lateral is inside).
-    const latPos = cross > 0 ? Math.min(nominalLateral, maxInner) : nominalLateral;
-    const latNeg = cross < 0 ? Math.min(nominalLateral, maxInner) : nominalLateral;
+    const { latPos, latNeg } = ribbonLateral(track, i, nominalLateral);
 
     const x = toSceneX(sample.x);
     const z = toSceneZ(sample.y);
@@ -389,7 +392,8 @@ function addRoad(group: THREE.Group, track: Track): void {
       const centerZ = toSceneZ(sample.y);
       const nx = sample.nx;
       const nz = sample.ny;
-      const edge = (track.width / 2) * WORLD_SCALE * side;
+      const { latPos, latNeg } = ribbonLateral(track, i, (track.width / 2) * WORLD_SCALE);
+      const edge = (side > 0 ? latPos : latNeg) * side;
       const width = 0.55;
       positions.push(centerX + nx * (edge - width * side), ROAD_Y + 0.02, centerZ + nz * (edge - width * side));
       positions.push(centerX + nx * (edge + width * side), ROAD_Y + 0.02, centerZ + nz * (edge + width * side));
