@@ -1,5 +1,70 @@
 /* Styles for the level / XP system. Uses CSS modules so it cannot collide with the global stylesheet. */
 
+.ringBadge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  flex: 0 0 auto;
+}
+
+.ringSvg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ringOuter {
+  fill: rgba(8, 16, 28, 0.9);
+  stroke: rgba(46, 230, 255, 0.36);
+  stroke-width: 1.5;
+  stroke-dasharray: 8 4;
+}
+
+.ringTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 6;
+}
+
+.ringFill {
+  fill: none;
+  stroke: #ff8f3d;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+.ringCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+}
+
+.ringLevel {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ringXp {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #9cecff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .badge {
   display: grid;
   gap: 6px;

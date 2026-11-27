@@ -36,6 +36,7 @@ import {
 } from '../game/auth/supabaseClient';
 import { CloudSaveSync } from '../game/auth/sync';
 import { GameEngine } from '../game/engine';
+import { useMenuNavigation } from './useMenuNavigation';
 import type { ConnectionStatus } from '../game/net/client';
 import { PeerNetClient } from '../game/net/peerClient';
 import {
@@ -107,9 +108,50 @@ function ErrorScreen({ message, onReload }: { message: string; onReload: () => v
   );
 }
 
+const WORLD_ANIMALS = [
+  'Cheetah',
+  'Komodo',
+  'Jaguar',
+  'Falcon',
+  'Panther',
+  'Serigala',
+  'Harimau',
+  'Elang',
+  'Lynx',
+  'Puma',
+  'Bison',
+  'Kangguru',
+  'Flamingo',
+  'Tapir',
+  'Badak',
+  'Gagak',
+  'Mamba',
+  'Cobra',
+  'Panda',
+  'Koala',
+  'Beruang',
+  'Rusa',
+  'Banteng',
+  'Kijang',
+  'Rajawali',
+  'Musang',
+  'Landak',
+  'Tupai',
+];
+
 function randomGuestName(): string {
-  const num = 1000 + Math.floor(Math.random() * 9000);
-  return `Tamu-${num}`;
+  const animal = WORLD_ANIMALS[Math.floor(Math.random() * WORLD_ANIMALS.length)] ?? 'Cheetah';
+  return animal;
+}
+
+function getUserInitials(name: string): string {
+  const clean = name.replace(/^@+/, '').trim();
+  if (!clean) return 'MP';
+  const parts = clean.split(/[\s_-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
 }
 
 export default function GameApp() {
@@ -160,7 +202,7 @@ export default function GameApp() {
   const [roomsLoading, setRoomsLoading] = useState(false);
   const hostedRoomCodeRef = useRef<string | null>(null);
   const [mpError, setMpError] = useState('');
-  const [playerName, setPlayerName] = useState('Tamu');
+  const [playerName, setPlayerName] = useState('Pembalap');
   const hasCustomNameRef = useRef(false);
   const [onlineTrackId, setOnlineTrackId] = useState<TrackId>('teluk-sore');
   const [initialJoinCode, setInitialJoinCode] = useState('');
@@ -195,7 +237,7 @@ export default function GameApp() {
       setAuthUsername(username);
       if (username) {
         setPlayerName((prev) =>
-          prev === 'Tamu' || prev === 'Pembalap' || prev.startsWith('Tamu-') || !prev.trim() ? username : prev,
+          !hasCustomNameRef.current || prev === 'Pembalap' || !prev.trim() ? username : prev,
         );
       }
       if (sync) {
@@ -469,18 +511,6 @@ export default function GameApp() {
     window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
   }, []);
 
-  useEffect(() => {
-    if (screen !== 'title' || controlsOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Escape' && !event.repeat) {
-        event.preventDefault();
-        startExplore();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [screen, controlsOpen, startExplore]);
-
   const selectTrack = (id: TrackId) => {
     if (!isTrackUnlocked(id, saveRef.current)) {
       const need = trackUnlockDef(id)?.level;
@@ -609,6 +639,40 @@ export default function GameApp() {
     setShowHint(false);
   };
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Escape' || event.repeat || event.defaultPrevented) return;
+      if (controlsOpen) {
+        event.preventDefault();
+        setControlsOpen(false);
+        return;
+      }
+      if (authOpen) {
+        event.preventDefault();
+        setAuthOpen(false);
+        return;
+      }
+      if (screen === 'garage') {
+        event.preventDefault();
+        setScreen('title');
+      } else if (screen === 'tracks') {
+        event.preventDefault();
+        setScreen('garage');
+      } else if (screen === 'multiplayer' || screen === 'results') {
+        event.preventDefault();
+        goToTitle();
+      } else if (screen === 'paused') {
+        event.preventDefault();
+        resumeRace();
+      } else if (screen === 'title') {
+        event.preventDefault();
+        startExplore();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
+
   const returnToLobby = () => {
     engineRef.current?.quitToTitle();
     setScreen('multiplayer');
@@ -688,12 +752,12 @@ export default function GameApp() {
         const myRow = myId ? raceResults.results.find((r) => r.id === myId) : undefined;
         const personalizedResults: RaceResults = myRow
           ? {
-              ...raceResults,
-              results: raceResults.results.map((r) => ({ ...r, isPlayer: r.id === myId })),
-              playerPosition: myRow.position,
-              playerBestLapMs: myRow.bestLapMs,
-              totalTimeMs: myRow.timeMs ?? raceResults.totalTimeMs,
-            }
+            ...raceResults,
+            results: raceResults.results.map((r) => ({ ...r, isPlayer: r.id === myId })),
+            playerPosition: myRow.position,
+            playerBestLapMs: myRow.bestLapMs,
+            totalTimeMs: myRow.timeMs ?? raceResults.totalTimeMs,
+          }
           : raceResults;
         engineRef.current?.finishOnlineRace(personalizedResults);
       },
@@ -780,9 +844,12 @@ export default function GameApp() {
     };
   }, []);
 
-  useGamepadMenu(
-    screen !== 'racing' && screen !== 'explore' && screen !== 'online-racing' && screen !== 'loading',
-  );
+  const menuNavActive =
+    controlsOpen ||
+    authOpen ||
+    (screen !== 'racing' && screen !== 'explore' && screen !== 'online-racing' && screen !== 'loading');
+  useGamepadMenu(menuNavActive);
+  useMenuNavigation(menuNavActive, `${screen}:${controlsOpen ? 'c' : ''}:${authOpen ? 'a' : ''}`);
 
   const paused = screen === 'paused';
   const exploreScreen = screen === 'explore';
@@ -798,34 +865,49 @@ export default function GameApp() {
       data-touch={isTouch ? 'true' : 'false'}
       data-fullscreen={isFullscreen ? 'true' : 'false'}
     >
-      <h1 className="sr-only">Mobile Piston, balapan mobil mini di Teluk Sore</h1>
+      <h1 className="sr-only">Mobile Piston</h1>
 
       <header className="topbar" hidden={!showTopBar}>
         <div className="topbar-left">
-          <div className="brand-lockup" aria-hidden="true">
-            <span className="brand-mark">MP</span>
+          <div
+            className="brand-lockup"
+            aria-label={authUsername ? `Masuk sebagai @${authUsername}` : `Bermain sebagai ${playerName}`}
+          >
+            <span className="brand-mark" aria-hidden="true">
+              {getUserInitials(authUsername ?? playerName)}
+            </span>
             <span className="brand-copy">
-              <strong>Mobile Piston</strong>
-              <small>Teluk Sore</small>
+              <strong>{authUsername ? `@${authUsername}` : playerName}</strong>
+              <small>{selectedTrack.name}</small>
             </span>
           </div>
           {authUsername ? (
-            <div className="topbar-auth-group">
-              <span className="account-pill" aria-label={`Masuk sebagai ${authUsername}`}>
-                @{authUsername}
-              </span>
-              <button className="btn btn-quiet btn-small topbar-auth-btn" type="button" onClick={handleLogout}>
-                Keluar
-              </button>
-            </div>
+            <button
+              className="btn btn-quiet btn-small btn-icon-only"
+              type="button"
+              onClick={handleLogout}
+              aria-label="Keluar"
+              title="Keluar"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 17l5-5-5-5M21 12H9"
+                  stroke="currentColor"
+                  strokeWidth="2.1"
+                  fill="none"
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                />
+              </svg>
+            </button>
           ) : (
             <button
               className="btn btn-small topbar-auth-btn"
               type="button"
               onClick={() => setAuthOpen(true)}
-              title="Mode Tamu: progres disimpan di browser ini. Ketuk untuk Masuk atau Daftar."
+              title="Progres tersimpan di browser ini. Ketuk untuk Masuk atau Daftar."
             >
-              Tamu · Masuk
+              Masuk
             </button>
           )}
         </div>
@@ -868,14 +950,17 @@ export default function GameApp() {
             className="btn btn-quiet btn-small btn-icon-only"
             type="button"
             onClick={openControls}
-            aria-label="Pengaturan kontrol"
-            title="Kontrol"
+            aria-label="Pengaturan dan kontrol"
+            title="Pengaturan & Kontrol"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="2" fill="none" />
-              <path d="M7 10V14M5 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="square" />
-              <circle cx="15.5" cy="11" r="1.3" fill="currentColor" />
-              <circle cx="18" cy="13" r="1.3" fill="currentColor" />
+              <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="2" fill="none" />
+              <path
+                d="M12 2.5v2.3M12 19.2v2.3M4.93 4.93l1.63 1.63M17.44 17.44l1.63 1.63M2.5 12h2.3M19.2 12h2.3M4.93 19.07l1.63-1.63M17.44 6.56l1.63-1.63"
+                stroke="currentColor"
+                strokeWidth="2.1"
+                strokeLinecap="square"
+              />
             </svg>
           </button>
         </div>
@@ -922,7 +1007,7 @@ export default function GameApp() {
               roomsLoading={roomsLoading}
               onRefreshRooms={refreshPublicRooms}
               onChangeName={(nextName) => {
-                hasCustomNameRef.current = nextName.trim().length > 0 && !nextName.startsWith('Tamu-');
+                hasCustomNameRef.current = nextName.trim().length > 0;
                 setPlayerName(nextName);
                 if (roomState) {
                   netClientRef.current?.updateLoadout(save.selectedCarId, selectedColorIndex, nextName);

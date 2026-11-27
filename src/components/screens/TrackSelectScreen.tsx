@@ -102,6 +102,9 @@ export default function TrackSelectScreen({
                 data-locked={lockLevel != null}
                 aria-pressed={isSelected}
                 aria-disabled={lockLevel != null}
+                onFocus={() => {
+                  if (unlocked && !isSelected) onSelect(id);
+                }}
                 onClick={() => onSelect(id)}
                 data-nav
               >

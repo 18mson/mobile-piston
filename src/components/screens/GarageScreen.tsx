@@ -86,6 +86,53 @@ export default function GarageScreen({
     return la - lb;
   });
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      const active = document.activeElement as HTMLElement | null;
+      const inCarCard = Boolean(active?.classList.contains('car-card'));
+      const inTopOrPicker = Boolean(
+        active?.closest('.screen-heading-row, .color-swatches, .tire-picker'),
+      );
+
+      if (event.key === 'Enter' && !inTopOrPicker && shownLockLevel == null) {
+        event.preventDefault();
+        onStart();
+        return;
+      }
+
+      if ((inCarCard || !inTopOrPicker) && (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key.toLowerCase() === 'a' || event.key.toLowerCase() === 'd')) {
+        const dir = event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a' ? -1 : 1;
+        const idx = orderedCars.indexOf(shownId);
+        if (idx === -1) return;
+        const nextIdx = (idx + dir + orderedCars.length) % orderedCars.length;
+        const nextId = orderedCars[nextIdx];
+        if (!nextId) return;
+        event.preventDefault();
+        const need = lockLevel(nextId);
+        if (need != null) {
+          setPreviewId(nextId);
+        } else {
+          setPreviewId(null);
+          onSelect(nextId);
+        }
+        const prevFocused = document.querySelectorAll<HTMLElement>('[data-nav-focus="true"]');
+        for (const el of prevFocused) {
+          el.removeAttribute('data-nav-focus');
+        }
+        const cards = gridRef.current?.querySelectorAll<HTMLButtonElement>('.car-card');
+        const nextCard = cards?.[nextIdx];
+        if (nextCard) {
+          nextCard.focus({ preventScroll: true });
+          nextCard.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  });
+
   return (
     <section className="screen garage-screen" data-menu-scope="active" aria-labelledby="garage-heading">
       <div className="garage-panel">
