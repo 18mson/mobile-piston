@@ -315,6 +315,7 @@ export interface RoomStatePacket {
   roomCode: string;
   trackId: TrackId;
   totalLaps?: LapCount;
+  weather?: WeatherMode;
   hostId: string;
   status: 'lobby' | 'countdown' | 'racing' | 'finished';
   players: RoomPlayerInfo[];
@@ -327,6 +328,7 @@ export type ClientMessage =
   | { type: 'update_loadout'; carId: CarId; colorIndex: number; name?: string }
   | { type: 'set_track'; trackId: TrackId }
   | { type: 'set_laps'; totalLaps: LapCount }
+  | { type: 'set_weather'; weather: WeatherMode }
   | { type: 'set_ready'; ready: boolean }
   | { type: 'start_race' }
   | { type: 'input'; seq: number; input: PlayerInput; inputs?: SequencedInput[] }
@@ -335,7 +337,7 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: 'welcome'; playerId: string }
   | RoomStatePacket
-  | { type: 'race_started'; trackId: TrackId; totalLaps?: LapCount; isSpectator?: boolean; participants: { id: string; name: string; carId: CarId; colorIndex: number; isHuman: boolean; number: number }[] }
+  | { type: 'race_started'; trackId: TrackId; totalLaps?: LapCount; weather?: WeatherMode; weatherSeed?: number; isSpectator?: boolean; participants: { id: string; name: string; carId: CarId; colorIndex: number; isHuman: boolean; number: number }[] }
   | { type: 'snapshot'; snapshot: WorldSnapshot }
   | { type: 'race_finished'; results: RaceResults }
   | { type: 'pong'; sentAt: number; serverTime: number }

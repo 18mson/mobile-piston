@@ -8,6 +8,7 @@ import type {
   SequencedInput,
   ServerMessage,
   TrackId,
+  WeatherMode,
   WorldSnapshot,
 } from '../types';
 
@@ -148,6 +149,10 @@ export class NetClient {
 
   setLaps(totalLaps: LapCount): void {
     this.send({ type: 'set_laps', totalLaps });
+  }
+
+  setWeather(weather: WeatherMode): void {
+    this.send({ type: 'set_weather', weather });
   }
 
   setReady(ready: boolean): void {

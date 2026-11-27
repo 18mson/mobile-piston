@@ -2960,6 +2960,21 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.mp-car-carousel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mp-car-arrow {
+  flex: 0 0 28px;
+  padding: 6px 0;
+  text-align: center;
 }
 
 .mp-car-pills {
@@ -2968,9 +2983,61 @@ kbd {
   gap: 6px;
 }
 
+.mp-car-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.mp-car-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mp-car-scroll .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.mp-car-stats {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: rgba(12, 24, 32, 0.72);
+}
+
 .mp-car-pills .btn[data-active='true'] {
   border-color: var(--orange);
   color: var(--orange);
+}
+
+.mp-race-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.mp-race-opt-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 520px) {
+  .mp-car-mini {
+    flex-wrap: wrap;
+  }
+
+  .mp-car-stats {
+    width: 100%;
+  }
+
+  .mp-race-options {
+    gap: 10px;
+  }
 }
 
 .mp-divider {

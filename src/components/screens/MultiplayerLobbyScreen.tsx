@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
+import { WEATHER_LABELS, WEATHER_MODES } from '../../game/weather';
 import type { ConnectionStatus } from '../../game/net/client';
 import type { PublicRoomInfo } from '../../game/net/roomDirectory';
-import type { CarId, LapCount, RoomStatePacket, TrackId } from '../../game/types';
+import type { CarId, LapCount, RoomStatePacket, TrackId, WeatherMode } from '../../game/types';
 import CarThumb from '../CarThumb';
+import StatBars from '../StatBars';
 import TrackPreview from '../TrackPreview';
 
 const LAP_OPTIONS: LapCount[] = [3, 4, 5];
@@ -32,6 +34,7 @@ export default function MultiplayerLobbyScreen({
   onSelectColor,
   onSelectTrack,
   onSelectLaps,
+  onSelectWeather,
   onCreateRoom,
   onJoinRoom,
   onToggleReady,
@@ -58,6 +61,7 @@ export default function MultiplayerLobbyScreen({
   onSelectColor: (colorIndex: number) => void;
   onSelectTrack: (trackId: TrackId) => void;
   onSelectLaps?: (laps: LapCount) => void;
+  onSelectWeather?: (weather: WeatherMode) => void;
   onCreateRoom: () => void;
   onJoinRoom: (code: string) => void;
   onToggleReady: () => void;
@@ -116,9 +120,41 @@ export default function MultiplayerLobbyScreen({
     return la - lb;
   });
   const roomLaps = room?.totalLaps ?? 3;
+  const roomWeather = room?.weather ?? 'clear';
   const previewCar = {
     ...CARS[selectedCarId],
     palette: getCarPalette(selectedCarId, selectedColorIndex),
+  };
+
+  const carScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const syncCarScroll = useCallback(() => {
+    const el = carScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    syncCarScroll();
+    const el = carScrollRef.current;
+    if (!el) return;
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncCarScroll) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', syncCarScroll);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', syncCarScroll);
+    };
+  }, [syncCarScroll, room]);
+
+  const scrollCars = (dir: -1 | 1) => {
+    const el = carScrollRef.current;
+    if (!el) return;
+    const step = Math.max(150, Math.round(el.clientWidth * 0.72));
+    el.scrollBy({ left: dir * step, behavior: 'smooth' });
   };
 
   const handleCopyCode = () => {
@@ -402,24 +438,8 @@ export default function MultiplayerLobbyScreen({
               <div className="mp-car-mini">
                 <CarThumb car={previewCar} scale={3} />
                 <div className="mp-car-pickers">
-                  <div className="mp-car-pills">
-                    {orderedCars.map((id) => (
-                      <button
-                        key={id}
-                        type="button"
-                        className="btn btn-small"
-                        data-active={id === selectedCarId}
-                        disabled={carLockLevel?.(id) != null}
-                        title={carLockLevel?.(id) != null ? `Terkunci: capai Level ${carLockLevel(id)}` : undefined}
-                        onClick={() => {
-                          if (carLockLevel?.(id) != null) return;
-                          onSelectCar(id);
-                        }}
-                      >
-                        {CARS[id].name}
-                        {carLockLevel?.(id) != null ? ` (Lv ${carLockLevel(id)})` : ''}
-                      </button>
-                    ))}
+                  <div className="mp-car-stats" aria-label={`Statistik ${previewCar.name}`}>
+                    <StatBars car={previewCar} compact />
                   </div>
                   <div className="color-swatches">
                     {activeColorOptions.map((opt, idx) => (
@@ -437,6 +457,49 @@ export default function MultiplayerLobbyScreen({
                     ))}
                   </div>
                 </div>
+              </div>
+              <div className="mp-car-carousel">
+                <button
+                  type="button"
+                  className="btn btn-small mp-car-arrow"
+                  aria-label="Geser pilihan mobil ke kiri"
+                  disabled={!canScrollLeft}
+                  onClick={() => scrollCars(-1)}
+                >
+                  <span aria-hidden="true">&#9664;</span>
+                </button>
+                <div
+                  ref={carScrollRef}
+                  className="mp-car-pills mp-car-scroll"
+                  onScroll={syncCarScroll}
+                >
+                  {orderedCars.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className="btn btn-small"
+                      data-active={id === selectedCarId}
+                      disabled={carLockLevel?.(id) != null}
+                      title={carLockLevel?.(id) != null ? `Terkunci: capai Level ${carLockLevel(id)}` : undefined}
+                      onClick={() => {
+                        if (carLockLevel?.(id) != null) return;
+                        onSelectCar(id);
+                      }}
+                    >
+                      {CARS[id].name}
+                      {carLockLevel?.(id) != null ? ` (Lv ${carLockLevel(id)})` : ''}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-small mp-car-arrow"
+                  aria-label="Geser pilihan mobil ke kanan"
+                  disabled={!canScrollRight}
+                  onClick={() => scrollCars(1)}
+                >
+                  <span aria-hidden="true">&#9654;</span>
+                </button>
               </div>
 
               <span className="label">Lintasan {isHost ? '(Host)' : '(Dipilih Host)'}</span>
@@ -458,21 +521,46 @@ export default function MultiplayerLobbyScreen({
                 </div>
               </div>
 
-              <span className="label">Jumlah Putaran {isHost ? '(Host)' : '(Dipilih Host)'}</span>
-              <div className="lap-pills">
-                {LAP_OPTIONS.map((laps) => (
-                  <button
-                    key={laps}
-                    type="button"
-                    className="btn btn-small lap-pill"
-                    disabled={!isHost}
-                    data-active={roomLaps === laps}
-                    aria-pressed={roomLaps === laps}
-                    onClick={() => onSelectLaps?.(laps)}
-                  >
-                    {laps} Putaran
-                  </button>
-                ))}
+              <div className="mp-race-options">
+                <div className="mp-race-opt-group">
+                  <span className="label">Cuaca {isHost ? '(Host)' : '(Dipilih Host)'}</span>
+                  <div className="lap-pills mp-weather-pills" role="group" aria-label="Pilihan cuaca lintasan">
+                    {WEATHER_MODES.map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className="btn btn-small lap-pill"
+                        disabled={!isHost}
+                        data-active={roomWeather === mode}
+                        aria-pressed={roomWeather === mode}
+                        title={WEATHER_LABELS[mode].blurb}
+                        onClick={() => onSelectWeather?.(mode)}
+                      >
+                        {WEATHER_LABELS[mode].name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mp-race-opt-group">
+                  <span className="label">Putaran {isHost ? '(Host)' : '(Dipilih Host)'}</span>
+                  <div className="lap-pills" role="group" aria-label="Jumlah putaran">
+                    {LAP_OPTIONS.map((laps) => (
+                      <button
+                        key={laps}
+                        type="button"
+                        className="btn btn-small lap-pill"
+                        disabled={!isHost}
+                        data-active={roomLaps === laps}
+                        aria-pressed={roomLaps === laps}
+                        aria-label={`${laps} Putaran`}
+                        onClick={() => onSelectLaps?.(laps)}
+                      >
+                        {laps}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="mp-room-actions">

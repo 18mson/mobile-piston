@@ -17,6 +17,11 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
+export function getSupabaseRestConfig(): { url: string; key: string } | null {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  return { url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
+}
+
 export function getSupabaseClient(): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null;
   if (!cachedClient) {

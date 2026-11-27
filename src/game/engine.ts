@@ -1,5 +1,5 @@
 import type { CarId, CarPalette, PlayerInput, RaceResults, RaceSnapshot, RacerState, SequencedInput, TireId, Track, WorldSnapshot } from './types';
-import type { WeatherConfig } from './weather';
+import { WeatherTimeline, type WeatherConfig } from './weather';
 import { getCar } from './data/cars';
 import { RaceSim, type RaceParticipant } from './race';
 import { Renderer3D, type CameraMode } from './render3d/renderer3d';
@@ -58,6 +58,7 @@ export class GameEngine {
   private netClient: NetTransport | null = null;
   private netInputTimer = 0;
   private lastSentInput: PlayerInput | null = null;
+  private onlineWeather = new WeatherTimeline({ mode: 'clear', seed: 1 });
 
   /** Engine, tyre squeal, dirt crunch and boost-pad sounds for the car the player drives. */
   private updateRaceAudio(racer: RacerState, racing: boolean, weather = { rain: 0, wetness: 0 }): void {
@@ -217,6 +218,7 @@ export class GameEngine {
     cameraMode?: CameraMode,
     totalLaps?: number,
     isSpectator = false,
+    weather?: WeatherConfig,
   ): void {
     if (this.destroyed) return;
     void this.audio.unlock();
@@ -236,7 +238,9 @@ export class GameEngine {
     this.netClient = client;
     this.race = this.onlineSync.sim;
     this.selectedCar = this.race.player.carId;
-    this.renderer.setWeather(0, 0); // online races are always dry for now (weather is not synced between players)
+    this.onlineWeather = new WeatherTimeline(weather ?? { mode: 'clear', seed: 1 });
+    const initialWeather = this.onlineWeather.at(0);
+    this.renderer.setWeather(initialWeather.rain, initialWeather.wetness);
     this.renderer.setRacers(this.race.racers, cameraMode, false);
     this.renderer.resetMarks();
     this.raceStats.reset();
@@ -557,7 +561,9 @@ export class GameEngine {
       this.audio.impact(renderPlayer.impact, renderPlayer.impactKind);
       this.impactSoundCooldown = 0.24;
     }
-    this.updateRaceAudio(renderPlayer, this.onlineSync.currentMode === 'racing');
+    const curWeather = this.onlineWeather.at(this.onlineSync.sim.elapsed);
+    this.updateRaceAudio(renderPlayer, this.onlineSync.currentMode === 'racing', curWeather);
+    this.applyWeather(curWeather, dt, this.onlineSync.currentMode === 'racing');
     if (this.onlineSync.currentMode === 'racing') this.raceStats.update(dt, renderPlayer);
 
     const alpha = clamp(this.accumulator / FIXED_STEP, 0, 1);

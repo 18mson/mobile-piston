@@ -276,6 +276,12 @@ export class PeerNetClient {
     }
   }
 
+  setWeather(weather: import('../types').WeatherMode): void {
+    if (this.hostRoom) {
+      this.hostRoom.setWeather('host', weather);
+    }
+  }
+
   setReady(ready: boolean): void {
     if (this.hostRoom) {
       this.hostRoom.setReady('host', ready);

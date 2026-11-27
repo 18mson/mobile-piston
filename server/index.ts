@@ -98,6 +98,9 @@ wss.on('connection', (socket) => {
       case 'set_laps':
         rooms.getRoomForPlayer(activePlayerId)?.setLaps(activePlayerId, msg.totalLaps);
         break;
+      case 'set_weather':
+        rooms.getRoomForPlayer(activePlayerId)?.setWeather(activePlayerId, msg.weather);
+        break;
       case 'set_ready':
         rooms.getRoomForPlayer(activePlayerId)?.setReady(activePlayerId, msg.ready);
         break;

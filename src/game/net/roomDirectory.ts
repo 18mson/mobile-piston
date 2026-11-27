@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../auth/supabaseClient';
+import { getSupabaseClient, getSupabaseRestConfig } from '../auth/supabaseClient';
 import type { LapCount, TrackId } from '../types';
 
 export interface PublicRoomInfo {
@@ -12,7 +12,7 @@ export interface PublicRoomInfo {
   updatedAt: string;
 }
 
-const STALE_ROOM_MS = 35_000;
+const STALE_ROOM_MS = 12_000;
 
 export async function publishPublicRoom(info: Omit<PublicRoomInfo, 'updatedAt'>): Promise<void> {
   const client = getSupabaseClient();
@@ -46,6 +46,24 @@ export async function removePublicRoom(roomCode: string): Promise<void> {
     await client.from('rooms').delete().eq('room_code', roomCode);
   } catch {
     // Best-effort cleanup.
+  }
+}
+
+/** Sends a keepalive DELETE so room cleanup survives browser tab close / pagehide. */
+export function removePublicRoomKeepalive(roomCode: string): void {
+  const cfg = getSupabaseRestConfig();
+  if (!cfg || !roomCode || typeof fetch === 'undefined') return;
+  try {
+    void fetch(`${cfg.url}/rest/v1/rooms?room_code=eq.${encodeURIComponent(roomCode)}`, {
+      method: 'DELETE',
+      keepalive: true,
+      headers: {
+        apikey: cfg.key,
+        Authorization: `Bearer ${cfg.key}`,
+      },
+    }).catch(() => {});
+  } catch {
+    // Best-effort cleanup on unload.
   }
 }
 

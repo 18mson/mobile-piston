@@ -1,6 +1,7 @@
 import { getTrack } from '../src/game/track/tracks';
 import { RaceSim, type RaceParticipant } from '../src/game/race';
 import { clamp } from '../src/game/utils';
+import { WEATHER_MODES, randomWeatherSeed } from '../src/game/weather';
 import type {
   CarId,
   LapCount,
@@ -10,6 +11,7 @@ import type {
   SequencedInput,
   ServerMessage,
   TrackId,
+  WeatherMode,
   WorldSnapshot,
 } from '../src/game/types';
 
@@ -54,6 +56,7 @@ export class GameRoom {
   readonly roomCode: string;
   trackId: TrackId;
   totalLaps: LapCount = 3;
+  weather: WeatherMode = 'clear';
   hostId: string;
   status: 'lobby' | 'countdown' | 'racing' | 'finished' = 'lobby';
   private members = new Map<string, RoomMember>();
@@ -235,6 +238,13 @@ export class GameRoom {
     this.broadcastRoomState();
   }
 
+  setWeather(id: string, weather: WeatherMode): void {
+    if (id !== this.hostId || this.status !== 'lobby') return;
+    if (!WEATHER_MODES.includes(weather)) return;
+    this.weather = weather;
+    this.broadcastRoomState();
+  }
+
   setReady(id: string, ready: boolean): void {
     const member = this.members.get(id);
     if (!member || this.status !== 'lobby') return;
@@ -265,11 +275,13 @@ export class GameRoom {
       idx += 1;
     }
 
+    const weatherSeed = randomWeatherSeed();
     this.sim = new RaceSim(track, participants[0].carId, {
       participants,
       localPlayerId: participants[0].id,
       fillWithAi: true,
       totalLaps: this.totalLaps,
+      weather: { mode: this.weather, seed: weatherSeed },
     });
 
     this.status = 'countdown';
@@ -294,6 +306,8 @@ export class GameRoom {
       type: 'race_started',
       trackId: this.trackId,
       totalLaps: this.totalLaps,
+      weather: this.weather,
+      weatherSeed,
       participants: participantList,
     });
     this.broadcastRoomState();
@@ -484,6 +498,7 @@ export class GameRoom {
       roomCode: this.roomCode,
       trackId: this.trackId,
       totalLaps: this.totalLaps,
+      weather: this.weather,
       hostId: this.hostId,
       status: this.status,
       players,

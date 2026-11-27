@@ -42,6 +42,7 @@ import {
   listPublicRooms,
   publishPublicRoom,
   removePublicRoom,
+  removePublicRoomKeepalive,
   type PublicRoomInfo,
 } from '../game/net/roomDirectory';
 import { formatTime } from '../game/utils';
@@ -231,15 +232,19 @@ export default function GameApp() {
     const onPageHide = () => {
       void sync?.flushPending();
       if (hostedRoomCodeRef.current) {
-        void removePublicRoom(hostedRoomCodeRef.current);
+        removePublicRoomKeepalive(hostedRoomCodeRef.current);
+        hostedRoomCodeRef.current = null;
       }
+      netClientRef.current?.disconnect();
     };
     window.addEventListener('online', onOnline);
     window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('beforeunload', onPageHide);
     return () => {
       sub?.unsubscribe();
       window.removeEventListener('online', onOnline);
       window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', onPageHide);
       if (hostedRoomCodeRef.current) {
         void removePublicRoom(hostedRoomCodeRef.current);
         hostedRoomCodeRef.current = null;
@@ -670,6 +675,7 @@ export default function GameApp() {
           savedCam,
           payload.totalLaps,
           spectating,
+          payload.weather ? { mode: payload.weather, seed: payload.weatherSeed ?? 1 } : undefined,
         );
         window.requestAnimationFrame(() => canvasRef.current?.focus({ preventScroll: true }));
       },
@@ -748,7 +754,7 @@ export default function GameApp() {
       });
     };
     publish();
-    const heartbeat = window.setInterval(publish, 10_000);
+    const heartbeat = window.setInterval(publish, 5_000);
     return () => window.clearInterval(heartbeat);
   }, [roomState, netPlayerId, playerName]);
 
@@ -943,6 +949,10 @@ export default function GameApp() {
               onSelectLaps={(laps) => {
                 selectLaps(laps);
                 netClientRef.current?.setLaps(laps);
+              }}
+              onSelectWeather={(weather) => {
+                selectWeather(weather);
+                netClientRef.current?.setWeather(weather);
               }}
               onCreateRoom={() => {
                 setMpError('');
