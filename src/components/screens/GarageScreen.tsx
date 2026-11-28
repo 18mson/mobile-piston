@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CarId, CarSpec, TireId } from '../../game/types';
+import type { CarCosmetics, CarId, CarSpec, TireId } from '../../game/types';
 import { carUnlockDef, isCarUnlocked } from '../../game/progression';
 import styles from '../progression.module.css';
 import TirePicker from '../TirePicker';
 import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
+import { applyCosmetics } from '../../game/data/cosmetics';
 import CarThumb from '../CarThumb';
 import StatBars from '../StatBars';
 
@@ -20,6 +21,9 @@ export default function GarageScreen({
   unlocks,
   selectedTire = 'standard',
   onSelectTire,
+  cosmetics,
+  garageUnlocked = false,
+  onOpenCustomize,
 }: {
   xp?: number;
   unlocks?: string[];
@@ -27,6 +31,9 @@ export default function GarageScreen({
   onSelectTire?: (id: TireId) => void;
   selectedCarId: CarId;
   selectedColors: Partial<Record<CarId, number>>;
+  cosmetics?: Partial<Record<CarId, CarCosmetics>>;
+  garageUnlocked?: boolean;
+  onOpenCustomize?: () => void;
   onSelect: (id: CarId) => void;
   onSelectColor: (id: CarId, colorIndex: number) => void;
   onBack: () => void;
@@ -74,7 +81,7 @@ export default function GarageScreen({
   const activeColorIndex = selectedColors[shownId] ?? 0;
   const selected: CarSpec = {
     ...CARS[shownId],
-    palette: getCarPalette(shownId, activeColorIndex),
+    palette: applyCosmetics(getCarPalette(shownId, activeColorIndex), cosmetics?.[shownId]),
   };
   const colorOptions = CAR_COLORS[shownId];
   const orderedCars = [...CAR_ORDER].sort((a, b) => {
@@ -144,6 +151,31 @@ export default function GarageScreen({
             <p className="eyebrow">Langkah 1 / 2</p>
             <h2 id="garage-heading">Pilih mobil</h2>
           </div>
+          {onOpenCustomize && (
+            <button
+              className="btn"
+              type="button"
+              disabled={!garageUnlocked || previewId != null}
+              title={
+                !garageUnlocked
+                  ? 'Garasi terbuka di Level 3'
+                  : previewId != null
+                    ? 'Pilih mobil yang sudah terbuka dulu'
+                    : 'Kustomisasi jendela dan velg mobil ini'
+              }
+              aria-label={
+                !garageUnlocked
+                  ? 'Garasi terkunci, capai Level 3'
+                  : previewId != null
+                    ? 'Garasi nonaktif: pilih mobil yang sudah terbuka dulu'
+                    : `Buka Garasi untuk ${selected.name}`
+              }
+              onClick={onOpenCustomize}
+              data-nav
+            >
+              {garageUnlocked ? 'Garasi' : 'Garasi · Level 3'}
+            </button>
+          )}
           <button
             className="btn btn-primary screen-heading-cta"
             type="button"
@@ -164,6 +196,11 @@ export default function GarageScreen({
             <div className={shownLockLevel != null ? `car-detail-visual ${styles.lockedPreview}` : 'car-detail-visual'}>
               <span className="car-stage-number" aria-hidden="true">#{selected.number ?? 1}</span>
               <CarThumb car={selected} number={selected.number ?? 1} scale={6} />
+              {shownLockLevel != null && (
+                <p className={styles.lockStageBadge} role="status">
+                  Terkunci. Capai Level {shownLockLevel} untuk membuka {selected.name}.
+                </p>
+              )}
             </div>
 
             <div className="car-detail-info">
@@ -203,11 +240,6 @@ export default function GarageScreen({
 
               {onSelectTire && <TirePicker selectedTire={selectedTire} xp={xp} unlocks={unlocks} onSelect={onSelectTire} />}
 
-              {shownLockLevel != null && (
-                <p className={styles.lockNote} role="status">
-                  Terkunci. Capai Level {shownLockLevel} untuk membuka {selected.name}.
-                </p>
-              )}
               <p className="car-blurb">{selected.blurb}</p>
             </div>
           </aside>
@@ -235,7 +267,7 @@ export default function GarageScreen({
                 const colorIdx = selectedColors[id] ?? 0;
                 const car: CarSpec = {
                   ...CARS[id],
-                  palette: getCarPalette(id, colorIdx),
+                  palette: applyCosmetics(getCarPalette(id, colorIdx), cosmetics?.[id]),
                 };
                 const selectedCard = id === selectedCarId && previewId == null;
                 const needLevel = lockLevel(id);

@@ -1,5 +1,7 @@
-import type { CarId, LapCount, SaveData, SavedCameraMode, TireId, TrackId, WeatherMode } from './types';
+import type { CarCosmetics, CarId, CarUsage, LapCount, SaveData, SavedCameraMode, TireId, TrackId, WeatherMode } from './types';
 import { CAR_ORDER } from './data/cars';
+import { getGlass, getRim } from './data/cosmetics';
+import { isGlassUnlocked, isRimUnlocked, MAX_CAR_USAGE_STAT } from './garage';
 import { TRACK_ORDER } from './track/tracks';
 import { isCarUnlocked, isTireUnlocked, isTrackUnlocked, MAX_XP } from './progression';
 import { TIRE_ORDER } from './data/tires';
@@ -26,6 +28,57 @@ function resolveCarId(rawId: unknown): CarId | null {
   if (typeof rawId !== 'string') return null;
   if (CAR_ORDER.includes(rawId as CarId)) return rawId as CarId;
   return LEGACY_CAR_MAP[rawId] ?? null;
+}
+
+function sanitizeUsageCounter(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) return 0;
+  return Math.min(MAX_CAR_USAGE_STAT, Math.floor(raw));
+}
+
+function normalizeCarUsage(raw: unknown): Partial<Record<CarId, CarUsage>> {
+  const result: Partial<Record<CarId, CarUsage>> = {};
+  if (!raw || typeof raw !== 'object') return result;
+  for (const [rawKey, val] of Object.entries(raw as Record<string, unknown>)) {
+    const carId = resolveCarId(rawKey);
+    if (!carId || !val || typeof val !== 'object') continue;
+    const obj = val as Record<string, unknown>;
+    const usage: CarUsage = {
+      races: sanitizeUsageCounter(obj.races),
+      laps: sanitizeUsageCounter(obj.laps),
+      podiums: sanitizeUsageCounter(obj.podiums),
+      driftSeconds: sanitizeUsageCounter(obj.driftSeconds),
+      cleanLaps: sanitizeUsageCounter(obj.cleanLaps),
+    };
+    if (usage.races > 0 || usage.laps > 0 || usage.podiums > 0 || usage.driftSeconds > 0 || usage.cleanLaps > 0) {
+      result[carId] = usage;
+    }
+  }
+  return result;
+}
+
+function normalizeCosmetics(
+  raw: unknown,
+  carUsage: Partial<Record<CarId, CarUsage>>,
+): Partial<Record<CarId, CarCosmetics>> {
+  const result: Partial<Record<CarId, CarCosmetics>> = {};
+  if (!raw || typeof raw !== 'object') return result;
+  const usageSave = { carUsage };
+  for (const [rawKey, val] of Object.entries(raw as Record<string, unknown>)) {
+    const carId = resolveCarId(rawKey);
+    if (!carId || !val || typeof val !== 'object') continue;
+    const obj = val as Record<string, unknown>;
+    const entry: CarCosmetics = {};
+    if (typeof obj.rim === 'string' && getRim(obj.rim) && isRimUnlocked(carId, obj.rim, usageSave)) {
+      entry.rim = obj.rim;
+    }
+    if (typeof obj.glass === 'string' && getGlass(obj.glass) && isGlassUnlocked(carId, obj.glass, usageSave)) {
+      entry.glass = obj.glass;
+    }
+    if (entry.rim || entry.glass) {
+      result[carId] = entry;
+    }
+  }
+  return result;
 }
 
 export function defaultSave(): SaveData {
@@ -119,6 +172,14 @@ export function normalizeSave(raw: unknown): SaveData {
   const weather = data.selectedWeather as WeatherMode | undefined;
   if (weather && weather !== 'clear' && WEATHER_MODES.includes(weather)) {
     normalized.selectedWeather = weather;
+  }
+  const carUsage = normalizeCarUsage(data.carUsage);
+  if (Object.keys(carUsage).length > 0) {
+    normalized.carUsage = carUsage;
+  }
+  const cosmetics = normalizeCosmetics(data.cosmetics, carUsage);
+  if (Object.keys(cosmetics).length > 0) {
+    normalized.cosmetics = cosmetics;
   }
   return normalized;
 }

@@ -41,6 +41,7 @@ interface TerrainPlacement {
 export interface World3D {
   root: THREE.Group;
   sun: THREE.DirectionalLight;
+  getSunLight: () => { dir: THREE.Vector3; strength: number };
   update: (time: number, dt: number, focus: THREE.Vector3, reducedMotion: boolean) => void;
   /** rain intensity and road wetness, both 0..1: darkens the sky/lights/clouds and wets the road */
   setWeather: (rain: number, wetness: number) => void;
@@ -1366,5 +1367,16 @@ export function createWorld(track: Track): World3D {
     }
   };
 
-  return { root, sun, update, setWeather, updateRacingLine: racingLine.update };
+  const sunDirOut = new THREE.Vector3(55, 90, 45).normalize();
+  const getSunLight = () => {
+    sunDirOut.copy(sun.position).sub(sun.target.position);
+    if (sunDirOut.lengthSq() > 1e-6) sunDirOut.normalize();
+    else sunDirOut.set(0.55, 0.9, 0.45).normalize();
+    return {
+      dir: sunDirOut,
+      strength: Math.max(0, Math.min(1, sun.intensity / Math.max(0.01, baseSun))),
+    };
+  };
+
+  return { root, sun, getSunLight, update, setWeather, updateRacingLine: racingLine.update };
 }

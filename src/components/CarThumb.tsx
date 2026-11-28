@@ -12,12 +12,14 @@ export default function CarThumb({
   scale = 4,
   className = '',
   staticView = false,
+  autoRotate = true,
 }: {
   car: CarSpec;
   number?: number;
   scale?: number;
   className?: string;
   staticView?: boolean;
+  autoRotate?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const yawRef = useRef(staticView ? 1.42 : 0.35);
@@ -32,6 +34,14 @@ export default function CarThumb({
 
     if (staticView) {
       const ok = renderCarPreview3D(canvas, car, number, 1.42, 0.22);
+      if (!ok) {
+        drawCarPreview(canvas, car.id, car.palette, number, scale);
+      }
+      return;
+    }
+
+    if (!autoRotate) {
+      const ok = renderCarPreview3D(canvas, car, number, yawRef.current, pitchRef.current);
       if (!ok) {
         drawCarPreview(canvas, car.id, car.palette, number, scale);
       }
@@ -63,7 +73,7 @@ export default function CarThumb({
 
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [car, number, scale, staticView]);
+  }, [car, number, scale, staticView, autoRotate]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
@@ -80,6 +90,12 @@ export default function CarThumb({
     lastPointerRef.current = { x: event.clientX, y: event.clientY };
     yawRef.current += dx * 0.012;
     pitchRef.current = Math.max(0.15, Math.min(0.85, pitchRef.current + dy * 0.008));
+    if (!autoRotate) {
+      const ok = renderCarPreview3D(event.currentTarget, car, number, yawRef.current, pitchRef.current);
+      if (!ok) {
+        drawCarPreview(event.currentTarget, car.id, car.palette, number, scale);
+      }
+    }
   };
 
   const stopDrag = (event: ReactPointerEvent<HTMLCanvasElement>) => {

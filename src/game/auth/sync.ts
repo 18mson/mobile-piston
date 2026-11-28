@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { defaultSave, loadSave, normalizeSave, persistSave, SAVE_KEY } from '../save';
-import type { SaveData } from '../types';
+import type { CarId, CarUsage, SaveData } from '../types';
 import { getSupabaseClient } from './supabaseClient';
 
 export const SAVE_META_KEY = 'mobile-piston.save.meta.v1';
@@ -58,6 +58,24 @@ export function mergeSaves(
 
   const mergedXp = Math.max(local.xp ?? 0, remote.xp ?? 0);
 
+  const mergedUsage: Partial<Record<CarId, CarUsage>> = {};
+  const usageCarIds = new Set<CarId>([
+    ...((Object.keys(local.carUsage ?? {}) as CarId[])),
+    ...((Object.keys(remote.carUsage ?? {}) as CarId[])),
+  ]);
+  for (const carId of usageCarIds) {
+    const lu = local.carUsage?.[carId];
+    const ru = remote.carUsage?.[carId];
+    if (!lu && !ru) continue;
+    mergedUsage[carId] = {
+      races: Math.max(lu?.races ?? 0, ru?.races ?? 0),
+      laps: Math.max(lu?.laps ?? 0, ru?.laps ?? 0),
+      podiums: Math.max(lu?.podiums ?? 0, ru?.podiums ?? 0),
+      driftSeconds: Math.max(lu?.driftSeconds ?? 0, ru?.driftSeconds ?? 0),
+      cleanLaps: Math.max(lu?.cleanLaps ?? 0, ru?.cleanLaps ?? 0),
+    };
+  }
+
   const primary = remoteUpdatedAt > localUpdatedAt ? remote : local;
   const merged: SaveData = {
     ...primary,
@@ -69,6 +87,9 @@ export function mergeSaves(
   }
   if (mergedXp > 0) {
     merged.xp = mergedXp;
+  }
+  if (Object.keys(mergedUsage).length > 0) {
+    merged.carUsage = mergedUsage;
   }
   return normalizeSave(merged);
 }

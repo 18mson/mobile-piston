@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import type { LapCount, Track, TrackId, WeatherMode } from '../../game/types';
+import type { TrackRecordsMap } from '../../game/records';
 import { WEATHER_LABELS, WEATHER_MODES } from '../../game/weather';
 import { isTrackUnlocked, trackUnlockDef } from '../../game/progression';
 import styles from '../progression.module.css';
 import { TRACK_ORDER, getTrack } from '../../game/track/tracks';
 import { formatTime } from '../../game/utils';
 import TrackPreview from '../TrackPreview';
+import TrackLeaderboard from '../TrackLeaderboard';
 
 const LAP_OPTIONS: LapCount[] = [3, 4, 5];
 const ROUTE_KIND: Record<string, string> = {
@@ -58,6 +60,7 @@ export default function TrackSelectScreen({
   tireName,
   xp = 0,
   unlocks,
+  trackRecords,
 }: {
   selectedTrackId: TrackId;
   selectedLaps?: LapCount;
@@ -71,6 +74,7 @@ export default function TrackSelectScreen({
   tireName?: string;
   xp?: number;
   unlocks?: string[];
+  trackRecords?: TrackRecordsMap;
 }) {
   const [previewId, setPreviewId] = useState<TrackId | null>(null);
   const shownId: TrackId = previewId ?? selectedTrackId;
@@ -186,6 +190,8 @@ export default function TrackSelectScreen({
                   Terkunci. Capai Level {shownLockLevel} untuk membuka {shown.name}.
                 </p>
               )}
+
+              <TrackLeaderboard trackName={shown.name} entries={trackRecords?.[shownId] ?? []} compact />
             </div>
           </aside>
 

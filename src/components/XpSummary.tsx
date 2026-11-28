@@ -1,8 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { levelProgress, type XpReport } from '../game/progression';
+import { CARS } from '../game/data/cars';
+import { levelProgress, type UnlockKind, type XpReport } from '../game/progression';
 import styles from './progression.module.css';
+
+function unlockKindLabel(kind: UnlockKind): string {
+  switch (kind) {
+    case 'car':
+      return 'Mobil terbuka';
+    case 'tire':
+      return 'Ban terbuka';
+    case 'track':
+      return 'Lintasan terbuka';
+    case 'feature':
+      return 'Fitur terbuka';
+  }
+}
 
 /** XP breakdown shown on the results screen, with the bar filling up to the new total. */
 export default function XpSummary({ report }: { report: XpReport }) {
@@ -50,10 +64,19 @@ export default function XpSummary({ report }: { report: XpReport }) {
           {report.unlocked.length > 0 && (
             <ul className={styles.unlockList}>
               {report.unlocked.map((item) => (
-                <li key={item.id}>Mobil terbuka: {item.label}</li>
+                <li key={item.id}>{unlockKindLabel(item.kind)}: {item.label}</li>
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {report.cosmeticUnlocks && report.cosmeticUnlocks.items.length > 0 && (
+        <div className={styles.levelUp}>
+          <span>
+            Terbuka untuk {CARS[report.cosmeticUnlocks.carId].name}:{' '}
+            {report.cosmeticUnlocks.items.map((item) => item.label).join(', ')}
+          </span>
         </div>
       )}
     </div>

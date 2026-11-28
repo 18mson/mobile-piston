@@ -14,6 +14,9 @@ import type {
   WeatherMode,
 } from '../game/types';
 import { CARS, getCarPalette } from '../game/data/cars';
+import { applyCosmetics } from '../game/data/cosmetics';
+import { applyCarUsage, isGlassUnlocked, isRimUnlocked } from '../game/garage';
+import { fetchTrackRecords, submitTrackRecord, type TrackRecordsMap } from '../game/records';
 import { getTrack } from '../game/track/tracks';
 import { defaultSave, loadSave } from '../game/save';
 import {
@@ -21,6 +24,7 @@ import {
   carUnlockDef,
   computeRaceXp,
   isCarUnlocked,
+  isGarageUnlocked,
   isTireUnlocked,
   isTrackUnlocked,
   tireUnlockDef,
@@ -49,6 +53,7 @@ import {
 import { formatTime } from '../game/utils';
 import TitleScreen from './screens/TitleScreen';
 import GarageScreen from './screens/GarageScreen';
+import CustomizeGarageScreen from './screens/CustomizeGarageScreen';
 import TrackSelectScreen from './screens/TrackSelectScreen';
 import MultiplayerLobbyScreen from './screens/MultiplayerLobbyScreen';
 import PauseDialog from './screens/PauseDialog';
@@ -63,6 +68,7 @@ type Screen =
   | 'loading'
   | 'title'
   | 'garage'
+  | 'customize'
   | 'tracks'
   | 'multiplayer'
   | 'racing'
@@ -169,9 +175,12 @@ export default function GameApp() {
   const [xpReport, setXpReport] = useState<XpReport | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [customizeFrom, setCustomizeFrom] = useState<'title' | 'garage'>('title');
   const [authOpen, setAuthOpen] = useState(false);
   const [authUsername, setAuthUsername] = useState<string | null>(null);
+  const authUsernameRef = useRef<string | null>(null);
   const authUserIdRef = useRef<string | null>(null);
+  const [trackRecords, setTrackRecords] = useState<TrackRecordsMap>({});
   const [storageWarning, setStorageWarning] = useState('');
   const cloudSyncRef = useRef<CloudSaveSync | null>(null);
   if (!cloudSyncRef.current) {
@@ -203,8 +212,11 @@ export default function GameApp() {
   const hostedRoomCodeRef = useRef<string | null>(null);
   const [mpError, setMpError] = useState('');
   const [playerName, setPlayerName] = useState('Pembalap');
+  const playerNameRef = useRef('Pembalap');
   const hasCustomNameRef = useRef(false);
   const [onlineTrackId, setOnlineTrackId] = useState<TrackId>('teluk-sore');
+  const onlineTrackIdRef = useRef<TrackId>('teluk-sore');
+  const isOnlineResultRef = useRef(false);
   const [initialJoinCode, setInitialJoinCode] = useState('');
   const [netDebugEnabled, setNetDebugEnabled] = useState(false);
   const [netDebugStats, setNetDebugStats] = useState<ReturnType<GameEngine['getNetDebugStats']>>(null);
@@ -212,8 +224,12 @@ export default function GameApp() {
   const selectedColorIndex = save.selectedColors?.[save.selectedCarId] ?? 0;
   const selectedCar = {
     ...CARS[save.selectedCarId],
-    palette: getCarPalette(save.selectedCarId, selectedColorIndex),
+    palette: applyCosmetics(
+      getCarPalette(save.selectedCarId, selectedColorIndex),
+      save.cosmetics?.[save.selectedCarId],
+    ),
   };
+  const garageUnlocked = isGarageUnlocked(save);
   const selectedTrack = getTrack(save.selectedTrackId);
   const bestLapMs = save.bestLapMs[selectedTrack.id] ?? null;
 
@@ -300,6 +316,28 @@ export default function GameApp() {
   }, [save]);
 
   useEffect(() => {
+    authUsernameRef.current = authUsername;
+  }, [authUsername]);
+
+  useEffect(() => {
+    playerNameRef.current = playerName;
+  }, [playerName]);
+
+  useEffect(() => {
+    onlineTrackIdRef.current = onlineTrackId;
+  }, [onlineTrackId]);
+
+  useEffect(() => {
+    isOnlineResultRef.current = isOnlineResult;
+  }, [isOnlineResult]);
+
+  useEffect(() => {
+    if (screen === 'title' || screen === 'tracks') {
+      void fetchTrackRecords().then(setTrackRecords);
+    }
+  }, [screen]);
+
+  useEffect(() => {
     const loaded = loadSave();
     setSave(loaded);
     saveRef.current = loaded;
@@ -353,18 +391,51 @@ export default function GameApp() {
           const award = isSpectatingRef.current ? { rows: [], total: 0 } : computeRaceXp(nextResults);
           let finalSave = nextSave;
           let levelUpNote = '';
-          if (award.total > 0) {
-            const applied = applyXp(nextSave, award);
-            finalSave = applied.save;
-            setXpReport(applied.report);
-            if (applied.report.levelAfter > applied.report.levelBefore) {
-              const names = applied.report.unlocked.map((item) => item.label).join(', ');
-              levelUpNote = ` Naik ke level ${applied.report.levelAfter}.${names ? ` Terbuka: ${names}.` : ''}`;
+          const xpApplied = award.total > 0 ? applyXp(nextSave, award) : null;
+          if (xpApplied) {
+            finalSave = xpApplied.save;
+            if (xpApplied.report.levelAfter > xpApplied.report.levelBefore) {
+              const names = xpApplied.report.unlocked.map((item) => item.label).join(', ');
+              levelUpNote = ` Naik ke level ${xpApplied.report.levelAfter}.${names ? ` Terbuka: ${names}.` : ''}`;
             }
+          }
+          const usageResult = isSpectatingRef.current
+            ? { save: finalSave, unlocked: null }
+            : applyCarUsage(finalSave, nextResults);
+          finalSave = usageResult.save;
+          if (usageResult.unlocked) {
+            const cName = CARS[usageResult.unlocked.carId].name;
+            const cItems = usageResult.unlocked.items.map((item) => item.label).join(', ');
+            levelUpNote += ` Terbuka untuk ${cName}: ${cItems}.`;
+          }
+          if (xpApplied) {
+            setXpReport({ ...xpApplied.report, cosmeticUnlocks: usageResult.unlocked });
           } else {
             setXpReport(null);
           }
           commitSave(finalSave);
+          const finishedPlayer = nextResults.results.find((r) => r.isPlayer);
+          if (
+            !isSpectatingRef.current &&
+            finishedPlayer &&
+            finishedPlayer.timeMs != null &&
+            nextResults.playerBestLapMs != null &&
+            nextResults.playerBestLapMs >= 1000
+          ) {
+            const recordTrackId = isOnlineResultRef.current ? onlineTrackIdRef.current : trackId;
+            const recordName = authUsernameRef.current ? `@${authUsernameRef.current}` : playerNameRef.current;
+            const recordColor = finalSave.selectedColors?.[finishedPlayer.carId] ?? 0;
+            void submitTrackRecord({
+              trackId: recordTrackId,
+              playerName: recordName,
+              carId: finishedPlayer.carId,
+              colorIndex: recordColor,
+              bestLapMs: nextResults.playerBestLapMs,
+              totalTimeMs: nextResults.totalTimeMs,
+              laps: nextResults.totalLaps ?? 3,
+              userId: authUserIdRef.current,
+            }).then(setTrackRecords);
+          }
           setAnnouncement(
             `Finis di posisi ${nextResults.playerPosition}. Waktu total ${formatTime(nextResults.totalTimeMs)}.${levelUpNote}`,
           );
@@ -421,9 +492,19 @@ export default function GameApp() {
 
   useEffect(() => {
     const inMenu =
-      screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
+      screen === 'title' ||
+      screen === 'garage' ||
+      screen === 'customize' ||
+      screen === 'tracks' ||
+      screen === 'multiplayer';
     engineRef.current?.audioController.setMenuMusic(inMenu);
   }, [screen]);
+
+  useEffect(() => {
+    if (screen === 'customize' && !isGarageUnlocked(save)) {
+      setScreen('title');
+    }
+  }, [screen, save]);
 
   useEffect(() => {
     return () => {
@@ -473,7 +554,7 @@ export default function GameApp() {
     const savedCam = saveRef.current.cameraMode ?? 'top';
     const colorIdx = saveRef.current.selectedColors?.[id] ?? 0;
     const totalLaps = saveRef.current.selectedLaps ?? 3;
-    const palette = getCarPalette(id, colorIdx);
+    const palette = applyCosmetics(getCarPalette(id, colorIdx), saveRef.current.cosmetics?.[id]);
     setSnapshot(null);
     setResults(null);
     setIsOnlineResult(false);
@@ -570,6 +651,46 @@ export default function GameApp() {
     commitSave(nextSave);
   };
 
+  const selectCosmetic = (carId: CarId, slot: 'rim' | 'glass', id: string | null) => {
+    if (id != null) {
+      const ok =
+        slot === 'rim'
+          ? isRimUnlocked(carId, id, saveRef.current)
+          : isGlassUnlocked(carId, id, saveRef.current);
+      if (!ok) return;
+    }
+    const prevAll = { ...(saveRef.current.cosmetics ?? {}) };
+    const prevCar = { ...(prevAll[carId] ?? {}) };
+    if (id == null) {
+      delete prevCar[slot];
+    } else {
+      prevCar[slot] = id;
+    }
+    if (prevCar.rim || prevCar.glass) {
+      prevAll[carId] = prevCar;
+    } else {
+      delete prevAll[carId];
+    }
+    const nextSave: SaveData = { ...saveRef.current };
+    if (Object.keys(prevAll).length > 0) {
+      nextSave.cosmetics = prevAll;
+    } else {
+      delete nextSave.cosmetics;
+    }
+    commitSave(nextSave);
+  };
+
+  const openCustomize = (from: 'title' | 'garage') => {
+    if (!isGarageUnlocked(saveRef.current)) {
+      setAnnouncement('Garasi terkunci. Capai level 3 untuk membukanya.');
+      return;
+    }
+    setCustomizeFrom(from);
+    setScreen('customize');
+  };
+
+  const closeCustomize = () => setScreen(customizeFrom);
+
   const toggleMute = () => {
     const nextSave: SaveData = { ...saveRef.current, audioMuted: !saveRef.current.audioMuted };
     commitSave(nextSave);
@@ -655,6 +776,9 @@ export default function GameApp() {
       if (screen === 'garage') {
         event.preventDefault();
         setScreen('title');
+      } else if (screen === 'customize') {
+        event.preventDefault();
+        closeCustomize();
       } else if (screen === 'tracks') {
         event.preventDefault();
         setScreen('garage');
@@ -855,8 +979,18 @@ export default function GameApp() {
   const exploreScreen = screen === 'explore';
   const onlineScreen = screen === 'online-racing';
   const racingScreen = screen === 'racing' || exploreScreen || onlineScreen;
-  const showTopBar = screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
-  const showFooter = screen === 'title' || screen === 'garage' || screen === 'tracks' || screen === 'multiplayer';
+  const showTopBar =
+    screen === 'title' ||
+    screen === 'garage' ||
+    screen === 'customize' ||
+    screen === 'tracks' ||
+    screen === 'multiplayer';
+  const showFooter =
+    screen === 'title' ||
+    screen === 'garage' ||
+    screen === 'customize' ||
+    screen === 'tracks' ||
+    screen === 'multiplayer';
 
   return (
     <div
@@ -985,8 +1119,11 @@ export default function GameApp() {
           {screen === 'title' && (
             <TitleScreen
               track={selectedTrack}
+              trackRecords={trackRecords}
               onStart={() => setScreen('garage')}
               onMultiplayer={openMultiplayer}
+              onGarage={() => openCustomize('title')}
+              garageUnlocked={garageUnlocked}
               onControls={openControls}
               xp={save.xp ?? 0}
             />
@@ -1078,6 +1215,9 @@ export default function GameApp() {
             <GarageScreen
               selectedCarId={save.selectedCarId}
               selectedColors={save.selectedColors ?? {}}
+              cosmetics={save.cosmetics}
+              garageUnlocked={garageUnlocked}
+              onOpenCustomize={() => openCustomize('garage')}
               xp={save.xp ?? 0}
               unlocks={save.unlocks}
               selectedTire={save.selectedTire ?? 'standard'}
@@ -1086,6 +1226,20 @@ export default function GameApp() {
               onSelectColor={selectCarColor}
               onBack={() => setScreen('title')}
               onStart={() => setScreen('tracks')}
+            />
+          )}
+          {screen === 'customize' && (
+            <CustomizeGarageScreen
+              selectedCarId={save.selectedCarId}
+              selectedColors={save.selectedColors ?? {}}
+              cosmetics={save.cosmetics ?? {}}
+              carUsage={save.carUsage ?? {}}
+              xp={save.xp ?? 0}
+              unlocks={save.unlocks}
+              returnLabel={customizeFrom === 'garage' ? 'Pilih mobil' : 'Kembali'}
+              onSelectCar={selectCar}
+              onSelectCosmetic={selectCosmetic}
+              onBack={closeCustomize}
             />
           )}
           {screen === 'tracks' && (
@@ -1100,6 +1254,7 @@ export default function GameApp() {
               tireName={getTire(save.selectedTire).name}
               xp={save.xp ?? 0}
               unlocks={save.unlocks}
+              trackRecords={trackRecords}
               onBack={() => setScreen('garage')}
               onStart={() => startRace()}
             />

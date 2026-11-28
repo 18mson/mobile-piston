@@ -184,9 +184,30 @@
   position: relative;
 }
 
-.lockedPreview > * {
+.lockedPreview > :not(.lockStageBadge) {
   filter: brightness(0.28) grayscale(0.8);
   opacity: 0.72;
+}
+
+.lockStageBadge {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 20px);
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px dashed #ffd45a;
+  border-radius: 8px;
+  background: rgba(10, 19, 30, 0.92);
+  color: #ffd45a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .lockedCard {

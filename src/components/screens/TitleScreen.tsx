@@ -1,17 +1,26 @@
 'use client';
 
 import type { Track } from '../../game/types';
+import type { TrackRecordsMap } from '../../game/records';
 import ProgressBadge from '../ProgressBadge';
+import TrackLeaderboard from '../TrackLeaderboard';
 
 export default function TitleScreen({
+  track,
+  trackRecords,
   onStart,
   onMultiplayer,
+  onGarage,
+  garageUnlocked = false,
   xp = 0,
 }: {
   track?: Track;
+  trackRecords?: TrackRecordsMap;
   xp?: number;
   onStart: () => void;
   onMultiplayer: () => void;
+  onGarage?: () => void;
+  garageUnlocked?: boolean;
   onControls?: () => void;
 }) {
   return (
@@ -57,6 +66,17 @@ export default function TitleScreen({
               <button className="btn btn-cyan" type="button" onClick={onMultiplayer} data-nav>
                 Multiplayer (WiFi / Online)
               </button>
+              <button
+                className="btn btn-cyan"
+                type="button"
+                disabled={!garageUnlocked}
+                onClick={onGarage}
+                aria-label={garageUnlocked ? 'Garasi kustomisasi mobil' : 'Garasi terkunci, capai Level 3'}
+                title={garageUnlocked ? 'Kustomisasi jendela dan velg mobil' : 'Terbuka di Level 3'}
+                data-nav
+              >
+                {garageUnlocked ? 'Garasi' : 'Garasi · Level 3'}
+              </button>
             </div>
             <div className="title-notes">
               <p>Tekan Esc untuk mode Explore Map.</p>
@@ -65,6 +85,12 @@ export default function TitleScreen({
           </div>
         </div>
       </div>
+
+      {track && (
+        <div className="title-records-wrap">
+          <TrackLeaderboard trackName={track.name} entries={trackRecords?.[track.id] ?? []} />
+        </div>
+      )}
     </section>
   );
 }

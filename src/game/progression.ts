@@ -63,7 +63,7 @@ export function levelProgress(xp: number): LevelProgress {
 // Unlocks (add tyres / tracks here later: same table, new `kind`)
 // ---------------------------------------------------------------------------
 
-export type UnlockKind = 'car' | 'tire' | 'track';
+export type UnlockKind = 'car' | 'tire' | 'track' | 'feature';
 
 export interface UnlockDef {
   id: string;
@@ -75,6 +75,7 @@ export interface UnlockDef {
 
 export const UNLOCKS: UnlockDef[] = [
   { id: 'car:chick', kind: 'car', refId: 'chick', level: 3, label: 'Chick' },
+  { id: 'feature:garage', kind: 'feature', refId: 'garage', level: 3, label: 'Garasi' },
   { id: 'car:mater', kind: 'car', refId: 'mater', level: 5, label: 'Mater' },
   { id: 'tire:grip', kind: 'tire', refId: 'grip', level: 5, label: 'Ban Grip' },
   { id: 'track:pelabuhan', kind: 'track', refId: 'pelabuhan', level: 5, label: 'Sirkuit Pelabuhan' },
@@ -115,6 +116,17 @@ export function trackUnlockDef(trackId: TrackId): UnlockDef | null {
 
 export function isTrackUnlocked(trackId: TrackId, save: Pick<SaveData, 'xp' | 'unlocks'>): boolean {
   const def = trackUnlockDef(trackId);
+  if (!def) return true;
+  if (save.unlocks?.includes(def.id)) return true;
+  return levelFromXp(save.xp ?? 0) >= def.level;
+}
+
+export function garageUnlockDef(): UnlockDef | null {
+  return UNLOCKS.find((item) => item.kind === 'feature' && item.refId === 'garage') ?? null;
+}
+
+export function isGarageUnlocked(save: Pick<SaveData, 'xp' | 'unlocks'>): boolean {
+  const def = garageUnlockDef();
   if (!def) return true;
   if (save.unlocks?.includes(def.id)) return true;
   return levelFromXp(save.xp ?? 0) >= def.level;
@@ -181,6 +193,16 @@ export function computeRaceXp(results: RaceResults): XpAward {
   return { rows, total: rows.reduce((sum, row) => sum + row.xp, 0) };
 }
 
+export interface CosmeticUnlockItem {
+  kind: 'rim' | 'glass';
+  label: string;
+}
+
+export interface CosmeticUnlockSummary {
+  carId: CarId;
+  items: CosmeticUnlockItem[];
+}
+
 export interface XpReport {
   award: XpAward;
   xpBefore: number;
@@ -188,6 +210,7 @@ export interface XpReport {
   levelBefore: number;
   levelAfter: number;
   unlocked: UnlockDef[];
+  cosmeticUnlocks?: CosmeticUnlockSummary | null;
 }
 
 /** Applies an award to a save. Returns the new save plus a report for the results screen. */

@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { CarSpec } from '../types';
 import { CarView } from './cars';
+import { setGlassSunLight } from './glassMaterial';
+
+const PREVIEW_SUN_DIR = new THREE.Vector3(6, 10, 8).normalize();
 
 let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene | null = null;
@@ -83,9 +86,14 @@ function disposeCarView(view: CarView): void {
   });
 }
 
+function previewKey(car: CarSpec, number: number): string {
+  const rim = car.palette.rim;
+  return `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}-${car.palette.glass}-${rim?.color ?? ''}-${rim?.style ?? ''}`;
+}
+
 function ensurePreviewView(car: CarSpec, number: number): CarView | null {
   if (!createPreviewRenderer() || !renderer || !scene || !camera) return null;
-  const key = `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}`;
+  const key = previewKey(car, number);
   if (activeView && activeKey === key) return activeView;
   if (activeView) {
     scene.remove(activeView.group);
@@ -117,6 +125,8 @@ export function renderCarPreview3D(
   );
   camera.lookAt(0, 1.15, 0);
   view.group.rotation.y = yaw;
+  setGlassSunLight(PREVIEW_SUN_DIR, 1, true);
+  view.syncGlassSun();
   renderer.render(scene, camera);
 
   const ctx = targetCanvas.getContext('2d');
@@ -129,7 +139,7 @@ export function renderCarPreview3D(
 
 export function getCarPreview(car: CarSpec, number = 1): string | null {
   if (typeof document === 'undefined') return null;
-  const key = `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}`;
+  const key = previewKey(car, number);
   const cached = cache.get(key);
   if (cached) return cached;
   const view = ensurePreviewView(car, number);
@@ -138,6 +148,8 @@ export function getCarPreview(car: CarSpec, number = 1): string | null {
   camera.position.set(7.4, 4.4, 7.8);
   camera.lookAt(0, 1.15, 0);
   view.group.rotation.y = 0;
+  setGlassSunLight(PREVIEW_SUN_DIR, 1, true);
+  view.syncGlassSun();
   renderer.render(scene, camera);
   const data = (renderer.domElement as HTMLCanvasElement).toDataURL('image/png');
   cache.set(key, data);

@@ -31,6 +31,21 @@ export interface CarStats {
   slideAssist?: number;
 }
 
+export type RimStyle = 'disc' | 'spoke' | 'dish';
+
+export interface CarCosmetics {
+  rim?: string;
+  glass?: string;
+}
+
+export interface CarUsage {
+  races: number;
+  laps: number;
+  podiums: number;
+  driftSeconds: number;
+  cleanLaps: number;
+}
+
 export interface CarPalette {
   body: string;
   shade: string;
@@ -38,6 +53,11 @@ export interface CarPalette {
   stripe: string;
   glass: string;
   wheel: string;
+  rim?: {
+    color: string;
+    style: RimStyle;
+  };
+  glassGlint?: number;
 }
 
 export interface CarCollision {
@@ -266,6 +286,8 @@ export interface SaveData {
   selectedTire?: TireId;
   selectedWeather?: WeatherMode;
   xp?: number;
+  cosmetics?: Partial<Record<CarId, CarCosmetics>>;
+  carUsage?: Partial<Record<CarId, CarUsage>>;
 }
 
 export interface HudUpdate {

@@ -8,6 +8,7 @@ import { nearestOnTrack, sampleAtDistance } from '../track/geometry';
 import { RENDER_HEIGHT, RENDER_WIDTH, ROAD_Y, toSceneX, toSceneZ } from './constants';
 import { ParticleFx } from './particles';
 import { WeatherFx } from './weatherFx';
+import { setGlassSunLight } from './glassMaterial';
 
 export { type CameraMode } from './cameraRig';
 
@@ -622,6 +623,9 @@ export class Renderer3D {
     this.cameraRig.camera.fov = 54;
     this.cameraRig.camera.updateProjectionMatrix();
 
+    const sunInfo = this.world.getSunLight();
+    setGlassSunLight(sunInfo.dir, sunInfo.strength, true);
+
     this.renderer.render(this.scene, this.cameraRig.camera);
   }
 
@@ -835,6 +839,9 @@ export class Renderer3D {
 
     // Update unified camera rig with smoothly interpolated player (orbiting dynamic angles after finish)
     this.cameraRig.update(interpPlayer, effectiveDt, impact, isFinished);
+
+    const sunInfo = this.world.getSunLight();
+    setGlassSunLight(sunInfo.dir, sunInfo.strength, !isCockpit);
 
     this.renderer.render(this.scene, this.cameraRig.camera);
   }
