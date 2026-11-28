@@ -88,7 +88,8 @@ function disposeCarView(view: CarView): void {
 
 function previewKey(car: CarSpec, number: number): string {
   const rim = car.palette.rim;
-  return `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}-${car.palette.glass}-${rim?.color ?? ''}-${rim?.style ?? ''}`;
+  const acc = car.palette.accessories?.join(',') ?? '';
+  return `${car.id}-${number}-${car.palette.body}-${car.palette.stripe}-${car.palette.glass}-${rim?.color ?? ''}-${rim?.style ?? ''}-${acc}`;
 }
 
 function ensurePreviewView(car: CarSpec, number: number): CarView | null {

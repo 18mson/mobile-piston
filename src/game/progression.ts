@@ -86,6 +86,11 @@ export const UNLOCKS: UnlockDef[] = [
   { id: 'car:storm', kind: 'car', refId: 'storm', level: 12, label: 'Storm' },
   { id: 'track:rimba-lumpur', kind: 'track', refId: 'rimba-lumpur', level: 14, label: 'Rimba Lumpur' },
   { id: 'tire:terrain', kind: 'tire', refId: 'terrain', level: 14, label: 'Ban Tanah' },
+  { id: 'car:ramone', kind: 'car', refId: 'ramone', level: 15, label: 'Ramone' },
+  { id: 'car:fillmore', kind: 'car', refId: 'fillmore', level: 17, label: 'Fillmore' },
+  { id: 'car:finn', kind: 'car', refId: 'finn', level: 19, label: 'Finn' },
+  { id: 'car:shu', kind: 'car', refId: 'shu', level: 21, label: 'Shu' },
+  { id: 'car:king', kind: 'car', refId: 'king', level: 24, label: 'King' },
 ];
 
 export function carUnlockDef(carId: CarId): UnlockDef | null {
@@ -194,7 +199,7 @@ export function computeRaceXp(results: RaceResults): XpAward {
 }
 
 export interface CosmeticUnlockItem {
-  kind: 'rim' | 'glass';
+  kind: 'rim' | 'glass' | 'accessory';
   label: string;
 }
 

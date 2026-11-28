@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CarCosmetics, CarId, CarSpec, TireId } from '../../game/types';
+import type { AccessorySlot, CarCosmetics, CarId, CarSpec, TireId } from '../../game/types';
 import { carUnlockDef, isCarUnlocked } from '../../game/progression';
 import styles from '../progression.module.css';
 import TirePicker from '../TirePicker';
-import { CARS, CAR_COLORS, CAR_ORDER, getCarPalette } from '../../game/data/cars';
+import { CARS, CAR_COLORS, CAR_ORDER, deriveCarRole, getCarPalette } from '../../game/data/cars';
 import { applyCosmetics } from '../../game/data/cosmetics';
 import CarThumb from '../CarThumb';
 import StatBars from '../StatBars';
@@ -22,6 +22,7 @@ export default function GarageScreen({
   selectedTire = 'standard',
   onSelectTire,
   cosmetics,
+  accessories,
   garageUnlocked = false,
   onOpenCustomize,
 }: {
@@ -32,6 +33,7 @@ export default function GarageScreen({
   selectedCarId: CarId;
   selectedColors: Partial<Record<CarId, number>>;
   cosmetics?: Partial<Record<CarId, CarCosmetics>>;
+  accessories?: Partial<Record<CarId, Partial<Record<AccessorySlot, string>>>>;
   garageUnlocked?: boolean;
   onOpenCustomize?: () => void;
   onSelect: (id: CarId) => void;
@@ -81,7 +83,7 @@ export default function GarageScreen({
   const activeColorIndex = selectedColors[shownId] ?? 0;
   const selected: CarSpec = {
     ...CARS[shownId],
-    palette: applyCosmetics(getCarPalette(shownId, activeColorIndex), cosmetics?.[shownId]),
+    palette: applyCosmetics(getCarPalette(shownId, activeColorIndex), cosmetics?.[shownId], accessories?.[shownId]),
   };
   const colorOptions = CAR_COLORS[shownId];
   const orderedCars = [...CAR_ORDER].sort((a, b) => {
@@ -195,6 +197,7 @@ export default function GarageScreen({
           <aside className="car-detail panel" aria-label={`Detail ${selected.name}`}>
             <div className={shownLockLevel != null ? `car-detail-visual ${styles.lockedPreview}` : 'car-detail-visual'}>
               <span className="car-stage-number" aria-hidden="true">#{selected.number ?? 1}</span>
+              <span className="car-stage-role">{deriveCarRole(selected)}</span>
               <CarThumb car={selected} number={selected.number ?? 1} scale={6} />
               {shownLockLevel != null && (
                 <p className={styles.lockStageBadge} role="status">
@@ -239,9 +242,9 @@ export default function GarageScreen({
               </div>
 
               {onSelectTire && <TirePicker selectedTire={selectedTire} xp={xp} unlocks={unlocks} onSelect={onSelectTire} />}
-
-              <p className="car-blurb">{selected.blurb}</p>
             </div>
+
+            <p className="car-blurb">{selected.blurb}</p>
           </aside>
 
           <div className="car-carousel">
@@ -267,7 +270,7 @@ export default function GarageScreen({
                 const colorIdx = selectedColors[id] ?? 0;
                 const car: CarSpec = {
                   ...CARS[id],
-                  palette: applyCosmetics(getCarPalette(id, colorIdx), cosmetics?.[id]),
+                  palette: applyCosmetics(getCarPalette(id, colorIdx), cosmetics?.[id], accessories?.[id]),
                 };
                 const selectedCard = id === selectedCarId && previewId == null;
                 const needLevel = lockLevel(id);

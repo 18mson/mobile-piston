@@ -57,4 +57,28 @@ export const GREENHOUSE: Record<CarId, GreenhouseSpec | null> = {
     splits: [{ at: 0.60, width: 0.15 }],
     pillar: 'body',
   },
+  ramone: {
+    splits: [{ at: 0.56, width: 0.12 }],
+    pillar: 'body',
+  },
+  fillmore: {
+    splits: [
+      { at: 0.28, width: 0.12 },
+      { at: 0.56, width: 0.12 },
+      { at: 0.80, width: 0.12 },
+    ],
+    pillar: 'body',
+  },
+  finn: {
+    splits: [{ at: 0.58, width: 0.13 }],
+    pillar: 'body',
+  },
+  shu: {
+    splits: [{ at: 0.62, width: 0.14 }],
+    pillar: 'darkTrim',
+  },
+  king: {
+    splits: [{ at: 0.58, width: 0.14 }],
+    pillar: 'body',
+  },
 };

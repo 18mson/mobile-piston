@@ -18,7 +18,57 @@ export default function CarSideBadge({
   const car = CARS[carId] ?? CARS.mcqueen;
   const palette = getCarPalette(car.id, colorIndex);
   const wheelColor = palette.wheel;
-  const rimColor = carId === 'mcqueen' || carId === 'chick' || carId === 'storm' ? palette.stripe : '#d9dfe6';
+  const rimColor =
+    carId === 'mcqueen' || carId === 'chick' || carId === 'storm' || carId === 'fillmore'
+      ? palette.stripe
+      : '#d9dfe6';
+
+  if (carId === 'fillmore') {
+    return (
+      <svg
+        width="44"
+        height="18"
+        viewBox="0 0 44 18"
+        className={className}
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label={car.name}
+      >
+        <path d="M8 13 L8 5 L11 3 L33 3 L37 7 L37 13 Z" fill={palette.body} />
+        <rect x="10" y="2.5" width="24" height="2" fill={palette.stripe} />
+        <rect x="12" y="5" width="20" height="3.5" fill={palette.glass} />
+        <rect x="8" y="9" width="29" height="1.6" fill={palette.stripe} />
+        <circle cx="13" cy="13.5" r="3.6" fill={wheelColor} />
+        <circle cx="13" cy="13.5" r="1.6" fill={rimColor} />
+        <circle cx="31" cy="13.5" r="3.6" fill={wheelColor} />
+        <circle cx="31" cy="13.5" r="1.6" fill={rimColor} />
+      </svg>
+    );
+  }
+
+  if (carId === 'king') {
+    return (
+      <svg
+        width="44"
+        height="18"
+        viewBox="0 0 44 18"
+        className={className}
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label={car.name}
+      >
+        <rect x="4" y="2" width="6" height="2" fill={palette.body} />
+        <rect x="6" y="4" width="2" height="5" fill={palette.body} />
+        <path d="M5 13 L6 8 L13 4 L25 4 L31 8 L41 10.5 L40 13 Z" fill={palette.body} />
+        <rect x="13" y="5" width="12" height="3.5" fill={palette.glass} />
+        <rect x="8" y="10" width="29" height="1.5" fill={palette.stripe} />
+        <circle cx="12" cy="13.5" r="3.6" fill={wheelColor} />
+        <circle cx="12" cy="13.5" r="1.6" fill={rimColor} />
+        <circle cx="32" cy="13.5" r="3.6" fill={wheelColor} />
+        <circle cx="32" cy="13.5" r="1.6" fill={rimColor} />
+      </svg>
+    );
+  }
 
   if (carId === 'francesco') {
     return (
@@ -95,7 +145,7 @@ export default function CarSideBadge({
     );
   }
 
-  const hasWing = carId === 'mcqueen' || carId === 'cruz' || carId === 'storm' || carId === 'sally';
+  const hasWing = carId === 'mcqueen' || carId === 'cruz' || carId === 'storm' || carId === 'sally' || carId === 'shu';
   const compact = carId === 'luigi';
 
   return (

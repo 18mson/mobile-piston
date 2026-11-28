@@ -1,56 +1,22 @@
-import type { CosmeticRequirement } from './data/cosmetics';
-import { GLASSES, RIMS, getGlass, getRim } from './data/cosmetics';
+import { ACCESSORIES, isAccessoryUnlocked } from './data/accessories';
+import {
+  type CosmeticRequirement,
+  GLASSES,
+  RIMS,
+  carHasGlass,
+  emptyUsage,
+  getGlass,
+  getRim,
+  getUsage,
+  requirementProgress,
+} from './data/cosmetics';
 import { CARS } from './data/cars';
 import type { CosmeticUnlockItem, CosmeticUnlockSummary } from './progression';
 import type { CarId, CarUsage, RaceResults, SaveData } from './types';
 
 export const MAX_CAR_USAGE_STAT = 100_000;
 
-export function emptyUsage(): CarUsage {
-  return {
-    races: 0,
-    laps: 0,
-    podiums: 0,
-    driftSeconds: 0,
-    cleanLaps: 0,
-  };
-}
-
-export function getUsage(save: Pick<SaveData, 'carUsage'>, carId: CarId): CarUsage {
-  const raw = save.carUsage?.[carId];
-  if (!raw) return emptyUsage();
-  return {
-    races: raw.races ?? 0,
-    laps: raw.laps ?? 0,
-    podiums: raw.podiums ?? 0,
-    driftSeconds: raw.driftSeconds ?? 0,
-    cleanLaps: raw.cleanLaps ?? 0,
-  };
-}
-
-export function requirementProgress(
-  req: CosmeticRequirement,
-  usage: CarUsage,
-): { current: number; target: number; done: boolean } {
-  switch (req.kind) {
-    case 'free':
-      return { current: 1, target: 1, done: true };
-    case 'races':
-      return { current: Math.min(req.count, usage.races), target: req.count, done: usage.races >= req.count };
-    case 'laps':
-      return { current: Math.min(req.count, usage.laps), target: req.count, done: usage.laps >= req.count };
-    case 'podiums':
-      return { current: Math.min(req.count, usage.podiums), target: req.count, done: usage.podiums >= req.count };
-    case 'drift':
-      return {
-        current: Math.min(req.seconds, usage.driftSeconds),
-        target: req.seconds,
-        done: usage.driftSeconds >= req.seconds,
-      };
-    case 'cleanLaps':
-      return { current: Math.min(req.count, usage.cleanLaps), target: req.count, done: usage.cleanLaps >= req.count };
-  }
-}
+export { emptyUsage, getUsage, requirementProgress, isAccessoryUnlocked };
 
 export function describeRequirement(req: CosmeticRequirement, carName: string): string {
   switch (req.kind) {
@@ -66,6 +32,10 @@ export function describeRequirement(req: CosmeticRequirement, carName: string): 
       return `Drift ${req.seconds} detik dengan ${carName}`;
     case 'cleanLaps':
       return `Selesaikan ${req.count} putaran bersih dengan ${carName}`;
+    case 'wins':
+      return `Menang ${req.count} balapan dengan ${carName}`;
+    case 'wetRaces':
+      return `Finis ${req.count} balapan saat hujan dengan ${carName}`;
   }
 }
 
@@ -76,6 +46,7 @@ export function isRimUnlocked(carId: CarId, rimId: string, save: Pick<SaveData, 
 }
 
 export function isGlassUnlocked(carId: CarId, glassId: string, save: Pick<SaveData, 'carUsage'>): boolean {
+  if (!carHasGlass(carId)) return false;
   const def = getGlass(glassId);
   if (!def) return false;
   return requirementProgress(def.req, getUsage(save, carId)).done;
@@ -102,7 +73,10 @@ export function applyCarUsage(
 
   const prevUsage = getUsage(save, carId);
   const stats = results.stats;
-  const podiumHit = playerRow.position <= 3 && results.results.length >= 2 ? 1 : 0;
+  const hasOpponents = results.results.length >= 2;
+  const podiumHit = playerRow.position <= 3 && hasOpponents ? 1 : 0;
+  const winHit = playerRow.position === 1 && hasOpponents ? 1 : 0;
+  const wetHit = results.weather === 'rain' || results.weather === 'dynamic' ? 1 : 0;
 
   const nextUsage: CarUsage = {
     races: clampStat(prevUsage.races + 1),
@@ -110,6 +84,8 @@ export function applyCarUsage(
     podiums: clampStat(prevUsage.podiums + podiumHit),
     driftSeconds: clampStat(prevUsage.driftSeconds + Math.max(0, Math.floor(stats?.driftSeconds ?? 0))),
     cleanLaps: clampStat(prevUsage.cleanLaps + Math.max(0, Math.floor(stats?.cleanLaps ?? 0))),
+    wins: clampStat(prevUsage.wins + winHit),
+    wetRaces: clampStat(prevUsage.wetRaces + wetHit),
   };
 
   const nextSave: SaveData = {
@@ -128,11 +104,22 @@ export function applyCarUsage(
       items.push({ kind: 'rim', label: `Velg ${rim.label}` });
     }
   }
-  for (const glass of GLASSES) {
-    const wasUnlocked = requirementProgress(glass.req, prevUsage).done;
-    const nowUnlocked = requirementProgress(glass.req, nextUsage).done;
+  if (carHasGlass(carId)) {
+    for (const glass of GLASSES) {
+      const wasUnlocked = requirementProgress(glass.req, prevUsage).done;
+      const nowUnlocked = requirementProgress(glass.req, nextUsage).done;
+      if (!wasUnlocked && nowUnlocked) {
+        items.push({ kind: 'glass', label: `Kaca ${glass.label}` });
+      }
+    }
+  }
+  for (const accessory of ACCESSORIES) {
+    const req = accessory.cars[carId];
+    if (!req) continue;
+    const wasUnlocked = requirementProgress(req, prevUsage).done;
+    const nowUnlocked = requirementProgress(req, nextUsage).done;
     if (!wasUnlocked && nowUnlocked) {
-      items.push({ kind: 'glass', label: `Kaca ${glass.label}` });
+      items.push({ kind: 'accessory', label: accessory.label });
     }
   }
 

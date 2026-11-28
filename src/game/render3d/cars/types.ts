@@ -56,6 +56,7 @@ export interface CarBuildContext {
   brakeLights: THREE.Mesh[];
   flames: THREE.Mesh[];
   flameGroups: THREE.Group[];
+  stockParts: Partial<Record<string, THREE.Object3D[]>>;
   ghSpec: GreenhouseSpec | null;
   mats: CarMaterials;
 }

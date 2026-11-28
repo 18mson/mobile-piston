@@ -281,6 +281,146 @@ export const CARS: Record<CarId, CarSpec> = {
       wheel: '#323a46',
     },
   },
+  ramone: {
+    id: 'ramone',
+    name: 'RAMONE',
+    kind: '1959 Impala Lowrider #59',
+    number: 59,
+    blurb: 'Lowrider klasik ceper dengan cat metalik dan sirip belakang panjang. Mudah diajak meluncur mulus dengan dorongan drift bertenaga.',
+    stats: {
+      topSpeed: 242,
+      acceleration: 234,
+      grip: 8.6,
+      steerRate: 2.86,
+      nitroBoost: 74,
+      nitroAcceleration: 196,
+      mass: 1.08,
+      rearGrip: 0.9,
+      driftBoost: 1.75,
+      slideAssist: 1.18,
+    },
+    collision: { radius: 8.0, axleOffset: 5.6, circleRadius: 6.7 },
+    palette: {
+      body: '#7d3eb8',
+      shade: '#4b2075',
+      highlight: '#c78cff',
+      stripe: '#f5b82e',
+      glass: '#223142',
+      wheel: '#323a46',
+    },
+  },
+  fillmore: {
+    id: 'fillmore',
+    name: 'FILLMORE',
+    kind: '1960 VW Microbus #60',
+    number: 60,
+    blurb: 'Microbus retro berkabin tinggi yang sangat stabil dan antiselip. Pilihan santai paling ramah kendali dengan tangki nitro awet.',
+    stats: {
+      topSpeed: 226,
+      acceleration: 238,
+      grip: 9.8,
+      steerRate: 2.74,
+      nitroBoost: 76,
+      nitroAcceleration: 205,
+      mass: 1.15,
+      rearGrip: 1.05,
+      driftBoost: 1.18,
+      slideAssist: 0.98,
+    },
+    collision: { radius: 7.4, axleOffset: 4.8, circleRadius: 6.4 },
+    palette: {
+      body: '#58a846',
+      shade: '#346b28',
+      highlight: '#9ee086',
+      stripe: '#f2e8cf',
+      glass: '#223742',
+      wheel: '#323a46',
+    },
+  },
+  finn: {
+    id: 'finn',
+    name: 'FINN',
+    kind: 'British Spy Coupe #07',
+    number: 7,
+    blurb: 'Coupe klasik agen rahasia dengan presisi setir tajam dan akselerasi sigap. Gesit menyalip di tikungan teknikal maupun lurusan.',
+    stats: {
+      topSpeed: 248,
+      acceleration: 254,
+      grip: 9.7,
+      steerRate: 2.98,
+      nitroBoost: 80,
+      nitroAcceleration: 215,
+      mass: 0.94,
+      rearGrip: 0.97,
+      driftBoost: 1.38,
+      slideAssist: 1.02,
+    },
+    collision: { radius: 7.5, axleOffset: 5.2, circleRadius: 6.4 },
+    palette: {
+      body: '#7d92a6',
+      shade: '#495a6b',
+      highlight: '#c7d9ea',
+      stripe: '#32c5ff',
+      glass: '#1f2e3b',
+      wheel: '#323a46',
+    },
+  },
+  shu: {
+    id: 'shu',
+    name: 'SHU',
+    kind: 'Le Mans Prototype #7',
+    number: 7,
+    blurb: 'Prototipe Le Mans berkanopi kaca dengan downforce tinggi. Menempel ketat di aspal cepat seperti mobil formula tapi tetap punya dorongan nitro.',
+    stats: {
+      topSpeed: 258,
+      acceleration: 262,
+      grip: 10.1,
+      steerRate: 3.02,
+      nitroBoost: 58,
+      nitroAcceleration: 168,
+      mass: 0.86,
+      rearGrip: 1.14,
+      driftBoost: 1.12,
+      slideAssist: 0.6,
+    },
+    collision: { radius: 7.7, axleOffset: 5.3, circleRadius: 6.5 },
+    palette: {
+      body: '#eff3f7',
+      shade: '#9aa4b0',
+      highlight: '#ffffff',
+      stripe: '#d92929',
+      glass: '#1f2e3d',
+      wheel: '#323a46',
+    },
+  },
+  king: {
+    id: 'king',
+    name: 'THE KING',
+    kind: '1970 Aero Superbird #43',
+    number: 43,
+    blurb: 'Legenda aero bermoncong runcing dan sayap super tinggi. Melaju kencang di trek lurus dengan bobot mantap saat adu bodi.',
+    stats: {
+      topSpeed: 262,
+      acceleration: 230,
+      grip: 8.9,
+      steerRate: 2.66,
+      nitroBoost: 82,
+      nitroAcceleration: 212,
+      mass: 1.12,
+      rearGrip: 0.94,
+      driftBoost: 1.32,
+      slideAssist: 1.0,
+    },
+    collision: { radius: 8.1, axleOffset: 5.7, circleRadius: 6.8 },
+    palette: {
+      body: '#2d99e0',
+      shade: '#185e91',
+      highlight: '#8cd6ff',
+      stripe: '#f4f8fc',
+      glass: '#203242',
+      wheel: '#323a46',
+    },
+  },
 };
 
 export const CAR_ORDER: CarId[] = [
@@ -294,6 +434,11 @@ export const CAR_ORDER: CarId[] = [
   'cruz',
   'francesco',
   'storm',
+  'ramone',
+  'fillmore',
+  'finn',
+  'shu',
+  'king',
 ];
 
 export const AI_LIVERIES: {
@@ -383,6 +528,46 @@ export const AI_LIVERIES: {
     number: 20,
     palette: CARS.storm.palette,
     skill: 1.0,
+  },
+  {
+    id: 'ai-ramone',
+    label: 'RAMONE #59',
+    carId: 'ramone',
+    number: 59,
+    palette: CARS.ramone.palette,
+    skill: 0.95,
+  },
+  {
+    id: 'ai-fillmore',
+    label: 'FILLMORE #60',
+    carId: 'fillmore',
+    number: 60,
+    palette: CARS.fillmore.palette,
+    skill: 0.93,
+  },
+  {
+    id: 'ai-finn',
+    label: 'FINN #07',
+    carId: 'finn',
+    number: 7,
+    palette: CARS.finn.palette,
+    skill: 0.97,
+  },
+  {
+    id: 'ai-shu',
+    label: 'SHU #7',
+    carId: 'shu',
+    number: 7,
+    palette: CARS.shu.palette,
+    skill: 0.99,
+  },
+  {
+    id: 'ai-king',
+    label: 'THE KING #43',
+    carId: 'king',
+    number: 43,
+    palette: CARS.king.palette,
+    skill: 0.99,
   },
 ];
 
@@ -567,6 +752,96 @@ export const CAR_COLORS: Record<CarId, CarColorOption[]> = {
       palette: { body: '#dce4eb', shade: '#8d9ba8', highlight: '#ffffff', stripe: '#32b8ff', glass: '#1f2e3d', wheel: '#323a46' },
     },
   ],
+  ramone: [
+    { id: 'candypurple', label: 'Ungu Candy', palette: CARS.ramone.palette },
+    {
+      id: 'ghostgreen',
+      label: 'Hijau Metalik',
+      palette: { body: '#3da86b', shade: '#1f633d', highlight: '#8ff0b8', stripe: '#f7d248', glass: '#223142', wheel: '#323a46' },
+    },
+    {
+      id: 'sunburst',
+      label: 'Oranye Api',
+      palette: { body: '#e06e28', shade: '#914011', highlight: '#ffb878', stripe: '#f7e463', glass: '#223142', wheel: '#323a46' },
+    },
+    {
+      id: 'redflame',
+      label: 'Merah Lowrider',
+      palette: { body: '#cf3232', shade: '#821818', highlight: '#ff7f7f', stripe: '#f5b82e', glass: '#223142', wheel: '#323a46' },
+    },
+  ],
+  fillmore: [
+    { id: 'organicgreen', label: 'Hijau Organik', palette: CARS.fillmore.palette },
+    {
+      id: 'surfblue',
+      label: 'Biru Pantai',
+      palette: { body: '#488fb8', shade: '#285a78', highlight: '#8fd2f5', stripe: '#f2e8cf', glass: '#223742', wheel: '#323a46' },
+    },
+    {
+      id: 'retroplum',
+      label: 'Ungu Retro',
+      palette: { body: '#7e5aa6', shade: '#4c3269', highlight: '#be9be3', stripe: '#9ee086', glass: '#223742', wheel: '#323a46' },
+    },
+    {
+      id: 'sunsetbus',
+      label: 'Oranye Senja',
+      palette: { body: '#d97834', shade: '#8a4518', highlight: '#ffb47d', stripe: '#f2e8cf', glass: '#223742', wheel: '#323a46' },
+    },
+  ],
+  finn: [
+    { id: 'spysilver', label: 'Perak Agen', palette: CARS.finn.palette },
+    {
+      id: 'nightops',
+      label: 'Biru Malam',
+      palette: { body: '#2d4a66', shade: '#192c40', highlight: '#6d94ba', stripe: '#dce8f5', glass: '#1f2e3b', wheel: '#323a46' },
+    },
+    {
+      id: 'alpine',
+      label: 'Putih Salju',
+      palette: { body: '#e6ebf0', shade: '#96a1ad', highlight: '#ffffff', stripe: '#2d4a66', glass: '#1f2e3b', wheel: '#323a46' },
+    },
+    {
+      id: 'britishgreen',
+      label: 'Hijau Inggris',
+      palette: { body: '#2c6648', shade: '#173d29', highlight: '#65ad86', stripe: '#f0e7d0', glass: '#1f2e3b', wheel: '#323a46' },
+    },
+  ],
+  shu: [
+    { id: 'kabuki', label: 'Putih Kabuki', palette: CARS.shu.palette },
+    {
+      id: 'kuro',
+      label: 'Hitam Karbon',
+      palette: { body: '#272d36', shade: '#161b21', highlight: '#576475', stripe: '#ff4238', glass: '#1f2e3d', wheel: '#323a46' },
+    },
+    {
+      id: 'fuji',
+      label: 'Biru Fuji',
+      palette: { body: '#2f6cb5', shade: '#1a4173', highlight: '#7db5f5', stripe: '#f4f8fc', glass: '#1f2e3d', wheel: '#323a46' },
+    },
+    {
+      id: 'shogun',
+      label: 'Emas Shogun',
+      palette: { body: '#e0b034', shade: '#947019', highlight: '#ffdf85', stripe: '#242930', glass: '#1f2e3d', wheel: '#323a46' },
+    },
+  ],
+  king: [
+    { id: 'dinocoking', label: 'Biru Dinoco', palette: CARS.king.palette },
+    {
+      id: 'vintagegold',
+      label: 'Emas Superbird',
+      palette: { body: '#dba228', shade: '#916712', highlight: '#ffdb80', stripe: '#1e3554', glass: '#203242', wheel: '#323a46' },
+    },
+    {
+      id: 'pistonred',
+      label: 'Merah Piston',
+      palette: { body: '#d9342b', shade: '#8a1c17', highlight: '#ff8075', stripe: '#f4f8fc', glass: '#203242', wheel: '#323a46' },
+    },
+    {
+      id: 'pettyblack',
+      label: 'Hitam Klasik',
+      palette: { body: '#2e3540', shade: '#1b2029', highlight: '#657285', stripe: '#38b6ff', glass: '#203242', wheel: '#323a46' },
+    },
+  ],
 };
 
 export function getCar(id: CarId): CarSpec {
@@ -576,6 +851,22 @@ export function getCar(id: CarId): CarSpec {
 export function getCarPalette(id: CarId, colorIndex = 0): CarPalette {
   const options = CAR_COLORS[id];
   return options[colorIndex]?.palette ?? CARS[id].palette;
+}
+
+export function deriveCarRole(car: CarSpec): string {
+  const { stats } = car;
+  const driftBoost = stats.driftBoost ?? 1;
+  if (stats.grip >= 10.3 && stats.nitroBoost < 45) return 'Grip Maksimal';
+  if ((stats.slideAssist ?? 1) < 0.7 || (stats.grip >= 10.0 && stats.nitroBoost < 65)) return 'Grip Tinggi';
+  if (driftBoost >= 1.65) return 'Drifter';
+  if (stats.mass >= 1.25) return 'Tangguh';
+  if (stats.topSpeed >= 263 && stats.nitroBoost >= 80) return 'Top Speed & Nitro';
+  if (stats.topSpeed >= 260 && stats.nitroBoost >= 80) return 'Top Speed Tinggi';
+  if (stats.topSpeed >= 254 && stats.grip < 8.5) return 'Top Speed';
+  if (stats.grip >= 9.6 && stats.topSpeed <= 235) return 'Mudah Dikuasai';
+  if (stats.acceleration >= 248 && stats.steerRate >= 2.9) return 'Lincah';
+  if (driftBoost >= 1.4 && stats.grip >= 9.3) return 'Halus Drift';
+  return 'Balance';
 }
 
 export function statRatio(car: CarSpec, key: 'topSpeed' | 'acceleration' | 'grip' | 'nitroBoost'): number {

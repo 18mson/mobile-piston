@@ -323,6 +323,39 @@ export function createSideVinylTexture(
     ctx.fillRect(168, 54, 64, 18);
     ctx.fillStyle = stripeColor;
     ctx.fillRect(88, 32, 80, 32);
+  } else if (carId === 'ramone') {
+    // Scalloped lowrider flame streak
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(14, 58);
+    ctx.lineTo(104, 34);
+    ctx.lineTo(94, 48);
+    ctx.lineTo(188, 30);
+    ctx.lineTo(240, 44);
+    ctx.lineTo(126, 66);
+    ctx.closePath();
+    ctx.fill();
+  } else if (carId === 'fillmore') {
+    // Organic retro VW bus waistband wave
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(12, 34, 232, 10);
+    ctx.fillStyle = highlightColor;
+    ctx.fillRect(12, 50, 232, 7);
+  } else if (carId === 'shu') {
+    // Rising-sun crimson radial spokes
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(12, 68);
+    ctx.lineTo(242, 24);
+    ctx.lineTo(242, 42);
+    ctx.lineTo(54, 72);
+    ctx.closePath();
+    ctx.fill();
+  } else if (carId === 'finn' || carId === 'king') {
+    ctx.fillStyle = stripeColor;
+    ctx.fillRect(10, 38, 236, 10);
+    ctx.fillStyle = highlightColor;
+    ctx.fillRect(10, 52, 236, 4);
   } else {
     ctx.fillStyle = stripeColor;
     ctx.fillRect(14, 42, 228, 12);
@@ -377,11 +410,20 @@ export function createHoodVinylTexture(
     ctx.fillStyle = stripeColor;
     ctx.fillRect(16, 48, 96, 12);
     ctx.fillRect(16, 68, 96, 12);
-  } else if (carId === 'doc' || carId === 'sally' || carId === 'chick') {
+  } else if (carId === 'doc' || carId === 'sally' || carId === 'chick' || carId === 'king') {
     ctx.fillStyle = stripeColor;
     ctx.fillRect(12, 42, 104, 16);
     ctx.fillStyle = highlightColor;
     ctx.fillRect(12, 70, 104, 16);
+  } else if (carId === 'ramone' || carId === 'shu') {
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(18, 64);
+    ctx.lineTo(108, 24);
+    ctx.lineTo(94, 64);
+    ctx.lineTo(108, 104);
+    ctx.closePath();
+    ctx.fill();
   } else {
     ctx.fillStyle = stripeColor;
     ctx.fillRect(16, 54, 96, 20);

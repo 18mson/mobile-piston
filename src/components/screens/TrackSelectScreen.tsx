@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LapCount, Track, TrackId, WeatherMode } from '../../game/types';
 import type { TrackRecordsMap } from '../../game/records';
 import { WEATHER_LABELS, WEATHER_MODES } from '../../game/weather';
@@ -77,6 +77,38 @@ export default function TrackSelectScreen({
   trackRecords?: TrackRecordsMap;
 }) {
   const [previewId, setPreviewId] = useState<TrackId | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const syncScrollState = useCallback(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    syncScrollState();
+    const el = gridRef.current;
+    if (!el) return;
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncScrollState) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', syncScrollState);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', syncScrollState);
+    };
+  }, [syncScrollState]);
+
+  const scrollTracks = (dir: -1 | 1) => {
+    const el = gridRef.current;
+    if (!el) return;
+    const step = Math.max(240, Math.round(el.clientWidth * 0.72));
+    el.scrollBy({ left: dir * step, behavior: 'smooth' });
+  };
+
+  const hasOverflow = canScrollLeft || canScrollRight;
   const shownId: TrackId = previewId ?? selectedTrackId;
   const shown: Track = getTrack(shownId);
   const shownUnlocked = isTrackUnlocked(shownId, { xp, unlocks });
@@ -195,51 +227,82 @@ export default function TrackSelectScreen({
             </div>
           </aside>
 
-          <div className="track-select-grid" role="group" aria-label="Daftar lintasan">
-            {TRACK_ORDER.map((id) => {
-              const track = getTrack(id);
-              const unlocked = isTrackUnlocked(id, { xp, unlocks });
-              const lockLevel = unlocked ? null : (trackUnlockDef(id)?.level ?? null);
-              const isSelected = id === selectedTrackId && previewId == null;
-              const isPreview = id === previewId;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={lockLevel == null ? 'track-select-card' : `track-select-card ${styles.lockedCard}`}
-                  data-selected={isSelected || isPreview}
-                  data-locked={lockLevel != null}
-                  aria-pressed={isSelected}
-                  onFocus={() => {
-                    if (unlocked) {
+          <div className="car-carousel">
+            {hasOverflow && (
+              <button
+                type="button"
+                className="car-carousel-btn car-carousel-prev"
+                aria-label="Geser daftar lintasan ke kiri"
+                disabled={!canScrollLeft}
+                onClick={() => scrollTracks(-1)}
+              >
+                <span aria-hidden="true">&#9664;</span>
+              </button>
+            )}
+            <div
+              ref={gridRef}
+              className="track-select-grid"
+              role="group"
+              aria-label="Daftar lintasan"
+              onScroll={syncScrollState}
+            >
+              {TRACK_ORDER.map((id) => {
+                const track = getTrack(id);
+                const unlocked = isTrackUnlocked(id, { xp, unlocks });
+                const lockLevel = unlocked ? null : (trackUnlockDef(id)?.level ?? null);
+                const isSelected = id === selectedTrackId && previewId == null;
+                const isPreview = id === previewId;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={lockLevel == null ? 'track-select-card' : `track-select-card ${styles.lockedCard}`}
+                    data-selected={isSelected || isPreview}
+                    data-locked={lockLevel != null}
+                    aria-pressed={isSelected}
+                    onFocus={(event) => {
+                      event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                      if (unlocked) {
+                        setPreviewId(null);
+                        if (id !== selectedTrackId) onSelect(id);
+                      } else {
+                        setPreviewId(id);
+                      }
+                    }}
+                    onClick={() => {
+                      if (!unlocked) {
+                        setPreviewId(id);
+                        return;
+                      }
                       setPreviewId(null);
-                      if (id !== selectedTrackId) onSelect(id);
-                    } else {
-                      setPreviewId(id);
-                    }
-                  }}
-                  onClick={() => {
-                    if (!unlocked) {
-                      setPreviewId(id);
-                      return;
-                    }
-                    setPreviewId(null);
-                    onSelect(id);
-                  }}
-                  data-nav
-                >
-                  <span className="track-select-copy">
-                    <span className="track-card-head">
-                      <strong>{track.name}</strong>
-                      <span className="track-card-badge">
-                        {lockLevel != null ? `Lv ${lockLevel}` : isSelected ? 'Terpilih' : ROUTE_KIND[id] ?? 'khusus'}
+                      onSelect(id);
+                    }}
+                    data-nav
+                  >
+                    <span className="track-select-copy">
+                      <span className="track-card-head">
+                        <strong>{track.name}</strong>
+                        <span className="track-card-badge">
+                          {lockLevel != null ? `Lv ${lockLevel}` : isSelected ? 'Terpilih' : ROUTE_KIND[id] ?? 'khusus'}
+                        </span>
                       </span>
+                      <span className="track-select-subtitle">{track.subtitle}</span>
                     </span>
-                    <span className="track-select-subtitle">{track.subtitle}</span>
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
+            {hasOverflow && (
+              <button
+                type="button"
+                className="car-carousel-btn car-carousel-next"
+                aria-label="Geser daftar lintasan ke kanan"
+                disabled={!canScrollRight}
+                onClick={() => scrollTracks(1)}
+              >
+                <span aria-hidden="true">&#9654;</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

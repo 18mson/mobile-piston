@@ -15,6 +15,11 @@ const SHADOW_DIMS: Record<CarId, [number, number]> = {
   cruz: [5.5, 3.7],
   francesco: [5.8, 3.9],
   storm: [5.8, 3.9],
+  ramone: [6.2, 3.9],
+  fillmore: [5.0, 3.6],
+  finn: [5.6, 3.8],
+  shu: [5.8, 3.9],
+  king: [6.3, 3.9],
 };
 
 export function addDropShadow(group: THREE.Group, carId: CarId): THREE.Mesh {

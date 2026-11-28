@@ -8,7 +8,12 @@ export type CarId =
   | 'doc'
   | 'cruz'
   | 'francesco'
-  | 'storm';
+  | 'storm'
+  | 'ramone'
+  | 'fillmore'
+  | 'finn'
+  | 'shu'
+  | 'king';
 export type TrackId = 'teluk-sore' | 'mata-air' | 'lereng-kopi' | 'pelabuhan' | 'rimba-lumpur';
 export type TrackTheme = 'coast' | 'highland' | 'wetland';
 /** Road surfaces other than asphalt. Puddles can sit on top of dirt (mud puddles). */
@@ -32,6 +37,7 @@ export interface CarStats {
 }
 
 export type RimStyle = 'disc' | 'spoke' | 'dish';
+export type AccessorySlot = 'roof' | 'front' | 'rear' | 'side';
 
 export interface CarCosmetics {
   rim?: string;
@@ -44,6 +50,8 @@ export interface CarUsage {
   podiums: number;
   driftSeconds: number;
   cleanLaps: number;
+  wins: number;
+  wetRaces: number;
 }
 
 export interface CarPalette {
@@ -58,6 +66,7 @@ export interface CarPalette {
     style: RimStyle;
   };
   glassGlint?: number;
+  accessories?: string[];
 }
 
 export interface CarCollision {
@@ -287,6 +296,7 @@ export interface SaveData {
   selectedWeather?: WeatherMode;
   xp?: number;
   cosmetics?: Partial<Record<CarId, CarCosmetics>>;
+  accessories?: Partial<Record<CarId, Partial<Record<AccessorySlot, string>>>>;
   carUsage?: Partial<Record<CarId, CarUsage>>;
 }
 

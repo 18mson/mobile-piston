@@ -3,6 +3,7 @@ import type { CarId, CarPalette, RacerState } from '../types';
 import { ROAD_Y, toSceneX, toSceneZ } from './constants';
 import { createGlassMaterial, syncGlassSunLocal } from './glassMaterial';
 import { GREENHOUSE } from './greenhouse';
+import { buildAccessories, type AccessoryHandle } from './accessories';
 import { CarEffects } from './cars/effects';
 import { buildCompactCab } from './cars/models/compactCab';
 import { buildCoupeRacer } from './cars/models/coupeRacer';
@@ -48,6 +49,11 @@ const CAR_BUILDERS: Record<CarId, (ctx: CarBuildContext) => void> = {
   guido: (ctx) => buildCompactCab(ctx, 'guido'),
   mater: (ctx) => buildCompactCab(ctx, 'mater'),
   francesco: buildFormulaCar,
+  ramone: (ctx) => buildCoupeRacer(ctx, 'ramone'),
+  fillmore: (ctx) => buildCompactCab(ctx, 'fillmore'),
+  finn: (ctx) => buildCoupeRacer(ctx, 'finn'),
+  shu: (ctx) => buildCoupeRacer(ctx, 'shu'),
+  king: (ctx) => buildCoupeRacer(ctx, 'king'),
 };
 
 export class CarView {
@@ -59,7 +65,9 @@ export class CarView {
   private readonly brakeLights: THREE.Mesh[] = [];
   private readonly glassMat: THREE.MeshToonMaterial;
   private readonly effects: CarEffects;
+  private readonly accessoryHandles: AccessoryHandle[];
   private spin = 0;
+  private elapsed = 0;
 
   constructor(carId: CarId, palette: CarPalette, number: number, isPlayer: boolean) {
     this.group.add(this.body);
@@ -83,10 +91,12 @@ export class CarView {
       brakeLights: this.brakeLights,
       flames: this.flames,
       flameGroups: this.flameGroups,
+      stockParts: {},
       ghSpec: GREENHOUSE[carId],
       mats,
     };
     CAR_BUILDERS[carId](ctx);
+    this.accessoryHandles = buildAccessories(ctx);
 
     this.effects = new CarEffects(this.group, this.body);
 
@@ -135,6 +145,11 @@ export class CarView {
     const steerAmount = racer.steer * Math.min(1.2, speed / 55);
     this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, -steerAmount * 0.12, Math.min(1, dt * 10));
     this.body.rotation.x = THREE.MathUtils.lerp(this.body.rotation.x, racer.nitroActive ? -0.05 : 0, Math.min(1, dt * 8));
+
+    this.elapsed += dt;
+    for (const handle of this.accessoryHandles) {
+      handle.update?.(dt, this.elapsed);
+    }
 
     this.effects.update(racer, dt, speed, offroad, this.body, this.flames, this.flameGroups, this.brakeLights);
   }

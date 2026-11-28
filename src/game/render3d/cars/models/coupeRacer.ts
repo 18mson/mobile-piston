@@ -45,7 +45,10 @@ interface CoupeSpec {
   flamesX: number;
 }
 
-const COUPE_SPECS: Record<'mcqueen' | 'sally' | 'chick' | 'doc' | 'cruz' | 'storm', CoupeSpec> = {
+const COUPE_SPECS: Record<
+  'mcqueen' | 'sally' | 'chick' | 'doc' | 'cruz' | 'storm' | 'ramone' | 'finn' | 'shu' | 'king',
+  CoupeSpec
+> = {
   mcqueen: {
     splitter: {
       mat: 'darkTrim',
@@ -319,6 +322,195 @@ const COUPE_SPECS: Record<'mcqueen' | 'sally' | 'chick' | 'doc' | 'cruz' | 'stor
     },
     flamesX: -5.6 / 2 - 0.22,
   },
+  ramone: {
+    frontBumper: { size: [0.3, 0.16, 2.94], pos: [3.1, 0.44, 0], outline: 0.035 },
+    body: [
+      { x: 3.04, yBot: 0.36, yTop: 0.86, wBot: 1.28, wMid: 1.4, wTop: 1.24, crown: 0.09 },
+      { x: 2.48, yBot: 0.36, yTop: 1.04, wBot: 1.52, wMid: 1.66, wTop: 1.48, crown: 0.1 },
+      { x: 1.05, yBot: 0.36, yTop: 1.12, wBot: 1.54, wMid: 1.68, wTop: 1.5, crown: 0.08 },
+      { x: -1.4, yBot: 0.36, yTop: 1.12, wBot: 1.54, wMid: 1.68, wTop: 1.5, crown: 0.08 },
+      { x: -2.74, yBot: 0.4, yTop: 1.14, wBot: 1.48, wMid: 1.6, wTop: 1.44, crown: 0.06 },
+      { x: -3.08, yBot: 0.44, yTop: 0.94, wBot: 1.26, wMid: 1.38, wTop: 1.24, crown: 0.04 },
+    ],
+    greenhouse: [
+      { x: 0.98, yBot: 1.1, yTop: 1.2, wBot: 1.32, wMid: 1.26, wTop: 1.18, crown: 0.04 },
+      { x: 0.3, yBot: 1.1, yTop: 1.66, wBot: 1.32, wMid: 1.18, wTop: 1.04, crown: 0.07 },
+      { x: -0.98, yBot: 1.1, yTop: 1.66, wBot: 1.32, wMid: 1.18, wTop: 1.04, crown: 0.07 },
+      { x: -1.9, yBot: 1.12, yTop: 1.2, wBot: 1.32, wMid: 1.26, wTop: 1.16, crown: 0.04 },
+    ],
+    roof: {
+      mat: 'body',
+      outline: 0.05,
+      stations: [
+        { x: 0.36, yBot: 1.64, yTop: 1.74, wBot: 1.06, wMid: 1.02, wTop: 0.94, crown: 0.06 },
+        { x: -1.04, yBot: 1.64, yTop: 1.74, wBot: 1.06, wMid: 1.02, wTop: 0.94, crown: 0.06 },
+      ],
+    },
+    mirrors: { x: 0.72, y: 1.16, z: 1.46, mat: 'chrome' },
+    sideVinyl: [-0.05, 0.78, 1.7, 2.35, 0.58],
+    hoodVinyl: [2.04, 1.18, 1.42, 1.46],
+    roofNumber: { x: -0.34, y: 1.82, color: '#f5b82e' },
+    grille: { size: [0.12, 0.2, 1.72], pos: [3.08, 0.68, 0], outline: 0.03 },
+    chromeBar: { size: [0.08, 0.07, 1.82], pos: [3.12, 0.68, 0] },
+    roundLamps: { radius: 0.15, depth: 0.16, pos: [3.04, 0.78, 1.12] },
+    tail: { size: [0.14, 0.18, 0.54], pos: [-3.1, 0.8, 1.0], outline: 0.025 },
+    exhaust: { radius: 0.08, length: 0.38, pos: [-2.9, 0.38, 0.78] },
+    wheels: {
+      front: [0.6, 0.42, 5.95 * 0.29, 3.56 / 2 - 0.32, '#e8ecf0'],
+      rear: [0.6, 0.44, -5.95 * 0.29, 3.56 / 2 - 0.34, '#e8ecf0'],
+      whitewall: true,
+    },
+    flamesX: -6.0 / 2 - 0.24,
+  },
+  finn: {
+    frontBumper: { size: [0.24, 0.14, 2.6], pos: [2.86, 0.48, 0], outline: 0.03 },
+    body: [
+      { x: 2.82, yBot: 0.44, yTop: 0.84, wBot: 1.16, wMid: 1.26, wTop: 1.1, crown: 0.08 },
+      { x: 2.32, yBot: 0.44, yTop: 1.06, wBot: 1.4, wMid: 1.54, wTop: 1.38, crown: 0.09 },
+      { x: 0.96, yBot: 0.44, yTop: 1.14, wBot: 1.44, wMid: 1.56, wTop: 1.4, crown: 0.08 },
+      { x: -1.3, yBot: 0.44, yTop: 1.18, wBot: 1.44, wMid: 1.56, wTop: 1.4, crown: 0.08 },
+      { x: -2.42, yBot: 0.48, yTop: 1.16, wBot: 1.36, wMid: 1.46, wTop: 1.3, crown: 0.06 },
+      { x: -2.74, yBot: 0.52, yTop: 0.94, wBot: 1.18, wMid: 1.26, wTop: 1.12, crown: 0.05 },
+    ],
+    greenhouse: [
+      { x: 0.92, yBot: 1.12, yTop: 1.2, wBot: 1.26, wMid: 1.2, wTop: 1.12, crown: 0.04 },
+      { x: 0.18, yBot: 1.12, yTop: 1.66, wBot: 1.24, wMid: 1.1, wTop: 0.96, crown: 0.07 },
+      { x: -0.9, yBot: 1.14, yTop: 1.66, wBot: 1.24, wMid: 1.1, wTop: 0.96, crown: 0.07 },
+      { x: -2.02, yBot: 1.14, yTop: 1.22, wBot: 1.24, wMid: 1.18, wTop: 1.1, crown: 0.04 },
+    ],
+    roof: {
+      mat: 'body',
+      outline: 0.05,
+      stations: [
+        { x: 0.24, yBot: 1.64, yTop: 1.74, wBot: 0.98, wMid: 0.94, wTop: 0.86, crown: 0.06 },
+        { x: -0.96, yBot: 1.64, yTop: 1.74, wBot: 0.98, wMid: 0.94, wTop: 0.86, crown: 0.06 },
+      ],
+    },
+    mirrors: { x: 0.68, y: 1.18, z: 1.36, mat: 'chrome' },
+    sideVinyl: [-0.08, 0.84, 1.58, 2.05, 0.56],
+    hoodVinyl: [1.84, 1.19, 1.35, 1.3],
+    roofNumber: { x: -0.36, y: 1.82, color: '#ffffff' },
+    grille: { size: [0.1, 0.2, 1.38], pos: [2.84, 0.68, 0], outline: 0.025 },
+    chromeBar: { size: [0.06, 0.06, 1.32], pos: [2.87, 0.68, 0] },
+    roundLamps: { radius: 0.16, depth: 0.16, pos: [2.8, 0.84, 0.96] },
+    tail: { size: [0.12, 0.18, 0.46], pos: [-2.76, 0.88, 0.9], outline: 0.025 },
+    exhaust: { radius: 0.075, length: 0.34, pos: [-2.76, 0.48, 0.68] },
+    wheels: {
+      front: [0.58, 0.4, 5.4 * 0.29, 3.32 / 2 - 0.28, '#e8ecf0'],
+      rear: [0.6, 0.42, -5.4 * 0.29, 3.32 / 2 - 0.3, '#e8ecf0'],
+    },
+    flamesX: -5.4 / 2 - 0.22,
+  },
+  shu: {
+    splitter: {
+      mat: 'darkTrim',
+      outline: 0.04,
+      stations: [
+        { x: 2.94, yBot: 0.3, yTop: 0.42, wBot: 1.24, wMid: 1.3, wTop: 1.24, crown: 0.02 },
+        { x: 2.38, yBot: 0.32, yTop: 0.46, wBot: 1.5, wMid: 1.56, wTop: 1.5, crown: 0.02 },
+        { x: -2.6, yBot: 0.32, yTop: 0.46, wBot: 1.5, wMid: 1.56, wTop: 1.5, crown: 0.02 },
+      ],
+    },
+    body: [
+      { x: 2.9, yBot: 0.38, yTop: 0.68, wBot: 1.22, wMid: 1.32, wTop: 1.18, crown: 0.07 },
+      { x: 2.34, yBot: 0.38, yTop: 0.92, wBot: 1.5, wMid: 1.66, wTop: 1.48, crown: 0.08 },
+      { x: 0.95, yBot: 0.38, yTop: 1.02, wBot: 1.54, wMid: 1.68, wTop: 1.52, crown: 0.07 },
+      { x: -1.35, yBot: 0.38, yTop: 1.08, wBot: 1.54, wMid: 1.68, wTop: 1.52, crown: 0.07 },
+      { x: -2.5, yBot: 0.42, yTop: 1.08, wBot: 1.48, wMid: 1.6, wTop: 1.44, crown: 0.06 },
+      { x: -2.8, yBot: 0.46, yTop: 0.86, wBot: 1.28, wMid: 1.38, wTop: 1.22, crown: 0.04 },
+    ],
+    greenhouse: [
+      { x: 1.1, yBot: 0.98, yTop: 1.08, wBot: 1.08, wMid: 1.02, wTop: 0.92, crown: 0.04 },
+      { x: 0.2, yBot: 1.0, yTop: 1.48, wBot: 1.06, wMid: 0.94, wTop: 0.8, crown: 0.07 },
+      { x: -0.88, yBot: 1.02, yTop: 1.48, wBot: 1.06, wMid: 0.94, wTop: 0.8, crown: 0.07 },
+      { x: -1.9, yBot: 1.04, yTop: 1.12, wBot: 1.04, wMid: 0.98, wTop: 0.88, crown: 0.04 },
+    ],
+    roof: {
+      mat: 'body',
+      outline: 0.05,
+      stations: [
+        { x: 0.24, yBot: 1.46, yTop: 1.56, wBot: 0.82, wMid: 0.78, wTop: 0.7, crown: 0.05 },
+        { x: -0.94, yBot: 1.46, yTop: 1.56, wBot: 0.82, wMid: 0.78, wTop: 0.7, crown: 0.05 },
+      ],
+    },
+    dorsalFin: {
+      points: [
+        [-0.86, 1.5],
+        [-2.48, 1.44],
+        [-2.52, 1.06],
+        [-1.36, 1.06],
+      ],
+      width: 0.09,
+    },
+    wing: {
+      size: [0.5, 0.09, 2.94],
+      pos: [-2.52, 1.5, 0],
+      mat: 'stripe',
+      struts: { size: [0.22, 0.42, 0.1], pos: [-2.48, 1.24, 1.02], mat: 'darkTrim' },
+    },
+    mirrors: { x: 0.68, y: 1.04, z: 1.26, mat: 'body' },
+    sideVinyl: [-0.05, 0.76, 1.7, 2.2, 0.56],
+    hoodVinyl: [1.88, 1.06, 1.4, 1.45],
+    roofNumber: { x: -0.34, y: 1.63, color: '#d92929' },
+    grille: { size: [0.1, 0.16, 1.38], pos: [2.92, 0.48, 0], outline: 0.025 },
+    headBoxes: { size: [0.22, 0.14, 0.48], pos: [2.76, 0.72, 1.02], mat: 'light', rotZ: -0.22, outline: 0.025 },
+    tail: { size: [0.12, 0.14, 0.62], pos: [-2.82, 0.8, 0.96], outline: 0.025 },
+    wheels: {
+      front: [0.62, 0.46, 5.6 * 0.29, 3.58 / 2 - 0.34, '#e8ecf0'],
+      rear: [0.65, 0.5, -5.6 * 0.29, 3.58 / 2 - 0.36, '#e8ecf0'],
+    },
+    flamesX: -5.6 / 2 - 0.24,
+  },
+  king: {
+    splitter: {
+      mat: 'body',
+      outline: 0.04,
+      stations: [
+        { x: 3.16, yBot: 0.34, yTop: 0.62, wBot: 1.12, wMid: 1.18, wTop: 1.02, crown: 0.06 },
+        { x: 2.6, yBot: 0.4, yTop: 0.96, wBot: 1.46, wMid: 1.56, wTop: 1.4, crown: 0.08 },
+      ],
+    },
+    body: [
+      { x: 3.12, yBot: 0.4, yTop: 0.72, wBot: 1.16, wMid: 1.24, wTop: 1.08, crown: 0.07 },
+      { x: 2.52, yBot: 0.42, yTop: 1.08, wBot: 1.5, wMid: 1.64, wTop: 1.48, crown: 0.08 },
+      { x: 1.05, yBot: 0.44, yTop: 1.18, wBot: 1.54, wMid: 1.68, wTop: 1.52, crown: 0.07 },
+      { x: -1.35, yBot: 0.44, yTop: 1.2, wBot: 1.54, wMid: 1.68, wTop: 1.52, crown: 0.07 },
+      { x: -2.68, yBot: 0.48, yTop: 1.2, wBot: 1.48, wMid: 1.6, wTop: 1.44, crown: 0.06 },
+      { x: -3.0, yBot: 0.52, yTop: 1.0, wBot: 1.3, wMid: 1.4, wTop: 1.24, crown: 0.04 },
+    ],
+    greenhouse: [
+      { x: 1.02, yBot: 1.16, yTop: 1.26, wBot: 1.36, wMid: 1.3, wTop: 1.22, crown: 0.04 },
+      { x: 0.3, yBot: 1.16, yTop: 1.76, wBot: 1.36, wMid: 1.22, wTop: 1.06, crown: 0.06 },
+      { x: -1.04, yBot: 1.18, yTop: 1.76, wBot: 1.36, wMid: 1.22, wTop: 1.06, crown: 0.06 },
+      { x: -1.96, yBot: 1.18, yTop: 1.26, wBot: 1.36, wMid: 1.3, wTop: 1.2, crown: 0.04 },
+    ],
+    roof: {
+      mat: 'body',
+      outline: 0.05,
+      stations: [
+        { x: 0.36, yBot: 1.74, yTop: 1.84, wBot: 1.08, wMid: 1.04, wTop: 0.96, crown: 0.05 },
+        { x: -1.1, yBot: 1.74, yTop: 1.84, wBot: 1.08, wMid: 1.04, wTop: 0.96, crown: 0.05 },
+      ],
+    },
+    wing: {
+      size: [0.44, 0.1, 2.92],
+      pos: [-2.78, 2.02, 0],
+      mat: 'body',
+      struts: { size: [0.24, 0.84, 0.1], pos: [-2.74, 1.56, 1.16], mat: 'body' },
+    },
+    mirrors: { x: 0.72, y: 1.22, z: 1.46, mat: 'body' },
+    sideVinyl: [-0.08, 0.84, 1.7, 2.35, 0.64],
+    hoodVinyl: [2.04, 1.22, 1.48, 1.45],
+    roofNumber: { x: -0.36, y: 1.91, color: '#f4f8fc' },
+    grille: { size: [0.12, 0.18, 1.48], pos: [3.14, 0.5, 0], outline: 0.025 },
+    headBoxes: { size: [0.16, 0.14, 0.44], pos: [2.88, 0.84, 1.0], mat: 'stripe', outline: 0.025 },
+    tail: { size: [0.14, 0.2, 0.56], pos: [-3.02, 0.88, 1.0], outline: 0.025 },
+    wheels: {
+      front: [0.62, 0.44, 5.95 * 0.29, 3.56 / 2 - 0.32, '#d6dde4'],
+      rear: [0.64, 0.48, -5.95 * 0.29, 3.56 / 2 - 0.34, '#d6dde4'],
+    },
+    flamesX: -5.95 / 2 - 0.24,
+  },
 };
 
 export function buildCoupeRacer(
@@ -352,7 +544,7 @@ export function buildCoupeRacer(
     addProfile(ctx, spec.dorsalFin.points, spec.dorsalFin.width, mats.stripe, 0.02, true, 0.03);
   }
   if (spec.spoilerProfile) {
-    addProfile(
+    const spoiler = addProfile(
       ctx,
       spec.spoilerProfile.points,
       spec.spoilerProfile.width,
@@ -361,15 +553,17 @@ export function buildCoupeRacer(
       true,
       spec.spoilerProfile.outline,
     );
+    ctx.stockParts['rear-wing'] = [spoiler];
   }
   if (spec.wing) {
-    addBox(ctx, spec.wing.size, spec.wing.pos, mats[spec.wing.mat], true, true, 0.035);
+    const parts = [addBox(ctx, spec.wing.size, spec.wing.pos, mats[spec.wing.mat], true, true, 0.035)];
     if (spec.wing.struts) {
       const { size, pos, mat } = spec.wing.struts;
       for (const side of [-1, 1]) {
-        addBox(ctx, size, [pos[0], pos[1], side * pos[2]], mats[mat], true, true, 0.025);
+        parts.push(addBox(ctx, size, [pos[0], pos[1], side * pos[2]], mats[mat], true, true, 0.025));
       }
     }
+    ctx.stockParts['rear-wing'] = parts;
   }
 
   addSideMirrors(ctx, spec.mirrors.x, spec.mirrors.y, spec.mirrors.z, mats[spec.mirrors.mat]);

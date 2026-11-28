@@ -1,7 +1,19 @@
-import type { CarCosmetics, CarId, CarUsage, LapCount, SaveData, SavedCameraMode, TireId, TrackId, WeatherMode } from './types';
+import type {
+  AccessorySlot,
+  CarCosmetics,
+  CarId,
+  CarUsage,
+  LapCount,
+  SaveData,
+  SavedCameraMode,
+  TireId,
+  TrackId,
+  WeatherMode,
+} from './types';
 import { CAR_ORDER } from './data/cars';
+import { getAccessory, isAccessoryAvailable } from './data/accessories';
 import { getGlass, getRim } from './data/cosmetics';
-import { isGlassUnlocked, isRimUnlocked, MAX_CAR_USAGE_STAT } from './garage';
+import { isAccessoryUnlocked, isGlassUnlocked, isRimUnlocked, MAX_CAR_USAGE_STAT } from './garage';
 import { TRACK_ORDER } from './track/tracks';
 import { isCarUnlocked, isTireUnlocked, isTrackUnlocked, MAX_XP } from './progression';
 import { TIRE_ORDER } from './data/tires';
@@ -48,9 +60,48 @@ function normalizeCarUsage(raw: unknown): Partial<Record<CarId, CarUsage>> {
       podiums: sanitizeUsageCounter(obj.podiums),
       driftSeconds: sanitizeUsageCounter(obj.driftSeconds),
       cleanLaps: sanitizeUsageCounter(obj.cleanLaps),
+      wins: sanitizeUsageCounter(obj.wins),
+      wetRaces: sanitizeUsageCounter(obj.wetRaces),
     };
-    if (usage.races > 0 || usage.laps > 0 || usage.podiums > 0 || usage.driftSeconds > 0 || usage.cleanLaps > 0) {
+    if (
+      usage.races > 0 ||
+      usage.laps > 0 ||
+      usage.podiums > 0 ||
+      usage.driftSeconds > 0 ||
+      usage.cleanLaps > 0 ||
+      usage.wins > 0 ||
+      usage.wetRaces > 0
+    ) {
       result[carId] = usage;
+    }
+  }
+  return result;
+}
+
+const VALID_ACCESSORY_SLOTS: AccessorySlot[] = ['roof', 'front', 'rear', 'side'];
+
+function normalizeAccessories(
+  raw: unknown,
+  carUsage: Partial<Record<CarId, CarUsage>>,
+): Partial<Record<CarId, Partial<Record<AccessorySlot, string>>>> {
+  const result: Partial<Record<CarId, Partial<Record<AccessorySlot, string>>>> = {};
+  if (!raw || typeof raw !== 'object') return result;
+  const usageSave = { carUsage };
+  for (const [rawKey, val] of Object.entries(raw as Record<string, unknown>)) {
+    const carId = resolveCarId(rawKey);
+    if (!carId || !val || typeof val !== 'object') continue;
+    const obj = val as Record<string, unknown>;
+    const entry: Partial<Record<AccessorySlot, string>> = {};
+    for (const slot of VALID_ACCESSORY_SLOTS) {
+      const id = obj[slot];
+      if (typeof id !== 'string') continue;
+      const def = getAccessory(id);
+      if (!def || def.slot !== slot) continue;
+      if (!isAccessoryAvailable(carId, id) || !isAccessoryUnlocked(carId, id, usageSave)) continue;
+      entry[slot] = id;
+    }
+    if (Object.keys(entry).length > 0) {
+      result[carId] = entry;
     }
   }
   return result;
@@ -180,6 +231,10 @@ export function normalizeSave(raw: unknown): SaveData {
   const cosmetics = normalizeCosmetics(data.cosmetics, carUsage);
   if (Object.keys(cosmetics).length > 0) {
     normalized.cosmetics = cosmetics;
+  }
+  const accessories = normalizeAccessories(data.accessories, carUsage);
+  if (Object.keys(accessories).length > 0) {
+    normalized.accessories = accessories;
   }
   return normalized;
 }

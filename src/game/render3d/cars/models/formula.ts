@@ -60,11 +60,12 @@ export function buildFormulaCar(ctx: CarBuildContext): void {
     true,
     0.05,
   );
-  addBox(ctx, [0.58, 0.1, 2.74], [-2.46, 1.56, 0], mats.body, true, true, 0.04);
+  const rearWingParts = [addBox(ctx, [0.58, 0.1, 2.74], [-2.46, 1.56, 0], mats.body, true, true, 0.04)];
   for (const side of [-1, 1]) {
-    addBox(ctx, [0.3, 0.72, 0.1], [-2.4, 1.16, side * 0.74], mats.darkTrim, true, true, 0.025);
-    addBox(ctx, [0.66, 0.34, 0.08], [-2.46, 1.54, side * 1.36], mats.stripe, true, true, 0.025);
+    rearWingParts.push(addBox(ctx, [0.3, 0.72, 0.1], [-2.4, 1.16, side * 0.74], mats.darkTrim, true, true, 0.025));
+    rearWingParts.push(addBox(ctx, [0.66, 0.34, 0.08], [-2.46, 1.54, side * 1.36], mats.stripe, true, true, 0.025));
   }
+  ctx.stockParts['rear-wing'] = rearWingParts;
   const tail = addBox(ctx, [0.14, 0.2, 0.24], [-2.26, 0.72, 0], mats.tail, false, false, 0.025);
   ctx.brakeLights.push(tail);
 

@@ -73,6 +73,8 @@ export function mergeSaves(
       podiums: Math.max(lu?.podiums ?? 0, ru?.podiums ?? 0),
       driftSeconds: Math.max(lu?.driftSeconds ?? 0, ru?.driftSeconds ?? 0),
       cleanLaps: Math.max(lu?.cleanLaps ?? 0, ru?.cleanLaps ?? 0),
+      wins: Math.max(lu?.wins ?? 0, ru?.wins ?? 0),
+      wetRaces: Math.max(lu?.wetRaces ?? 0, ru?.wetRaces ?? 0),
     };
   }
 

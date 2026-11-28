@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
+  AccessorySlot,
   CarId,
   LapCount,
   RaceResults,
@@ -14,8 +15,9 @@ import type {
   WeatherMode,
 } from '../game/types';
 import { CARS, getCarPalette } from '../game/data/cars';
+import { isAccessoryAvailable } from '../game/data/accessories';
 import { applyCosmetics } from '../game/data/cosmetics';
-import { applyCarUsage, isGlassUnlocked, isRimUnlocked } from '../game/garage';
+import { applyCarUsage, isAccessoryUnlocked, isGlassUnlocked, isRimUnlocked } from '../game/garage';
 import { fetchTrackRecords, submitTrackRecord, type TrackRecordsMap } from '../game/records';
 import { getTrack } from '../game/track/tracks';
 import { defaultSave, loadSave } from '../game/save';
@@ -53,6 +55,7 @@ import {
 import { formatTime } from '../game/utils';
 import TitleScreen from './screens/TitleScreen';
 import GarageScreen from './screens/GarageScreen';
+import GarageCatalogScreen from './screens/GarageCatalogScreen';
 import CustomizeGarageScreen from './screens/CustomizeGarageScreen';
 import TrackSelectScreen from './screens/TrackSelectScreen';
 import MultiplayerLobbyScreen from './screens/MultiplayerLobbyScreen';
@@ -68,6 +71,7 @@ type Screen =
   | 'loading'
   | 'title'
   | 'garage'
+  | 'customize-grid'
   | 'customize'
   | 'tracks'
   | 'multiplayer'
@@ -227,6 +231,7 @@ export default function GameApp() {
     palette: applyCosmetics(
       getCarPalette(save.selectedCarId, selectedColorIndex),
       save.cosmetics?.[save.selectedCarId],
+      save.accessories?.[save.selectedCarId],
     ),
   };
   const garageUnlocked = isGarageUnlocked(save);
@@ -494,6 +499,7 @@ export default function GameApp() {
     const inMenu =
       screen === 'title' ||
       screen === 'garage' ||
+      screen === 'customize-grid' ||
       screen === 'customize' ||
       screen === 'tracks' ||
       screen === 'multiplayer';
@@ -501,7 +507,7 @@ export default function GameApp() {
   }, [screen]);
 
   useEffect(() => {
-    if (screen === 'customize' && !isGarageUnlocked(save)) {
+    if ((screen === 'customize' || screen === 'customize-grid') && !isGarageUnlocked(save)) {
       setScreen('title');
     }
   }, [screen, save]);
@@ -554,7 +560,11 @@ export default function GameApp() {
     const savedCam = saveRef.current.cameraMode ?? 'top';
     const colorIdx = saveRef.current.selectedColors?.[id] ?? 0;
     const totalLaps = saveRef.current.selectedLaps ?? 3;
-    const palette = applyCosmetics(getCarPalette(id, colorIdx), saveRef.current.cosmetics?.[id]);
+    const palette = applyCosmetics(
+      getCarPalette(id, colorIdx),
+      saveRef.current.cosmetics?.[id],
+      saveRef.current.accessories?.[id],
+    );
     setSnapshot(null);
     setResults(null);
     setIsOnlineResult(false);
@@ -680,16 +690,47 @@ export default function GameApp() {
     commitSave(nextSave);
   };
 
+  const selectAccessory = (carId: CarId, slot: AccessorySlot, id: string | null) => {
+    if (id != null && (!isAccessoryAvailable(carId, id) || !isAccessoryUnlocked(carId, id, saveRef.current))) {
+      return;
+    }
+    const prevAll = { ...(saveRef.current.accessories ?? {}) };
+    const prevCar = { ...(prevAll[carId] ?? {}) };
+    if (id == null) {
+      delete prevCar[slot];
+    } else {
+      prevCar[slot] = id;
+    }
+    if (Object.keys(prevCar).length > 0) {
+      prevAll[carId] = prevCar;
+    } else {
+      delete prevAll[carId];
+    }
+    const nextSave: SaveData = { ...saveRef.current };
+    if (Object.keys(prevAll).length > 0) {
+      nextSave.accessories = prevAll;
+    } else {
+      delete nextSave.accessories;
+    }
+    commitSave(nextSave);
+  };
+
   const openCustomize = (from: 'title' | 'garage') => {
     if (!isGarageUnlocked(saveRef.current)) {
       setAnnouncement('Garasi terkunci. Capai level 3 untuk membukanya.');
       return;
     }
     setCustomizeFrom(from);
+    setScreen('customize-grid');
+  };
+
+  const openCustomizeDetail = (carId: CarId) => {
+    selectCar(carId);
     setScreen('customize');
   };
 
-  const closeCustomize = () => setScreen(customizeFrom);
+  const closeCustomizeDetail = () => setScreen('customize-grid');
+  const closeCustomizeGrid = () => setScreen(customizeFrom);
 
   const toggleMute = () => {
     const nextSave: SaveData = { ...saveRef.current, audioMuted: !saveRef.current.audioMuted };
@@ -778,7 +819,10 @@ export default function GameApp() {
         setScreen('title');
       } else if (screen === 'customize') {
         event.preventDefault();
-        closeCustomize();
+        closeCustomizeDetail();
+      } else if (screen === 'customize-grid') {
+        event.preventDefault();
+        closeCustomizeGrid();
       } else if (screen === 'tracks') {
         event.preventDefault();
         setScreen('garage');
@@ -1216,6 +1260,7 @@ export default function GameApp() {
               selectedCarId={save.selectedCarId}
               selectedColors={save.selectedColors ?? {}}
               cosmetics={save.cosmetics}
+              accessories={save.accessories}
               garageUnlocked={garageUnlocked}
               onOpenCustomize={() => openCustomize('garage')}
               xp={save.xp ?? 0}
@@ -1228,18 +1273,35 @@ export default function GameApp() {
               onStart={() => setScreen('tracks')}
             />
           )}
+          {screen === 'customize-grid' && (
+            <GarageCatalogScreen
+              selectedCarId={save.selectedCarId}
+              selectedColors={save.selectedColors ?? {}}
+              cosmetics={save.cosmetics ?? {}}
+              accessories={save.accessories ?? {}}
+              carUsage={save.carUsage ?? {}}
+              xp={save.xp ?? 0}
+              unlocks={save.unlocks}
+              returnLabel={customizeFrom === 'garage' ? 'Pilih mobil' : 'Kembali'}
+              onOpenCar={openCustomizeDetail}
+              onBack={closeCustomizeGrid}
+            />
+          )}
           {screen === 'customize' && (
             <CustomizeGarageScreen
               selectedCarId={save.selectedCarId}
               selectedColors={save.selectedColors ?? {}}
               cosmetics={save.cosmetics ?? {}}
+              accessories={save.accessories ?? {}}
               carUsage={save.carUsage ?? {}}
               xp={save.xp ?? 0}
               unlocks={save.unlocks}
-              returnLabel={customizeFrom === 'garage' ? 'Pilih mobil' : 'Kembali'}
+              returnLabel="Semua mobil"
               onSelectCar={selectCar}
+              onSelectColor={selectCarColor}
               onSelectCosmetic={selectCosmetic}
-              onBack={closeCustomize}
+              onSelectAccessory={selectAccessory}
+              onBack={closeCustomizeDetail}
             />
           )}
           {screen === 'tracks' && (
