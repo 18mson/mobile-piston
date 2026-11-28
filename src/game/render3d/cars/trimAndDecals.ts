@@ -37,6 +37,68 @@ export function addDropShadow(group: THREE.Group, carId: CarId): THREE.Mesh {
   return shadow;
 }
 
+function roundedRectShape(length: number, width: number, radius: number): THREE.Shape {
+  const hw = length / 2;
+  const hh = width / 2;
+  const r = Math.min(radius, hw, hh);
+  const shape = new THREE.Shape();
+  shape.moveTo(-hw + r, -hh);
+  shape.lineTo(hw - r, -hh);
+  shape.quadraticCurveTo(hw, -hh, hw, -hh + r);
+  shape.lineTo(hw, hh - r);
+  shape.quadraticCurveTo(hw, hh, hw - r, hh);
+  shape.lineTo(-hw + r, hh);
+  shape.quadraticCurveTo(-hw, hh, -hw, hh - r);
+  shape.lineTo(-hw, -hh + r);
+  shape.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+  return shape;
+}
+
+/** Crisp ground-plane border around the player car for top-down visibility. */
+export function createTopdownPlayerBorder(carId: CarId): THREE.Group {
+  const [l, w] = SHADOW_DIMS[carId];
+  const innerL = l + 0.5;
+  const innerW = w + 0.5;
+  const border = 0.36;
+  const outerL = innerL + border * 2;
+  const outerW = innerW + border * 2;
+
+  const group = new THREE.Group();
+  group.visible = false;
+
+  const backingShape = roundedRectShape(outerL + 0.24, outerW + 0.24, 1.05);
+  backingShape.holes.push(roundedRectShape(Math.max(0.5, innerL - 0.14), Math.max(0.5, innerW - 0.14), 0.72));
+  const backingMesh = new THREE.Mesh(
+    new THREE.ShapeGeometry(backingShape),
+    new THREE.MeshBasicMaterial({
+      color: '#071016',
+      transparent: true,
+      opacity: 0.78,
+      depthWrite: false,
+    }),
+  );
+  backingMesh.rotation.x = -Math.PI / 2;
+  backingMesh.position.y = 0.08;
+  group.add(backingMesh);
+
+  const ringShape = roundedRectShape(outerL, outerW, 0.95);
+  ringShape.holes.push(roundedRectShape(innerL, innerW, 0.78));
+  const ringMesh = new THREE.Mesh(
+    new THREE.ShapeGeometry(ringShape),
+    new THREE.MeshBasicMaterial({
+      color: '#ff8f3d',
+      transparent: true,
+      opacity: 0.96,
+      depthWrite: false,
+    }),
+  );
+  ringMesh.rotation.x = -Math.PI / 2;
+  ringMesh.position.y = 0.095;
+  group.add(ringMesh);
+
+  return group;
+}
+
 export function addSideMirrors(
   ctx: CarBuildContext,
   x: number,

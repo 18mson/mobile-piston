@@ -784,6 +784,7 @@ export class Renderer3D {
       // Hide player's full body mesh only when fully seated in cockpit to prevent eye clipping
       // When flying in from outside, the car body remains visible as the camera enters
       this.playerCar.group.visible = !isCockpit;
+      this.playerCar.setTopdownHighlight(this.cameraRig.mode === 'top' && !isFinished);
     }
     this.cockpitRoot.visible = isCockpit;
 

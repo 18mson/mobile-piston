@@ -9,7 +9,7 @@ import { buildCompactCab } from './cars/models/compactCab';
 import { buildCoupeRacer } from './cars/models/coupeRacer';
 import { buildFormulaCar } from './cars/models/formula';
 import { OUTLINE_COLOR, createToonMaterial, getToonRamp } from './cars/primitives';
-import { addDropShadow } from './cars/trimAndDecals';
+import { addDropShadow, createTopdownPlayerBorder } from './cars/trimAndDecals';
 import type { CarBuildContext, CarMaterials, WheelRef } from './cars/types';
 
 function createCarMaterials(carId: CarId, palette: CarPalette): CarMaterials {
@@ -66,6 +66,7 @@ export class CarView {
   private readonly glassMat: THREE.MeshToonMaterial;
   private readonly effects: CarEffects;
   private readonly accessoryHandles: AccessoryHandle[];
+  private readonly topdownBorder: THREE.Group | null = null;
   private spin = 0;
   private elapsed = 0;
 
@@ -108,6 +109,15 @@ export class CarView {
       marker.rotation.x = Math.PI;
       marker.position.y = 4.4;
       this.group.add(marker);
+
+      this.topdownBorder = createTopdownPlayerBorder(carId);
+      this.group.add(this.topdownBorder);
+    }
+  }
+
+  setTopdownHighlight(visible: boolean): void {
+    if (this.topdownBorder) {
+      this.topdownBorder.visible = visible;
     }
   }
 
