@@ -170,7 +170,7 @@ export async function submitTrackRecord(params: {
   const client = getSupabaseClient();
   if (client) {
     try {
-      await client.rpc('submit_track_record', {
+      const { error } = await client.rpc('submit_track_record', {
         p_track_id: entry.trackId,
         p_player_name: entry.playerName,
         p_car_id: entry.carId,
@@ -179,6 +179,9 @@ export async function submitTrackRecord(params: {
         p_total_time_ms: entry.totalTimeMs ?? null,
         p_laps: entry.laps ?? 3,
       });
+      if (!error) {
+        return await fetchTrackRecords();
+      }
     } catch {
       // Offline or migration not yet applied: local record remains cached.
     }

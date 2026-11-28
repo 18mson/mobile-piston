@@ -50,6 +50,37 @@ describe('input manager', () => {
     expect(input.getInput().steer).toBeLessThan(-0.5);
   });
 
+  it('requires manual throttle on desktop keyboard from start, even after releasing gas', () => {
+    vi.stubGlobal('navigator', { getGamepads: () => [] });
+    const input = new InputManager();
+    expect(input.getInput().gas).toBe(false);
+
+    input.setKey('ArrowUp', true);
+    expect(input.getInput().gas).toBe(true);
+
+    input.setKey('ArrowUp', false);
+    expect(input.getInput().gas).toBe(false);
+
+    input.setKey('KeyW', true);
+    expect(input.getInput().gas).toBe(true);
+    input.setKey('KeyW', false);
+    expect(input.getInput().gas).toBe(false);
+  });
+
+  it('auto-accelerates on touch devices from start until brake is held', () => {
+    vi.stubGlobal('navigator', { getGamepads: () => [] });
+    const input = new InputManager();
+    input.setTouchDevice(true);
+    expect(input.getInput().gas).toBe(true);
+
+    input.setTouch('brake', true);
+    expect(input.getInput().brake).toBe(true);
+    expect(input.getInput().gas).toBe(false);
+
+    input.setTouch('brake', false);
+    expect(input.getInput().gas).toBe(true);
+  });
+
   it('turns touch controls into the same driving input', () => {
     vi.stubGlobal('navigator', { getGamepads: () => [] });
     const input = new InputManager();

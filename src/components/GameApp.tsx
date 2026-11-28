@@ -149,9 +149,31 @@ const WORLD_ANIMALS = [
   'Tupai',
 ];
 
+const GUEST_NAME_STORAGE_KEY = 'mobile-piston.guest-name.v1';
+
 function randomGuestName(): string {
   const animal = WORLD_ANIMALS[Math.floor(Math.random() * WORLD_ANIMALS.length)] ?? 'Cheetah';
-  return animal;
+  const suffix = Math.floor(1000 + Math.random() * 9000);
+  return `${animal}${suffix}`;
+}
+
+function loadOrCreateGuestName(): string {
+  if (typeof window === 'undefined') return randomGuestName();
+  try {
+    const saved = window.localStorage.getItem(GUEST_NAME_STORAGE_KEY)?.trim() ?? '';
+    if (saved && /\d{2,}$/.test(saved) && saved.length <= 24) {
+      return saved;
+    }
+  } catch {
+    // Ignore storage read errors and fall back to generating a fresh guest name.
+  }
+  const fresh = randomGuestName();
+  try {
+    window.localStorage.setItem(GUEST_NAME_STORAGE_KEY, fresh);
+  } catch {
+    // Ignore storage write errors.
+  }
+  return fresh;
 }
 
 function getUserInitials(name: string): string {
@@ -347,7 +369,7 @@ export default function GameApp() {
     setSave(loaded);
     saveRef.current = loaded;
     if (!authUserIdRef.current && !hasCustomNameRef.current) {
-      setPlayerName(randomGuestName());
+      setPlayerName(loadOrCreateGuestName());
     }
     if (loaded.cameraMode) {
       setCameraMode(loaded.cameraMode);
@@ -471,6 +493,7 @@ export default function GameApp() {
 
     engineRef.current = engine;
     engine.setMuted(loaded.audioMuted);
+    engine.setTouchDevice(touchCapable);
 
     const unlockOnce = () => {
       void engine.audioController.unlock();
@@ -748,7 +771,7 @@ export default function GameApp() {
     authUserIdRef.current = null;
     setAuthUsername(null);
     hasCustomNameRef.current = false;
-    setPlayerName(randomGuestName());
+    setPlayerName(loadOrCreateGuestName());
     const guestSave = cloudSyncRef.current?.handleLogout() ?? defaultSave();
     setSave(guestSave);
     saveRef.current = guestSave;
@@ -856,7 +879,7 @@ export default function GameApp() {
   const openMultiplayer = useCallback(() => {
     setMpError('');
     if (!authUserIdRef.current && !hasCustomNameRef.current) {
-      setPlayerName(randomGuestName());
+      setPlayerName(loadOrCreateGuestName());
     }
     setRoomState(null);
     setScreen('multiplayer');
@@ -1026,12 +1049,14 @@ export default function GameApp() {
   const showTopBar =
     screen === 'title' ||
     screen === 'garage' ||
+    screen === 'customize-grid' ||
     screen === 'customize' ||
     screen === 'tracks' ||
     screen === 'multiplayer';
   const showFooter =
     screen === 'title' ||
     screen === 'garage' ||
+    screen === 'customize-grid' ||
     screen === 'customize' ||
     screen === 'tracks' ||
     screen === 'multiplayer';

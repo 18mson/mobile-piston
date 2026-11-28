@@ -38,4 +38,18 @@ describe('track records leaderboard', () => {
     expect(merged['rimba-lumpur']?.[0]?.carId).toBe('cruz');
     expect(merged['rimba-lumpur']?.[0]?.bestLapMs).toBe(39_100);
   });
+
+  it('keeps distinct numbered guest names separate on the leaderboard', () => {
+    const merged = mergeRecordLists([
+      [
+        rec({ playerKey: 'n:cheetah4821', playerName: 'Cheetah4821', bestLapMs: 19_100 }),
+        rec({ playerKey: 'n:cheetah7390', playerName: 'Cheetah7390', bestLapMs: 18_400 }),
+      ],
+    ]);
+
+    expect(merged['teluk-sore']?.map((e) => [e.playerName, e.bestLapMs])).toEqual([
+      ['Cheetah7390', 18_400],
+      ['Cheetah4821', 19_100],
+    ]);
+  });
 });

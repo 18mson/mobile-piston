@@ -159,6 +159,10 @@ export class GameEngine {
     if (pressed) void this.audio.unlock();
   }
 
+  setTouchDevice(enabled: boolean): void {
+    this.input.setTouchDevice(enabled);
+  }
+
   startRace(
     carId: CarId,
     previousBestLapMs: number | null,

@@ -19,7 +19,6 @@ export class InputManager {
   private resetRequested = false;
   private steer = 0;
   private pauseRequested = false;
-  private manualThrottleUsed = false;
   private gamepadReset = false;
   private prevGamepadReset = false;
   lastSource: 'keyboard' | 'touch' | 'gamepad' = 'keyboard';
@@ -40,6 +39,15 @@ export class InputManager {
   setTouch(action: TouchAction, pressed: boolean): void {
     this.touch[action] = pressed;
     if (pressed) this.lastSource = 'touch';
+  }
+
+  /** Marks touch-capable mobile devices so gas runs automatically from race start until a keyboard key takes over. */
+  setTouchDevice(enabled: boolean): void {
+    if (enabled && this.keys.size === 0) {
+      this.lastSource = 'touch';
+    } else if (!enabled && this.lastSource === 'touch') {
+      this.lastSource = 'keyboard';
+    }
   }
 
   clearTouch(): void {
@@ -131,16 +139,7 @@ export class InputManager {
       this.keys.has('ArrowUp') ||
       this.keys.has('KeyW');
 
-    if (manualGasPressed) {
-      this.manualThrottleUsed = true;
-    }
-
-    let gas: boolean;
-    if (this.manualThrottleUsed && this.lastSource === 'keyboard') {
-      gas = manualGasPressed;
-    } else {
-      gas = !brake;
-    }
+    const gas = this.lastSource === 'keyboard' ? manualGasPressed : !brake;
 
     return {
       steer: clamp(this.steer, -1, 1),

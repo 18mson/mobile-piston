@@ -39,10 +39,10 @@ export default function ControlsDialog({
       </div>
 
       <p className="dialog-lead">
-        Gas dapat dikontrol manual (W / panah atas) atau otomatis. Belok tajam dengan gas penuh dan tanpa rem
-        akan membuat mobil drifting, bahkan berputar. Rem atau lepas gas sebelum tikungan untuk menjaga traksi,
-        dan luruskan setir untuk memulihkan mobil yang tergelincir. Drift terkendali mengisi nitro, dan garis
-        oranye di lintasan adalah boost pad.
+        Di desktop, gas dikontrol manual dengan W / panah atas. Di layar sentuh (HP), gas berjalan otomatis saat
+        tidak mengerem. Belok tajam dengan gas penuh dan tanpa rem akan membuat mobil drifting, bahkan berputar.
+        Rem atau lepas gas sebelum tikungan untuk menjaga traksi, dan luruskan setir untuk memulihkan mobil yang
+        tergelincir. Drift terkendali mengisi nitro, dan garis oranye di lintasan adalah boost pad.
       </p>
 
       <div className="control-groups">

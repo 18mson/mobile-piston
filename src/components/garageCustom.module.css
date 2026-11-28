@@ -157,9 +157,12 @@
 }
 
 .itemBadge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
   padding: 2px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -298,8 +301,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 92px;
-  padding: 12px 8px;
+  min-height: 96px;
+  padding: 28px 8px 10px;
   border: 1.5px solid rgba(46, 230, 255, 0.22);
   border-radius: 10px;
   background: rgba(11, 22, 34, 0.92);
@@ -465,18 +468,63 @@
   .rightCol {
     padding: 12px;
   }
+
+  .slotChip {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 620px) {
+  .stageHead {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .stageColorPicker {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .tabBtn {
+    padding: 6px;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+  }
+
+  .catalogGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .catalogCard {
+    padding: 10px;
+  }
 }
 
 @media (max-height: 560px) and (orientation: landscape) {
+  .customPanel {
+    margin: 0;
+  }
+
   .customLayout {
     grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.35fr);
     gap: 10px;
-    max-height: calc(100dvh - 120px);
+    max-height: calc(100dvh - 76px);
   }
 
   .stageCol {
     padding: 10px;
     gap: 8px;
+    overflow-y: auto;
+  }
+
+  .stageHead {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .stageHead h3 {
+    font-size: 20px;
   }
 
   .rightCol {
@@ -485,13 +533,22 @@
     overflow-y: auto;
   }
 
+  .slotChip {
+    min-height: 44px;
+  }
+
+  .catalogGrid {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 10px;
+  }
+
   .itemGrid {
     grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
     gap: 8px;
   }
 
   .itemCard {
-    min-height: 76px;
-    padding: 8px 6px;
+    min-height: 82px;
+    padding: 26px 6px 8px;
   }
 }
