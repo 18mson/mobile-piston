@@ -1,18 +1,14 @@
 'use client';
 
 import { accessoriesForCar, isAccessoryUnlocked } from '../../game/data/accessories';
-import { CARS, CAR_ORDER, deriveCarRole, getCarPalette } from '../../game/data/cars';
-import { applyCosmetics } from '../../game/data/cosmetics';
+import { CARS, CAR_ORDER, deriveCarRole } from '../../game/data/cars';
 import { carUnlockDef, isCarUnlocked } from '../../game/progression';
-import type { AccessorySlot, CarCosmetics, CarId, CarSpec, CarUsage } from '../../game/types';
+import type { CarId, CarUsage } from '../../game/types';
 import CarThumb from '../CarThumb';
 import styles from '../garageCustom.module.css';
 
 export default function GarageCatalogScreen({
   selectedCarId,
-  selectedColors,
-  cosmetics,
-  accessories = {},
   carUsage,
   xp = 0,
   unlocks,
@@ -21,9 +17,6 @@ export default function GarageCatalogScreen({
   onBack,
 }: {
   selectedCarId: CarId;
-  selectedColors: Partial<Record<CarId, number>>;
-  cosmetics: Partial<Record<CarId, CarCosmetics>>;
-  accessories?: Partial<Record<CarId, Partial<Record<AccessorySlot, string>>>>;
   carUsage: Partial<Record<CarId, CarUsage>>;
   xp?: number;
   unlocks?: string[];
@@ -66,11 +59,6 @@ export default function GarageCatalogScreen({
             const needLevel = lockLevel(id);
             const unlocked = needLevel == null;
             const base = CARS[id];
-            const colorIdx = selectedColors[id] ?? 0;
-            const carSpec: CarSpec = {
-              ...base,
-              palette: applyCosmetics(getCarPalette(id, colorIdx), cosmetics[id], accessories[id]),
-            };
             const roleLabel = deriveCarRole(base);
             const carAccs = accessoriesForCar(id);
             const unlockedAcc = carAccs.filter((item) => isAccessoryUnlocked(id, item.id, { carUsage })).length;
@@ -103,7 +91,7 @@ export default function GarageCatalogScreen({
                 </div>
 
                 <div className={styles.catalogThumbWrap}>
-                  <CarThumb car={carSpec} number={base.number ?? 1} scale={3} staticView />
+                  <CarThumb car={base} number={base.number ?? 1} scale={3} staticView />
                 </div>
 
                 <div className={styles.catalogMeta}>

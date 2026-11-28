@@ -1276,9 +1276,6 @@ export default function GameApp() {
           {screen === 'customize-grid' && (
             <GarageCatalogScreen
               selectedCarId={save.selectedCarId}
-              selectedColors={save.selectedColors ?? {}}
-              cosmetics={save.cosmetics ?? {}}
-              accessories={save.accessories ?? {}}
               carUsage={save.carUsage ?? {}}
               xp={save.xp ?? 0}
               unlocks={save.unlocks}

@@ -267,11 +267,7 @@ export default function GarageScreen({
               onScroll={syncScrollState}
             >
               {orderedCars.map((id) => {
-                const colorIdx = selectedColors[id] ?? 0;
-                const car: CarSpec = {
-                  ...CARS[id],
-                  palette: applyCosmetics(getCarPalette(id, colorIdx), cosmetics?.[id], accessories?.[id]),
-                };
+                const car = CARS[id];
                 const selectedCard = id === selectedCarId && previewId == null;
                 const needLevel = lockLevel(id);
                 return (
